@@ -2,8 +2,7 @@ import Session from "../models/Session.js";
 import User from "../models/User.js";
 import JWT from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { sendEmail } from "../utils/sendEmail.js"; // ⬅️ Import hàm vừa tạo
-
+import nodemailer from "nodemailer";
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 // FUNCTION SIGNUP
@@ -131,43 +130,92 @@ export const signOut = async (req, res) => {
 };
 
 // FUNCTION SENDEMAIL
+const sendEmail = async (to, subject, htmlContent) => {
+  // 1. Lấy biến từ process.env (Giả định đã được tải)
+  const { EMAIL_USER, EMAIL_PASS } = process.env;
 
-// File: src/controllers/authControllers.js
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    throw new Error("Cấu hình EMAIL_USER hoặc EMAIL_PASS bị thiếu trong .env.");
+  }
 
-// ... các imports khác
+  // ⬅️ SỬA LỖI 1: Loại bỏ khoảng trắng khỏi mật khẩu ứng dụng
+  const cleanedPass = EMAIL_PASS.replace(/\s/g, "");
 
-// HÀM TẠM THỜI ĐỂ TEST GỬI EMAIL
-export const testSendEmail = async (req, res) => {
   try {
-    // ⚠️ THAY THẾ bằng email bạn muốn nhận thư TEST
-    const testRecipient = req.body.email || "email_cua_ban_de_test@example.com";
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      connectionTimeout: 5000,
+      socketTimeout: 5000,
+      auth: {
+        user: EMAIL_USER,
+        pass: cleanedPass, // ⬅️ SỬ DỤNG MẬT KHẨU ĐÃ LÀM SẠCH
+      },
+    });
 
-    // 💡 Tạo mã ngẫu nhiên đơn giản
-    const testCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const mailOptions = {
+      from: `"Your App Service" <${EMAIL_USER}>`,
+      to: to,
+      subject: subject,
+      html: htmlContent,
+    };
 
-    // Nội dung đơn giản: chỉ nói về mã
-    const subject = "Mã Đặt lại Mật khẩu Test";
-    const htmlBody = `
-            <p>Chào bạn,</p>
-            <p>Đây là mã test đặt lại mật khẩu của bạn:</p>
-            <h1 style="color: #FF5733; font-size: 32px;">${testCode}</h1>
-            <p>Vui lòng sử dụng mã này để đặt mật khẩu mới.</p>
-        `;
+    // ⬅️ SỬA LỖI 2: Chỉ gọi sendMail MỘT LẦN và lưu kết quả
+    const info = await transporter.sendMail(mailOptions);
 
-    const success = await sendEmail(testRecipient, subject, htmlBody);
+    // ⬅️ LOGGING THÀNH CÔNG RÕ RÀNG VÀ CHÍNH XÁC
+    console.log(`✅ Email đã được gửi thành công đến: ${to}`);
+    console.log("Nodemailer Response:", info.response); // In ra phản hồi máy chủ Gmail
 
-    if (success) {
+    return info; // Trả về info nếu cần
+  } catch (error) {
+    // ⬅️ LOGGING LỖI RÕ RÀNG ĐỂ DEBUG
+    console.error("❌ LỖI GỬI EMAIL (Kiểm tra EAUTH):", error.message);
+    console.error("Chi tiết lỗi:", error);
+    throw error;
+  }
+};
+// FUNCTION FORGOT PASSWORD
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Vui lòng cung cấp email." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
       return res.status(200).json({
-        message: `Gửi email test thành công đến ${testRecipient}. Vui lòng kiểm tra hộp thư.`,
-      });
-    } else {
-      return res.status(500).json({
-        message:
-          "Gửi email thất bại. Kiểm tra log server để xem lỗi Nodemailer.",
+        success: true,
+        message: "Nếu email tồn tại, mã khôi phục đã được gửi.",
       });
     }
+
+    const OTP = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const subject = "Mã Khôi phục Mật khẩu của bạn";
+    const htmlContent = `
+            <h2>Chào ${user.displayName || user.username},</h2>
+            <p>Đây là mã xác nhận để khôi phục mật khẩu của bạn:</p>
+            
+            <div style="font-size: 24px; font-weight: bold; color: #0275d8; padding: 15px; border: 1px solid #0275d8; border-radius: 4px; display: inline-block; margin: 15px 0;">
+                ${OTP}
+            </div>
+
+            <p>Mã này có thể chỉ có hiệu lực trong vài phút. Vui lòng không chia sẻ mã này.</p>
+        `;
+
+    await sendEmail(email, subject, htmlContent);
+
+    // TODO: LƯU OTP VÀO DATABASE KÈM THỜI GIAN HẾT HẠN Ở ĐÂY!
+
+    return res.status(200).json({
+      success: true,
+      message: "Mã khôi phục đã được gửi đến email của bạn.",
+    });
   } catch (error) {
-    console.error("Lỗi trong hàm testSendEmail:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống khi test email." });
+    console.error("Lỗi khi gọi forgotPassword:", error);
+    return res
+      .status(500)
+      .json({ message: "Lỗi hệ thống hoặc lỗi gửi email: " + error.message });
   }
 };

@@ -3,7 +3,7 @@ import {
   signIn,
   signOut,
   signUp,
-  testSendEmail,
+  forgotPassword,
 } from "../controllers/authControllers.js";
 const router = express.Router();
 
@@ -18,6 +18,7 @@ router.post("/signIn", signIn);
 // API signOut
 router.post("/signOut", signOut);
 
+router.post("/forgot-password", forgotPassword);
 // API sendEmail
-router.post("/test-email", testSendEmail);
+
 export default router;
