@@ -17,17 +17,25 @@
     --popover: 250 100% 99%;
     --popover-foreground: 240 15% 15%;
 
-    /* Primary */
-    /* Teal */
-    --primary: 189 80% 84%;
-    --primary-foreground: 210 40% 20%; /* xanh đậm hoặc xám đậm để nổi chữ */
+    /* --- Màu chủ đạo (Primary - Đỏ cam năng động) --- */
+    --primary: 14 85% 52%; /* cam đỏ rực vừa phải, vẫn giữ năng lượng */
+    --primary-foreground: 0 0% 98%; /* gần trắng, chữ nổi bật trên nền cam đỏ */
 
-    /* Hồng */
-    --primary-glow: 320 100% 70%;
+    /* --- Màu nhấn phụ (Accent - Vàng tươi ấm) --- */
+    --accent: 45 95% 55%; /* vàng dịu hơn chút, không quá chói */
+    --accent-foreground: 30 80% 20%; /* chữ nâu đậm hoặc xám ấm để tương phản */
 
-    /* Secondary - lavender */
-    --secondary: 270 50% 92%;
-    --secondary-foreground: 280 100% 40%;
+    /* --- Nền tổng thể --- */
+    --background: 0 0% 98%; /* trắng sáng nhẹ */
+    --foreground: 0 0% 15%; /* chữ xám đậm dễ đọc trên nền sáng */
+
+    /* --- Màu phụ (Secondary - xám ấm trung tính) --- */
+    --secondary: 0 0% 92%; /* nền khối phụ hoặc card */
+    --secondary-foreground: 0 0% 25%; /* chữ phụ nhẹ nhàng */
+
+    /* --- Hiệu ứng sáng (Glow hoặc hover highlight) --- */
+    --primary-glow: 14 100% 70%; /* cam nhạt sáng, dùng cho hover, shadow */
+
 
     /* Muted */
     --muted: 260 30% 95%;
@@ -60,9 +68,10 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Border and input */
-    --border: 282 16% 87%;
-    --input: 260 30% 92%;
-    --ring: 271 79% 47%;
+    --border: 14 30% 85%;  /* cam nhạt */
+    --input: 14 40% 96%;   /* nền sáng pha cam */
+    --ring: 14 85% 52%;    /* đỏ cam (giống --primary) */
+
 
     /* Design system values */
     --radius: 1rem;
@@ -91,7 +100,7 @@
     );
 
     /* pattern craft */
-    --gradient-teal: radial-gradient(125% 125% at 50% 10%, #ffffff 40%, #14b8a6 100%);
+    --gradient-pattern: radial-gradient(125% 125% at 50% 10%, #ffffff 40%, #f59e0b 100%);
 
     /* Shadows */
     --shadow-soft: 0 8px 32px -8px hsl(271 79% 47% / 0.15);
@@ -184,7 +193,7 @@
       hsl(240, 15%, 18%) 100%
     );
 
-    --gradient-teal: radial-gradient(125% 125% at 50% 10%, #000000 40%, #072607 100%);
+    --gradient-pattern: radial-gradient(125% 125% at 50% 10%, #000000 40%, #2b0707 100%);
 
     /* Dark shadows with glow */
     --shadow-soft: 0 8px 32px -8px hsl(280 100% 70% / 0.25);
@@ -255,8 +264,8 @@
     background: var(--gradient-glass);
   }
 
-  .bg-gradient-teal {
-    background: var(--gradient-teal);
+  .bg-gradient-pattern {
+    background: var(--gradient-pattern);
   }
 
   /* Shadows */
