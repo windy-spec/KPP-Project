@@ -18,9 +18,10 @@
     --popover-foreground: 240 15% 15%;
 
     /* Primary */
-    /* Tím */
-    --primary: 271 79% 47%;
-    --primary-foreground: 210 40% 96.1%; /*slate-100*/
+    /* Teal */
+    --primary: 189 80% 84%;
+    --primary-foreground: 210 40% 20%; /* xanh đậm hoặc xám đậm để nổi chữ */
+
     /* Hồng */
     --primary-glow: 320 100% 70%;
 
