@@ -20,10 +20,7 @@ app.use(cookieParser());
 // 1. PUBLIC ROUTES: Tất cả các routes trong authRoute (signIn, signUp, forgot-password)
 // đều được xử lý ở đây. Chúng không cần token vì chúng nằm trước protectedRoute.
 app.use("/api/auth", authRoute);
-
-// 2. MIDDLEWARE BẢO VỆ: Middleware này sẽ chặn mọi request đến CÁC ROUTES ĐƯỢC ĐỊNH NGHĨA PHÍA DƯỚI.
 app.use(protectedRoute);
-
 // 3. PRIVATE ROUTES: Các routes này yêu cầu token vì chúng nằm sau protectedRoute.
 app.use("/api/users", userRoute);
 

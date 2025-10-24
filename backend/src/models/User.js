@@ -28,6 +28,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true,
     },
+    recovoryOTP: {
+      type: String,
+      default: null,
+    },
+    otpExpiries: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

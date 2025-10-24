@@ -4,6 +4,7 @@ import {
   signOut,
   signUp,
   forgotPassword,
+  resetPassword,
 } from "../controllers/authControllers.js";
 const router = express.Router();
 
@@ -18,7 +19,9 @@ router.post("/signIn", signIn);
 // API signOut
 router.post("/signOut", signOut);
 
+// API forgotPassword
 router.post("/forgot-password", forgotPassword);
-// API sendEmail
 
+//API resetPassword
+router.post("/reset-password", resetPassword);
 export default router;

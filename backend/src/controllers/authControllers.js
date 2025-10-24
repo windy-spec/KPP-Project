@@ -131,16 +131,10 @@ export const signOut = async (req, res) => {
 
 // FUNCTION SENDEMAIL
 const sendEmail = async (to, subject, htmlContent) => {
-  // 1. Lấy biến từ process.env (Giả định đã được tải)
   const { EMAIL_USER, EMAIL_PASS } = process.env;
-
   if (!EMAIL_USER || !EMAIL_PASS) {
     throw new Error("Cấu hình EMAIL_USER hoặc EMAIL_PASS bị thiếu trong .env.");
   }
-
-  // ⬅️ SỬA LỖI 1: Loại bỏ khoảng trắng khỏi mật khẩu ứng dụng
-  const cleanedPass = EMAIL_PASS.replace(/\s/g, "");
-
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -148,7 +142,7 @@ const sendEmail = async (to, subject, htmlContent) => {
       socketTimeout: 5000,
       auth: {
         user: EMAIL_USER,
-        pass: cleanedPass, // ⬅️ SỬ DỤNG MẬT KHẨU ĐÃ LÀM SẠCH
+        pass: EMAIL_PASS,
       },
     });
 
@@ -158,18 +152,12 @@ const sendEmail = async (to, subject, htmlContent) => {
       subject: subject,
       html: htmlContent,
     };
-
-    // ⬅️ SỬA LỖI 2: Chỉ gọi sendMail MỘT LẦN và lưu kết quả
     const info = await transporter.sendMail(mailOptions);
-
-    // ⬅️ LOGGING THÀNH CÔNG RÕ RÀNG VÀ CHÍNH XÁC
-    console.log(`✅ Email đã được gửi thành công đến: ${to}`);
-    console.log("Nodemailer Response:", info.response); // In ra phản hồi máy chủ Gmail
-
-    return info; // Trả về info nếu cần
+    console.log(`Email đã được gửi thành công đến: ${to}`);
+    console.log("Nodemailer Response:", info.response);
+    return info;
   } catch (error) {
-    // ⬅️ LOGGING LỖI RÕ RÀNG ĐỂ DEBUG
-    console.error("❌ LỖI GỬI EMAIL (Kiểm tra EAUTH):", error.message);
+    console.error("LỖI GỬI EMAIL (Kiểm tra EAUTH):", error.message);
     console.error("Chi tiết lỗi:", error);
     throw error;
   }
@@ -181,7 +169,6 @@ export const forgotPassword = async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: "Vui lòng cung cấp email." });
     }
-
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(200).json({
@@ -189,9 +176,7 @@ export const forgotPassword = async (req, res) => {
         message: "Nếu email tồn tại, mã khôi phục đã được gửi.",
       });
     }
-
     const OTP = Math.floor(100000 + Math.random() * 900000).toString();
-
     const subject = "Mã Khôi phục Mật khẩu của bạn";
     const htmlContent = `
             <h2>Chào ${user.displayName || user.username},</h2>
@@ -204,10 +189,12 @@ export const forgotPassword = async (req, res) => {
             <p>Mã này có thể chỉ có hiệu lực trong vài phút. Vui lòng không chia sẻ mã này.</p>
         `;
 
+    const otpExpiryTime = Date.now() + 5 * 60 * 1000;
+    await User.updateOne(
+      { email },
+      { recovoryOTP: OTP, otpExpiries: otpExpiryTime }
+    );
     await sendEmail(email, subject, htmlContent);
-
-    // TODO: LƯU OTP VÀO DATABASE KÈM THỜI GIAN HẾT HẠN Ở ĐÂY!
-
     return res.status(200).json({
       success: true,
       message: "Mã khôi phục đã được gửi đến email của bạn.",
@@ -217,5 +204,48 @@ export const forgotPassword = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Lỗi hệ thống hoặc lỗi gửi email: " + error.message });
+  }
+};
+
+// FUNCTION RESETPASSWORD
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, OTP, newPassword } = req.body;
+    if (!email || !OTP || !newPassword) {
+      return res.status(404).json({
+        message: "Vui lòng cung cấp email hoặc OTP hoặc password mới!",
+      });
+    }
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+    if (user.recovoryOTP !== OTP) {
+      return res
+        .status(404)
+        .json({ message: "Mã OTP không hợp lệ, kiểm tra lại!" });
+    }
+    if (user.otpExpiries < Date.now()) {
+      await User.updateOne({ email }, { recovoryOTP: null, otpExpiries: null });
+      return res
+        .status(404)
+        .json({ message: "Mã OTP đã hết hạn, vui lòng gửi mã mới" });
+    }
+    const newResetPassword = await bcrypt.hash(newPassword, 10);
+    await User.updateOne(
+      { email },
+      {
+        password: newResetPassword,
+        recovoryOTP: null,
+        otpExpiries: null,
+      }
+    );
+    return res.status(200).json({
+      message: `Đã đổi mật khẩu thành công, bạn có thể đăng nhập bằng mật khẩu mới`,
+    });
+  } catch (error) {
+    console.error("Lỗi khi gọi resetPassword:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
