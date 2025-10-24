@@ -33,7 +33,7 @@ export function ForgetpassForm({
         const successMessage =
           "Yêu cầu khôi phục mật khẩu của bạn đã thành công, hãy kiểm tra hộp thư đến!";
         alert(successMessage);
-        window.location.href = "/";
+        window.location.href = "/changepass";
       } else {
         alert(response.data.message || "Lỗi không xác định");
       }
@@ -93,9 +93,9 @@ export function ForgetpassForm({
               </Button>
 
               <div className="text-center text-sm">
-                Đã có tài khoản?{" "}
+                Đã nhớ tài khoản?{" "}
                 <a href="/signin" className="underline underline-offset-4">
-                  Gửi mã
+                  Đăng nhập ngay
                 </a>
               </div>
             </div>

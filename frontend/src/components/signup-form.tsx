@@ -47,6 +47,9 @@ export function SignupForm({
         // Hiển thị Toast thành công
         toast.success("Đăng ký tài khoản thành công! Đang chuyển hướng...");
         reset();
+        const successMessage =
+          "Đăng ký tài khoản thành công!, giờ bạn có thể đăng nhập";
+        alert(successMessage);
         try {
           navigate("/signin");
         } catch (navError) {

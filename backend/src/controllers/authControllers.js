@@ -210,29 +210,38 @@ export const forgotPassword = async (req, res) => {
 // FUNCTION RESETPASSWORD
 export const resetPassword = async (req, res) => {
   try {
-    const { email, OTP, newPassword } = req.body;
-    if (!email || !OTP || !newPassword) {
-      return res.status(404).json({
-        message: "Vui lòng cung cấp email hoặc OTP hoặc password mới!",
+    // ✅ SỬA: Đổi tên biến để khớp với frontend
+    // Frontend gửi: email, otp, password
+    const { email, otp, password } = req.body; // ✅ SỬA: Dùng tên biến mới để kiểm tra
+
+    if (!email || !otp || !password) {
+      return res.status(400).json({
+        // Dùng status 400 cho lỗi Bad Request
+        message: "Vui lòng cung cấp đầy đủ email, mã OTP và mật khẩu mới!",
       });
     }
+
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({ message: "Người dùng không tồn tại" });
-    }
-    if (user.recovoryOTP !== OTP) {
+    } // ✅ SỬA: Dùng tên biến mới: otp
+
+    if (user.recovoryOTP !== otp) {
       return res
-        .status(404)
+        .status(400) // Dùng status 400 cho lỗi đầu vào
         .json({ message: "Mã OTP không hợp lệ, kiểm tra lại!" });
     }
+
     if (user.otpExpiries < Date.now()) {
       await User.updateOne({ email }, { recovoryOTP: null, otpExpiries: null });
       return res
-        .status(404)
+        .status(400) // Dùng status 400 cho lỗi đầu vào
         .json({ message: "Mã OTP đã hết hạn, vui lòng gửi mã mới" });
-    }
-    const newResetPassword = await bcrypt.hash(newPassword, 10);
+    } // ✅ SỬA: Dùng tên biến mới: password
+
+    const newResetPassword = await bcrypt.hash(password, 10);
+
     await User.updateOne(
       { email },
       {
@@ -241,7 +250,9 @@ export const resetPassword = async (req, res) => {
         otpExpiries: null,
       }
     );
+
     return res.status(200).json({
+      success: true,
       message: `Đã đổi mật khẩu thành công, bạn có thể đăng nhập bằng mật khẩu mới`,
     });
   } catch (error) {
