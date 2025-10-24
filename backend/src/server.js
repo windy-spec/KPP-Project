@@ -5,6 +5,7 @@ import authRoute from "./routes/authRoute.js";
 import cookieParser from "cookie-parser";
 import userRoute from "./routes/userRoute.js";
 import { protectedRoute } from "./middlewares/authMiddlewares.js";
+import cors from "cors";
 // call env port
 
 dotenv.config();
@@ -14,6 +15,13 @@ const app = express();
 // Lấy biến PORT từ .env, nếu không có thì mặc định là 5001
 const PORT = process.env.PORT || 5001;
 
+// cors
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 

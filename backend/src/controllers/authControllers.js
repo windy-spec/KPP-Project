@@ -9,8 +9,8 @@ const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 
 export const signUp = async (req, res) => {
   try {
-    const { username, password, email, firstName, lastName, phone } = req.body;
-    if (!username || !password || !email || !firstName || !lastName) {
+    const { username, password, email, firstname, lastname, phone } = req.body;
+    if (!username || !password || !email || !firstname || !lastname) {
       return res.status(400).json({
         message:
           "Không thể thiếu username, password, email, firstName, lastName",
@@ -30,12 +30,12 @@ export const signUp = async (req, res) => {
       username,
       password: hashedPassword,
       email,
-      displayName: `${firstName} ${lastName}`,
+      displayName: `${firstname} ${lastname}`,
       phone,
     });
 
     // return
-    return res.status(204);
+    return res.status(200).json({ message: "ĐĂNG KÝ THÀNH CÔNG" });
   } catch (error) {
     console.error("Lỗi khi gọi signUp", error);
     return res.status(505).json({ message: "Lỗi hệ thống" });
@@ -122,7 +122,7 @@ export const signOut = async (req, res) => {
       // Delete cookie
       res.clearCookie("refreshToken");
     }
-    return res.status(204);
+    return res.status(200).json({ message: "Đăng ký thành công" });
   } catch (error) {
     console.error("Lỗi khi gọi signOut", error);
     return res.status(505).json({ message: "Lỗi hệ thống" });

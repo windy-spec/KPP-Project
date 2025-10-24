@@ -1,35 +1,78 @@
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "./ui/label"
-import {z} from "zod";
-import {useForm} from 'react-hook-form';
-import {zodResolver} from '@hookform/resolvers/zod'
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "./ui/label";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const signUpSchema = z.object({
-  firstname: z.string().min(1, 'Tên bắt buộc phải có'),
-  lastname: z.string().min(1, 'Họ bắt buộc phải có'),
-  username: z.string().min(3, 'Tên đăng nhập phải có ít nhất 3 ký tự'),
+  firstname: z.string().min(1, "Tên bắt buộc phải có"),
+  lastname: z.string().min(1, "Họ bắt buộc phải có"),
+  username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   email: z.email("Email không hợp lệ"),
-  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự")
-
+  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
 });
 
-type SignUpFormValues = z.infer<typeof signUpSchema>
+type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  // Lấy hook chuyển hướng
+  const navigate = useNavigate();
 
-  const {register, handleSubmit, formState:{errors,isSubmitting}}= useForm<SignUpFormValues>({
-    resolver: zodResolver(signUpSchema)
+  // Lấy hàm reset để dọn dẹp form sau khi submit thành công
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isValid },
+    reset,
+  } = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
+    mode: "onTouched",
   });
 
   const onSubmit = async (data: SignUpFormValues) => {
-    //gọi backend để signup
-  }
+    const API_URL = "http://localhost:5001/api/auth/signUp";
+
+    try {
+      const response = await axios.post(API_URL, data);
+      if (response.status === 200 || response.status === 201) {
+        // Hiển thị Toast thành công
+        toast.success("Đăng ký tài khoản thành công! Đang chuyển hướng...");
+        reset();
+        try {
+          navigate("/signin");
+        } catch (navError) {
+          console.error("LỖI CHUYỂN HƯỚNG REACT ROUTER (RUNTIME):", navError);
+          window.location.href = "/signin";
+        }
+        return;
+      }
+    } catch (error) {
+      console.error("Lỗi đăng ký:", error);
+      let errorMessage = "Lỗi hệ thống không xác định.";
+
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Lấy thông báo lỗi từ BE (400, 409, 500)
+          errorMessage =
+            error.response.data?.message || "Sai thông tin đăng ký";
+        } else {
+          // Lỗi mạng, server sập, hoặc lỗi CORS
+          errorMessage = "Lỗi kết nối máy chủ. Vui lòng kiểm tra server.";
+        }
+      }
+      // Hiển thị lỗi
+      toast.error(errorMessage);
+    }
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -43,13 +86,17 @@ export function SignupForm({
                   <img src="/logo.svg" alt="logo" />
                 </a>
                 <h1 className="text-2xl font-bold">Tạo tài khoản KPPaint</h1>
-                <p className="text-muted-foreground text-balance">Chào mừng bạn! Hãy đăng ký để bắt đầu!</p>
+                <p className="text-muted-foreground text-balance">
+                  Chào mừng bạn! Hãy đăng ký để bắt đầu!
+                </p>
               </div>
               {/* họ và tên */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="lastname" className="block text-sm">Họ</Label>
-                  <Input type="text" id="lastname" {...register("lastname")}/>
+                  <Label htmlFor="lastname" className="block text-sm">
+                    Họ
+                  </Label>
+                  <Input type="text" id="lastname" {...register("lastname")} />
                   {errors.lastname && (
                     <p className="text-destructive text-sm">
                       {errors.lastname.message}
@@ -57,8 +104,14 @@ export function SignupForm({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="firstname" className="block text-sm">Tên</Label>
-                  <Input type="text" id="firstname" {...register("firstname")}/>
+                  <Label htmlFor="firstname" className="block text-sm">
+                    Tên
+                  </Label>
+                  <Input
+                    type="text"
+                    id="firstname"
+                    {...register("firstname")}
+                  />
                   {errors.firstname && (
                     <p className="text-destructive text-sm">
                       {errors.firstname.message}
@@ -67,43 +120,69 @@ export function SignupForm({
                 </div>
               </div>
               {/* username */}
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="username" className="block text-sm">Tên đăng nhập</Label>
-                  <Input type="text" id="username" placeholder="kppaint" {...register("username")}/>
-                  {errors.username && (
-                    <p className="text-destructive text-sm">
-                      {errors.username.message}
-                    </p>
-                  )}
-                </div>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="username" className="block text-sm">
+                  Tên đăng nhập
+                </Label>
+                <Input
+                  type="text"
+                  id="username"
+                  placeholder="kppaint"
+                  {...register("username")}
+                />
+                {errors.username && (
+                  <p className="text-destructive text-sm">
+                    {errors.username.message}
+                  </p>
+                )}
+              </div>
               {/* email */}
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="email" className="block text-sm">Email</Label>
-                  <Input type="text" id="email" placeholder="k@gmail.com" {...register("email")}/>
-                  {errors.email && (
-                    <p className="text-destructive text-sm">
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="email" className="block text-sm">
+                  Email
+                </Label>
+                <Input
+                  type="text"
+                  id="email"
+                  placeholder="k@gmail.com"
+                  {...register("email")}
+                />
+                {errors.email && (
+                  <p className="text-destructive text-sm">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
               {/* password */}
-                <div className="flex flex-col gap-3">
-                  <Label htmlFor="password" className="block text-sm">Mật khẩu</Label>
-                  <Input type="password" id="password" {...register("password")}/>
-                  {errors.password && (
-                    <p className="text-destructive text-sm">
-                      {errors.password.message}
-                    </p>
-                  )}
-                </div>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="password" className="block text-sm">
+                  Mật khẩu
+                </Label>
+                <Input
+                  type="password"
+                  id="password"
+                  {...register("password")}
+                />
+                {errors.password && (
+                  <p className="text-destructive text-sm">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
               {/* nút đăng ký */}
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting || !isValid}
+              >
                 Tạo tài khoản
               </Button>
 
               <div className="text-center text-sm">
-                Đã có tài khoản? {" "}
-                <a href="/signin" className="underline underline-offset-4">Đăng nhập</a>
+                Đã có tài khoản?{" "}
+                <a href="/signin" className="underline underline-offset-4">
+                  Đăng nhập
+                </a>
               </div>
             </div>
           </form>
@@ -117,9 +196,9 @@ export function SignupForm({
         </CardContent>
       </Card>
       <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a>{" "}
-        và <a href="#">Chính sách bảo mật của chúng tôi</a>.
+        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
+        <a href="#">Chính sách bảo mật của chúng tôi</a>.
       </div>
     </div>
-  )
+  );
 }
