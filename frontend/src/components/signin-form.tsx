@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { isValid } from "zod/v3";
+import { Link } from "react-router";
 const signInSchema = z.object({
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -132,8 +133,8 @@ export function SigninForm({
         </CardContent>
       </Card>
       <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-        <a href="#">Chính sách bảo mật của chúng tôi</a>.
+        Bằng cách tiếp tục, bạn đồng ý với <Link to ="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
+        <Link to ="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
       </div>
     </div>
   );

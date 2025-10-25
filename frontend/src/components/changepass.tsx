@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios, { AxiosError } from "axios";
+import { Link } from "react-router";
 // ❌ Dòng useNavigate sẽ không còn cần thiết cho việc chuyển hướng nữa
 // import { useNavigate } from "react-router-dom";
 
@@ -173,8 +174,8 @@ export function ChangepassForm({
 
       {/* Footer text */}
       <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-        <a href="#">Chính sách bảo mật của chúng tôi</a>.
+        Bằng cách tiếp tục, bạn đồng ý với <Link to ="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
+        <Link to ="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
       </div>
     </div>
   );
