@@ -6,15 +6,13 @@ import { Label } from "./ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios, { AxiosError } from "axios";
-import { Link } from "react-router";
+import axios from "axios";
+import { Link } from "react-router-dom"; // Sửa import Link từ 'react-router' sang 'react-router-dom'
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
+
+// SỬA ĐỔI: Loại bỏ trường email khỏi schema
 const changePassSchema = z.object({
-  email: z
-    .string()
-    .email("Email không hợp lệ")
-    .min(1, "Email không được để trống"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
   otp: z
     .string()
@@ -33,6 +31,7 @@ export function ChangepassForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const emailToDisplay = localStorage.getItem("resetEmail"); // Lấy email để hiển thị
   const {
     register,
     handleSubmit,
@@ -42,36 +41,29 @@ export function ChangepassForm({
     resolver: zodResolver(changePassSchema),
     mode: "onChange",
   });
+
   const onSubmit = async (data: ChangePassFormValues) => {
     const API_URL = "http://localhost:5001/api/auth/reset-password";
-
-    // 1. LẤY EMAIL BẢO VỆ TỪ LOCAL STORAGE
-    const emailToReset = localStorage.getItem("resetEmail");
-
-    // Kiểm tra bảo mật phụ: Nếu người dùng bằng cách nào đó vượt qua Protected Route
-    if (!emailToReset) {
+    const emailValue = localStorage.getItem("resetEmail");
+    if (!emailValue || emailValue === "undefined" || emailValue.length < 5) {
       toast.error("Phiên khôi phục đã hết hạn. Vui lòng nhập email lại.");
+      localStorage.removeItem("resetEmail");
       window.location.replace("/forget");
       return;
     }
+    const finalEmail: string = emailValue;
     const payload = {
-      email: emailToReset,
+      email: finalEmail,
       otp: data.otp,
       password: data.password,
     };
-
     try {
-      // 2. GỌI API VỚI PAYLOAD ĐẦY ĐỦ
       const response = await axios.post<ApiResponse>(API_URL, payload);
-
-      // --- KHỐI THÀNH CÔNG (status 200, thành công) ---
       if (response.status === 200 && response.data.success) {
-        // BẢO VỆ: XÓA SESSION KHÔI PHỤC KHI THÀNH CÔNG
         localStorage.removeItem("resetEmail");
-
         await Swal.fire({
-          title: "Cập nhật thành công",
-          text: "Bạn đã thay đổi mật khẩu thành công, giờ bạn có thể đăng nhập vào trang web",
+          title: "Thông báo",
+          text: `Bạn đã đổi mật khẩu thành công, giờ chúng tôi sẽ chuyển hướng bạn quay lại trang đăng nhập`,
           timer: 3000,
           icon: "success",
           showConfirmButton: false,
@@ -79,46 +71,16 @@ export function ChangepassForm({
         window.location.replace("/signin");
         return;
       }
-
-      // --- KHỐI LỖI LOGIC 200/success:false (Ví dụ: OTP sai) ---
       toast.error(response.data.message || "Lỗi không xác định.");
     } catch (error) {
-      // --- KHỐI LỖI CATCH (4xx, 5xx) ---
       console.error("Lỗi gọi API đổi mật khẩu: ", error);
       let errorMessage = "Đã xảy ra lỗi hệ thống hoặc lỗi kết nối máy chủ.";
-
       if (axios.isAxiosError(error) && error.response) {
-        const status = error.response.status;
-        const errorData = error.response.data;
-
-        // XỬ LÝ LỖI OTP HẾT HẠN (400 + errorCode)
-        if (status === 400 && errorData?.errorCode === "OTP_EXPIRED") {
-          console.warn("LỖI LOGIC: Mã OTP đã hết hạn. Chuyển hướng về Forget.");
-
-          // BẢO VỆ: XÓA SESSION KHÔI PHỤC VÌ NÓ ĐÃ HẾT HẠN
-          localStorage.removeItem("resetEmail");
-
-          await Swal.fire({
-            title: "Hết hạn mã",
-            text: errorData.message,
-            icon: "warning",
-            timer: 3000,
-            showConfirmButton: false,
-          });
-
-          // CHUYỂN HƯỚNG: Quay lại trang nhập email
-          window.location.replace("/forget");
-          return;
-        }
-
-        // Xử lý các lỗi HTTP khác (OTP sai, 401, 500, v.v.)
-        errorMessage = errorData.message || `Lỗi xử lý yêu cầu (${status}).`;
       }
-
-      // Hiển thị Toast cho tất cả lỗi còn lại
       toast.error(errorMessage);
     }
   };
+
   return (
     <div
       className={cn("flex flex-col gap-6 w-full max-w-2xl mx-auto", className)}
@@ -137,25 +99,15 @@ export function ChangepassForm({
                 <p className="text-muted-foreground text-balance">
                   Nhập mật khẩu mới
                 </p>
-              </div>
-
-              {/* email */}
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="email" className="block text-sm">
-                  Email
-                </Label>
-                <Input
-                  type="text"
-                  id="email"
-                  placeholder="k@gmail.com"
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="text-destructive text-sm">
-                    {errors.email.message}
+                {/* HIỂN THỊ EMAIL ĐỂ NGƯỜI DÙNG XÁC NHẬN */}
+                {emailToDisplay && (
+                  <p className="text-sm font-medium text-center text-primary/80">
+                    Email: <span className="font-bold">{emailToDisplay}</span>
                   </p>
                 )}
               </div>
+
+              {/* XÓA KHỐI INPUT EMAIL ĐỂ DÙNG EMAIL TỪ LOCALSTORAGE */}
 
               {/* otp */}
               <div className="flex flex-col gap-3">
