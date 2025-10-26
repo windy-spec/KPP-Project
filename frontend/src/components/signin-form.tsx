@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { isValid } from "zod/v3";
+import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import { Link } from "react-router";
 const signInSchema = z.object({
@@ -31,32 +32,57 @@ export function SigninForm({
   });
 
   const onSubmit = async (data: SignInFormValues) => {
-    //
     const API_URL = "http://localhost:5001/api/auth/signIn";
     try {
       const response = await axios.post(API_URL, data);
+
       if (response.status == 200) {
         const { accessToken } = response.data;
+
+        // 1. [FIX] LƯU TOKEN TRƯỚC KHI BẮT ĐẦU CHUYỂN HƯỚNG
+        localStorage.setItem("accessToken", accessToken);
+        console.log("Access Token", accessToken); // Giữ log ở đây
+
         await Swal.fire({
           title: "Đăng nhập thành công",
           text: "Bạn đã đăng nhập thành công, vui lòng chờ trong giây lát ",
           icon: "success",
           timer: 3000,
           showConfirmButton: false,
-        }).then(() => {
-          window.location.href = "/";
         });
-        console.log("Acess Token", accessToken);
-        localStorage.setItem("accessToken", accessToken);
+
+        // 2. Chuyển hướng chỉ sau khi Swal đóng
+        window.location.href = "/";
+        return;
       }
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
-      let errorMessage = "Đã xảy ra lỗi hệ thống";
+      let errorMessage = "Đã xảy ra lỗi hệ thống.";
+
       if (axios.isAxiosError(error) && error.response) {
-        errorMessage =
-          error.response.data?.message || "Sai thông tin đăng nhập";
+        const status = error.response.status;
+        const beMessage = error.response.data?.message;
+
+        // 1. XỬ LÝ LỖI 400 (Dùng Swal)
+        if (status === 401) {
+          await Swal.fire({
+            title: "Lỗi Đăng nhập",
+            text: beMessage || "Vui lòng kiểm tra lại Username và Password.",
+            icon: "error",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          return; // [FIX] Thoát khỏi hàm sau khi hiển thị Swal
+        }
+
+        // 2. Xử lý các lỗi khác (401, 409, 500)
+        errorMessage = beMessage || `Lỗi không xác định từ BE (${status}).`;
+      } else if (axios.isAxiosError(error) && error.code === "ERR_NETWORK") {
+        errorMessage = "Không thể kết nối tới máy chủ. Vui lòng thử lại.";
       }
-      alert(errorMessage);
+
+      // Hiển thị Toast cho tất cả lỗi còn lại (401, Mạng, 500)
+      toast.error(errorMessage);
     }
   };
   return (

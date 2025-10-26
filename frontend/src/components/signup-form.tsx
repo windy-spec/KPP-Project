@@ -60,19 +60,45 @@ export function SignupForm({
       }
     } catch (error) {
       console.error("Lỗi đăng ký:", error);
-      let errorMessage = "Lỗi hệ thống không xác định.";
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          errorMessage =
-            error.response.data?.message || "Sai thông tin đăng ký";
-        } else {
-          errorMessage = "Lỗi kết nối máy chủ. Vui lòng kiểm tra server.";
+      let errorMessage = "Đã xảy ra lỗi hệ thống.";
+
+      if (axios.isAxiosError(error) && error.response) {
+        const status = error.response.status;
+        const beMessage = error.response.data?.message;
+
+        // 1. XỬ LÝ LỖI 400 (Dùng Swal)
+        if (status === 409) {
+          await Swal.fire({
+            title: "Lỗi hệ thống",
+            text:
+              beMessage ||
+              "Username bạn đặt đã tồn tại, hãy thử username khác.",
+            icon: "error",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          return; // [FIX] Thoát khỏi hàm sau khi hiển thị Swal
+        } else if (status === 505) {
+          await Swal.fire({
+            title: "Lỗi hệ thống",
+            text: "Email đã tồn tại cho 1 tài khoản rồi, xin hãy thử lại với email khác.",
+            icon: "error",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          return; // [FIX] Thoát khỏi hàm sau khi hiển thị Swal
         }
+
+        // 2. Xử lý các lỗi khác (401, 409, 500)
+        errorMessage = beMessage || `Lỗi không xác định từ BE (${status}).`;
+      } else if (axios.isAxiosError(error) && error.code === "ERR_NETWORK") {
+        errorMessage = "Không thể kết nối tới máy chủ. Vui lòng thử lại.";
       }
+
+      // Hiển thị Toast cho tất cả lỗi còn lại (401, Mạng, 500)
       toast.error(errorMessage);
     }
   };
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0 border-border">

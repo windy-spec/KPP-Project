@@ -174,6 +174,7 @@ export const forgotPassword = async (req, res) => {
       return res.status(200).json({
         success: false,
         message: "Nếu email tồn tại, mã khôi phục đã được gửi.",
+        email: user.email,
       });
     }
     const OTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -235,7 +236,11 @@ export const resetPassword = async (req, res) => {
       await User.updateOne({ email }, { recovoryOTP: null, otpExpiries: null });
       return res
         .status(400) // Dùng status 400 cho lỗi đầu vào
-        .json({ message: "Mã OTP đã hết hạn, vui lòng gửi mã mới" });
+        .json({
+          message:
+            "Mã OTP đã hết hạn, chúng tôi sẽ chuyển hướng bạn quay lại để nhập email lấy mã mới",
+          errorCode: "OTP_EXPIRED",
+        });
     }
 
     const newResetPassword = await bcrypt.hash(password, 10);

@@ -8,10 +8,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios, { AxiosError } from "axios";
 import { Link } from "react-router";
-// ❌ Dòng useNavigate sẽ không còn cần thiết cho việc chuyển hướng nữa
-// import { useNavigate } from "react-router-dom";
-
-// --- 1. SCHEMA VÀ TYPES ---
+import Swal from "sweetalert2";
+import toast from "react-hot-toast";
 const changePassSchema = z.object({
   email: z
     .string()
@@ -31,7 +29,6 @@ interface ApiResponse {
   message: string;
 }
 
-// --- 2. COMPONENT ---
 export function ChangepassForm({
   className,
   ...props
@@ -45,46 +42,83 @@ export function ChangepassForm({
     resolver: zodResolver(changePassSchema),
     mode: "onChange",
   });
-
-  // ✅ KHÔNG CẦN KHỞI TẠO navigate NỮA
-
   const onSubmit = async (data: ChangePassFormValues) => {
     const API_URL = "http://localhost:5001/api/auth/reset-password";
 
+    // 1. LẤY EMAIL BẢO VỆ TỪ LOCAL STORAGE
+    const emailToReset = localStorage.getItem("resetEmail");
+
+    // Kiểm tra bảo mật phụ: Nếu người dùng bằng cách nào đó vượt qua Protected Route
+    if (!emailToReset) {
+      toast.error("Phiên khôi phục đã hết hạn. Vui lòng nhập email lại.");
+      window.location.replace("/forget");
+      return;
+    }
+    const payload = {
+      email: emailToReset,
+      otp: data.otp,
+      password: data.password,
+    };
+
     try {
-      const response = await axios.post<ApiResponse>(API_URL, data);
+      // 2. GỌI API VỚI PAYLOAD ĐẦY ĐỦ
+      const response = await axios.post<ApiResponse>(API_URL, payload);
 
+      // --- KHỐI THÀNH CÔNG (status 200, thành công) ---
       if (response.status === 200 && response.data.success) {
-        const successMessage =
-          "Bạn đã đổi passWord thành công, giờ đã có thể đăng nhập vào website!";
+        // BẢO VỆ: XÓA SESSION KHÔI PHỤC KHI THÀNH CÔNG
+        localStorage.removeItem("resetEmail");
 
-        console.log("Thành công:", successMessage);
-        reset(); // Xóa form
-
-        // ✅ GIẢI PHÁP CUỐI CÙNG: Buộc chuyển hướng cứng bằng lệnh của trình duyệt
+        await Swal.fire({
+          title: "Cập nhật thành công",
+          text: "Bạn đã thay đổi mật khẩu thành công, giờ bạn có thể đăng nhập vào trang web",
+          timer: 3000,
+          icon: "success",
+          showConfirmButton: false,
+        });
         window.location.replace("/signin");
-
         return;
-      } else {
-        // Xử lý lỗi nếu BE trả về 200 nhưng logic thất bại
-        console.error(response.data.message || "Lỗi không xác định");
       }
-    } catch (error) {
-      console.error("Lỗi gọi API đổi mật khẩu: ", error);
 
+      // --- KHỐI LỖI LOGIC 200/success:false (Ví dụ: OTP sai) ---
+      toast.error(response.data.message || "Lỗi không xác định.");
+    } catch (error) {
+      // --- KHỐI LỖI CATCH (4xx, 5xx) ---
+      console.error("Lỗi gọi API đổi mật khẩu: ", error);
       let errorMessage = "Đã xảy ra lỗi hệ thống hoặc lỗi kết nối máy chủ.";
 
       if (axios.isAxiosError(error) && error.response) {
-        const axiosError = error as AxiosError<ApiResponse>;
-        errorMessage =
-          axiosError.response?.data?.message || "Lỗi xử lý yêu cầu.";
+        const status = error.response.status;
+        const errorData = error.response.data;
+
+        // XỬ LÝ LỖI OTP HẾT HẠN (400 + errorCode)
+        if (status === 400 && errorData?.errorCode === "OTP_EXPIRED") {
+          console.warn("LỖI LOGIC: Mã OTP đã hết hạn. Chuyển hướng về Forget.");
+
+          // BẢO VỆ: XÓA SESSION KHÔI PHỤC VÌ NÓ ĐÃ HẾT HẠN
+          localStorage.removeItem("resetEmail");
+
+          await Swal.fire({
+            title: "Hết hạn mã",
+            text: errorData.message,
+            icon: "warning",
+            timer: 3000,
+            showConfirmButton: false,
+          });
+
+          // CHUYỂN HƯỚNG: Quay lại trang nhập email
+          window.location.replace("/forget");
+          return;
+        }
+
+        // Xử lý các lỗi HTTP khác (OTP sai, 401, 500, v.v.)
+        errorMessage = errorData.message || `Lỗi xử lý yêu cầu (${status}).`;
       }
 
-      console.error("Lỗi:", errorMessage);
+      // Hiển thị Toast cho tất cả lỗi còn lại
+      toast.error(errorMessage);
     }
   };
-
-  // --- 3. RENDER UI ---
   return (
     <div
       className={cn("flex flex-col gap-6 w-full max-w-2xl mx-auto", className)}

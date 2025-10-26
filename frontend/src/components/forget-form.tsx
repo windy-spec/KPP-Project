@@ -40,6 +40,7 @@ export function ForgetpassForm({
       const response = await axios.post(API_URL, data);
       // if Email exists
       if (response.status === 200 && response.data.success) {
+        localStorage.setItem("resetEmail", response.data.email);
         await Swal.fire({
           title: "Gửi mã thành công",
           text: "Hệ thống đã gửi mã thành công, vui lòng kiểm tra tin nhắn trong email của bạn.",
