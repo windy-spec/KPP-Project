@@ -1,5 +1,6 @@
 import React from "react";
 import Navbar from "@/components/Navbar/Navbar";
+import Footer from "@/components/Footer/Footer";
 
 const PrivacyPolicy = () => {
   return (
@@ -173,7 +174,7 @@ const PrivacyPolicy = () => {
           <p>
             📞 <strong>Hotline:</strong>{" "}
             <a href="tel:0xxxxxxxxx" className="text-blue-600 hover:underline">
-              0707 739 679
+              07xx xxx xxx
             </a>
           </p>
           <p className="mt-2">
@@ -182,6 +183,7 @@ const PrivacyPolicy = () => {
           </p>
         </section>
       </div>
+      <Footer/>
     </>
   );
 };
