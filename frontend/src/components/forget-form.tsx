@@ -1,3 +1,5 @@
+// File: ForgetpassForm.tsx (Hoàn chỉnh)
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +9,11 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
+import { Link } from "react-router";
+import Swal from "sweetalert2";
+import toast from "react-hot-toast";
+
+// Schema đã được tối ưu hóa
 const forgetPassSchema = z.object({
   email: z.email("Email không hợp lệ"),
 });
@@ -23,28 +30,52 @@ export function ForgetpassForm({
     formState: { errors, isSubmitting, isValid },
   } = useForm<ForgetPassFormValues>({
     resolver: zodResolver(forgetPassSchema),
+    mode: "onTouched",
   });
 
   const onSubmit = async (data: ForgetPassFormValues) => {
     const API_URL = "http://localhost:5001/api/auth/forgot-password";
+
     try {
       const response = await axios.post(API_URL, data);
+      // if Email exists
       if (response.status === 200 && response.data.success) {
-        const successMessage =
-          "Yêu cầu khôi phục mật khẩu của bạn đã thành công, hãy kiểm tra hộp thư đến!";
-        alert(successMessage);
+        await Swal.fire({
+          title: "Gửi mã thành công",
+          text: "Hệ thống đã gửi mã thành công, vui lòng kiểm tra tin nhắn trong email của bạn.",
+          timer: 3000,
+          icon: "success",
+          showConfirmButton: false,
+        });
         window.location.href = "/changepass";
-      } else {
-        alert(response.data.message || "Lỗi không xác định");
+        return;
       }
+      // check if Email didn't exists
+      else if (response.status === 200 && !response.data.success) {
+        const beMessage = response.data.message || "Lỗi không xác định.";
+        await Swal.fire({
+          title: "Thông báo",
+          text: beMessage,
+          timer: 3000,
+          icon: "info",
+          showConfirmButton: false,
+        });
+        return;
+      } else response.data.message;
+      toast.error(response.data.message);
     } catch (error) {
-      console.error("Lỗi gì đó: ", error);
-      let errorMessage = "Đã xảy ra lỗi hệ thống";
+      console.error("Lỗi gửi OTP:", error);
+      let errorMessage = "Lỗi kết nối máy chủ hoặc lỗi không xác định.";
       if (axios.isAxiosError(error) && error.response) {
-        errorMessage =
-          error.response.data?.message || "Sai thông tin đăng nhập";
+        const status = error.response.status;
+        const beMessage = error.response.data?.message;
+        if (status === 404) {
+          errorMessage = beMessage || "Tài khoản không tồn tại trong hệ thống.";
+        } else {
+          errorMessage = beMessage || `Lỗi không xác định từ BE (${status})`;
+        }
       }
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
   return (
@@ -103,8 +134,9 @@ export function ForgetpassForm({
         </CardContent>
       </Card>
       <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-        <a href="#">Chính sách bảo mật của chúng tôi</a>.
+        Bằng cách tiếp tục, bạn đồng ý với{" "}
+        <Link to="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
+        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
       </div>
     </div>
   );

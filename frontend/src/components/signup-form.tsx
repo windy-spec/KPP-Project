@@ -8,8 +8,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { Link, useNavigate } from "react-router-dom";
 const signUpSchema = z.object({
   firstname: z.string().min(1, "Tên bắt buộc phải có"),
   lastname: z.string().min(1, "Họ bắt buộc phải có"),
@@ -27,12 +27,10 @@ export function SignupForm({
   // Lấy hook chuyển hướng
   const navigate = useNavigate();
 
-  // Lấy hàm reset để dọn dẹp form sau khi submit thành công
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting, isValid },
-    reset,
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     mode: "onTouched",
@@ -44,8 +42,7 @@ export function SignupForm({
     try {
       const response = await axios.post(API_URL, data);
       if (response.status === 200 || response.status === 201) {
-        // Check status signUp ở bên BE, success thì làm tiếp
-        Swal.fire({
+        await Swal.fire({
           title: "Đăng ký thành công",
           text: "Tài khoản của bạn đã được tạo, bạn sẽ được chuyển hướng sang trang đăng nhập",
           icon: "success",
@@ -64,18 +61,14 @@ export function SignupForm({
     } catch (error) {
       console.error("Lỗi đăng ký:", error);
       let errorMessage = "Lỗi hệ thống không xác định.";
-
       if (axios.isAxiosError(error)) {
         if (error.response) {
-          // Lấy thông báo lỗi từ BE (400, 409, 500)
           errorMessage =
             error.response.data?.message || "Sai thông tin đăng ký";
         } else {
-          // Lỗi mạng, server sập, hoặc lỗi CORS
           errorMessage = "Lỗi kết nối máy chủ. Vui lòng kiểm tra server.";
         }
       }
-      // Hiển thị lỗi
       toast.error(errorMessage);
     }
   };
@@ -202,8 +195,9 @@ export function SignupForm({
         </CardContent>
       </Card>
       <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-        <a href="#">Chính sách bảo mật của chúng tôi</a>.
+        Bằng cách tiếp tục, bạn đồng ý với{" "}
+        <Link to="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
+        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
       </div>
     </div>
   );

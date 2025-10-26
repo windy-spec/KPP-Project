@@ -8,6 +8,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { isValid } from "zod/v3";
+import Swal from "sweetalert2";
+import { Link } from "react-router";
 const signInSchema = z.object({
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -34,11 +36,18 @@ export function SigninForm({
     try {
       const response = await axios.post(API_URL, data);
       if (response.status == 200) {
-        const { message, accessToken } = response.data;
-        console.log("Đăng nhập thành công: ", message);
-        console.log("Access Token: ", accessToken);
+        const { accessToken } = response.data;
+        await Swal.fire({
+          title: "Đăng nhập thành công",
+          text: "Bạn đã đăng nhập thành công, vui lòng chờ trong giây lát ",
+          icon: "success",
+          timer: 3000,
+          showConfirmButton: false,
+        }).then(() => {
+          window.location.href = "/";
+        });
+        console.log("Acess Token", accessToken);
         localStorage.setItem("accessToken", accessToken);
-        window.location.href = "/";
       }
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
@@ -132,8 +141,9 @@ export function SigninForm({
         </CardContent>
       </Card>
       <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-        <a href="#">Chính sách bảo mật của chúng tôi</a>.
+        Bằng cách tiếp tục, bạn đồng ý với{" "}
+        <Link to="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
+        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
       </div>
     </div>
   );

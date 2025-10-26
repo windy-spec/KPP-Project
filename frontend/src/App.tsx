@@ -5,7 +5,8 @@ import HomePage from "./pages/HomePage";
 import { Toaster } from "sonner";
 import ForgetPass from "./pages/ForgetPass";
 import ChangePass from "./pages/ChangePass";
-import "sweetalert2/dist/sweetalert2.min.css";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 function App() {
   return (
     <>
@@ -17,6 +18,8 @@ function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forget" element={<ForgetPass />} />
           <Route path="/changepass" element={<ChangePass />} />
+          <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
+          <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
         </Routes>
       </BrowserRouter>
     </>

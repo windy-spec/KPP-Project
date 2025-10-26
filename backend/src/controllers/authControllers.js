@@ -172,7 +172,7 @@ export const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(200).json({
-        success: true,
+        success: false,
         message: "Nếu email tồn tại, mã khôi phục đã được gửi.",
       });
     }
