@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-
+import Swal from "sweetalert2";
 const signUpSchema = z.object({
   firstname: z.string().min(1, "Tên bắt buộc phải có"),
   lastname: z.string().min(1, "Họ bắt buộc phải có"),
@@ -44,18 +44,21 @@ export function SignupForm({
     try {
       const response = await axios.post(API_URL, data);
       if (response.status === 200 || response.status === 201) {
-        // Hiển thị Toast thành công
-        toast.success("Đăng ký tài khoản thành công! Đang chuyển hướng...");
-        reset();
-        const successMessage =
-          "Đăng ký tài khoản thành công!, giờ bạn có thể đăng nhập";
-        alert(successMessage);
-        try {
-          navigate("/signin");
-        } catch (navError) {
-          console.error("LỖI CHUYỂN HƯỚNG REACT ROUTER (RUNTIME):", navError);
-          window.location.href = "/signin";
-        }
+        // Check status signUp ở bên BE, success thì làm tiếp
+        Swal.fire({
+          title: "Đăng ký thành công",
+          text: "Tài khoản của bạn đã được tạo, bạn sẽ được chuyển hướng sang trang đăng nhập",
+          icon: "success",
+          timer: 4000,
+          showConfirmButton: false,
+        }).then(() => {
+          try {
+            navigate("/signin");
+          } catch (navError) {
+            console.error("LỖI CHUYỂN HƯỚNG REACT ROUTER (RUNTIME):", navError);
+            window.location.href = "/signin";
+          }
+        });
         return;
       }
     } catch (error) {

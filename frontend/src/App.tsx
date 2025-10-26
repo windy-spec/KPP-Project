@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage";
 import { Toaster } from "sonner";
 import ForgetPass from "./pages/ForgetPass";
 import ChangePass from "./pages/ChangePass";
+import "sweetalert2/dist/sweetalert2.min.css";
 function App() {
   return (
     <>

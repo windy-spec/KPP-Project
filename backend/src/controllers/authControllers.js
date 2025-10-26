@@ -210,9 +210,7 @@ export const forgotPassword = async (req, res) => {
 // FUNCTION RESETPASSWORD
 export const resetPassword = async (req, res) => {
   try {
-    // ✅ SỬA: Đổi tên biến để khớp với frontend
-    // Frontend gửi: email, otp, password
-    const { email, otp, password } = req.body; // ✅ SỬA: Dùng tên biến mới để kiểm tra
+    const { email, otp, password } = req.body;
 
     if (!email || !otp || !password) {
       return res.status(400).json({
@@ -225,7 +223,7 @@ export const resetPassword = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ message: "Người dùng không tồn tại" });
-    } // ✅ SỬA: Dùng tên biến mới: otp
+    }
 
     if (user.recovoryOTP !== otp) {
       return res
@@ -238,7 +236,7 @@ export const resetPassword = async (req, res) => {
       return res
         .status(400) // Dùng status 400 cho lỗi đầu vào
         .json({ message: "Mã OTP đã hết hạn, vui lòng gửi mã mới" });
-    } // ✅ SỬA: Dùng tên biến mới: password
+    }
 
     const newResetPassword = await bcrypt.hash(password, 10);
 

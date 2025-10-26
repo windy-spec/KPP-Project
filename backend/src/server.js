@@ -4,7 +4,6 @@ import { connectDB } from "./libs/db.js";
 import authRoute from "./routes/authRoute.js";
 import cookieParser from "cookie-parser";
 import userRoute from "./routes/userRoute.js";
-import { protectedRoute } from "./middlewares/authMiddlewares.js";
 import cors from "cors";
 // call env port
 
@@ -26,7 +25,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth", authRoute);
-app.use(protectedRoute);
 app.use("/api/users", userRoute);
 
 connectDB().then(() => {
