@@ -121,7 +121,7 @@ export function SignupForm({
                   <Label htmlFor="lastname" className="block text-sm">
                     Họ
                   </Label>
-                  <Input type="text" id="lastname" {...register("lastname")} />
+                  <Input type="text" id="lastname" {...register("lastname")} className="border-gray-500"/>
                   {errors.lastname && (
                     <p className="text-destructive text-sm">
                       {errors.lastname.message}
@@ -136,6 +136,7 @@ export function SignupForm({
                     type="text"
                     id="firstname"
                     {...register("firstname")}
+                    className="border-gray-500"
                   />
                   {errors.firstname && (
                     <p className="text-destructive text-sm">
@@ -154,6 +155,7 @@ export function SignupForm({
                   id="username"
                   placeholder="kppaint"
                   {...register("username")}
+                  className="border-gray-500"
                 />
                 {errors.username && (
                   <p className="text-destructive text-sm">
@@ -171,6 +173,7 @@ export function SignupForm({
                   id="email"
                   placeholder="k@gmail.com"
                   {...register("email")}
+                  className="border-gray-500"
                 />
                 {errors.email && (
                   <p className="text-destructive text-sm">
@@ -187,6 +190,7 @@ export function SignupForm({
                   type="password"
                   id="password"
                   {...register("password")}
+                  className="border-gray-500"
                 />
                 {errors.password && (
                   <p className="text-destructive text-sm">

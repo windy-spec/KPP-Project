@@ -111,6 +111,7 @@ export function SigninForm({
                   id="username"
                   placeholder="kppaint"
                   {...register("username")}
+                  className="border-gray-500"
                 />
                 {errors.username && (
                   <p className="text-destructive text-sm">
@@ -127,6 +128,7 @@ export function SigninForm({
                   type="password"
                   id="password"
                   {...register("password")}
+                  className="border-gray-500"
                 />
                 {errors.password && (
                   <p className="text-destructive text-sm">

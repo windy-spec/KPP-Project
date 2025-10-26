@@ -149,6 +149,7 @@ export function ChangepassForm({
                   id="email"
                   placeholder="k@gmail.com"
                   {...register("email")}
+                  className="border-gray-500"
                 />
                 {errors.email && (
                   <p className="text-destructive text-sm">
@@ -168,6 +169,7 @@ export function ChangepassForm({
                   id="otp"
                   placeholder="XXXXXX"
                   {...register("otp")}
+                  className="border-gray-500"
                 />
                 {errors.otp && (
                   <p className="text-destructive text-sm">
@@ -185,6 +187,7 @@ export function ChangepassForm({
                   type="password"
                   id="password"
                   {...register("password")}
+                  className="border-gray-500"
                 />
                 {errors.password && (
                   <p className="text-destructive text-sm">

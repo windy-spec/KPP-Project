@@ -5,7 +5,7 @@ import userIcon from '@/assets/icon/user.png';
 
 const Navbartop: React.FC = () => {
   return (
-    <header className="bg-white">
+    <header className="bg-gray-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* left: logo */}
@@ -38,9 +38,15 @@ const Navbartop: React.FC = () => {
               <img src={cartIcon} alt="cart" className="w-5 h-5" />
             </button>
             {/* User */}
-            <button aria-label="user" className="p-1 rounded hover:bg-gray-100">
+            {/* <button aria-label="user" className="p-1 rounded hover:bg-gray-100">
               <img src={userIcon} alt="user" className="w-5 h-5" />
-            </button>
+            </button> */}
+            <a 
+              href="/signin" // Link đến trang Đăng nhập
+              className="px-3 py-1 text-sm font-medium text-white bg-orange-200 rounded-lg shadow-md hover:bg-orange-300 transition-colors duration-200"
+            >
+              Đăng nhập
+            </a>
           </div>
         </div>
       </div>

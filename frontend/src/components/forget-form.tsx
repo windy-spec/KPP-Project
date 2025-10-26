@@ -108,6 +108,7 @@ export function ForgetpassForm({
                   id="email"
                   placeholder="k@gmail.com"
                   {...register("email")}
+                  className="border-gray-500"
                 />
                 {errors.email && (
                   <p className="text-destructive text-sm">
