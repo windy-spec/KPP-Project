@@ -40,7 +40,7 @@ export function ForgetpassForm({
       const response = await axios.post(API_URL, data);
       // if Email exists
       if (response.status === 200 && response.data.success) {
-        localStorage.setItem("resetEmail", response.data.email);
+        localStorage.setItem("resetEmail", data.email);
         await Swal.fire({
           title: "Gửi mã thành công",
           text: "Hệ thống đã gửi mã thành công, vui lòng kiểm tra tin nhắn trong email của bạn.",
@@ -52,7 +52,7 @@ export function ForgetpassForm({
         return;
       }
       // check if Email didn't exists
-      else if (response.status === 200 && !response.data.success) {
+      if (response.status === 200 && !response.data.success) {
         const beMessage = response.data.message || "Lỗi không xác định.";
         await Swal.fire({
           title: "Thông báo",
@@ -62,8 +62,8 @@ export function ForgetpassForm({
           showConfirmButton: false,
         });
         return;
-      } else response.data.message;
-      toast.error(response.data.message);
+      }
+      toast.error(response.data.message || "Lỗi không xác định");
     } catch (error) {
       console.error("Lỗi gửi OTP:", error);
       let errorMessage = "Lỗi kết nối máy chủ hoặc lỗi không xác định.";
@@ -72,9 +72,10 @@ export function ForgetpassForm({
         const beMessage = error.response.data?.message;
         if (status === 404) {
           errorMessage = beMessage || "Tài khoản không tồn tại trong hệ thống.";
-        } else {
+        } else if (status === 505) {
           errorMessage = beMessage || `Lỗi không xác định từ BE (${status})`;
-        }
+        } else
+          errorMessage = beMessage || `Lỗi không xác định từ BE (${status})`;
       }
       toast.error(errorMessage);
     }

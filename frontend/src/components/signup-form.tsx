@@ -24,7 +24,6 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  // Lấy hook chuyển hướng
   const navigate = useNavigate();
 
   const {
@@ -65,8 +64,6 @@ export function SignupForm({
       if (axios.isAxiosError(error) && error.response) {
         const status = error.response.status;
         const beMessage = error.response.data?.message;
-
-        // 1. XỬ LÝ LỖI 400 (Dùng Swal)
         if (status === 409) {
           await Swal.fire({
             title: "Lỗi hệ thống",
@@ -77,7 +74,7 @@ export function SignupForm({
             timer: 2000,
             showConfirmButton: false,
           });
-          return; // [FIX] Thoát khỏi hàm sau khi hiển thị Swal
+          return;
         } else if (status === 505) {
           await Swal.fire({
             title: "Lỗi hệ thống",
@@ -86,16 +83,12 @@ export function SignupForm({
             timer: 2000,
             showConfirmButton: false,
           });
-          return; // [FIX] Thoát khỏi hàm sau khi hiển thị Swal
+          return;
         }
-
-        // 2. Xử lý các lỗi khác (401, 409, 500)
         errorMessage = beMessage || `Lỗi không xác định từ BE (${status}).`;
       } else if (axios.isAxiosError(error) && error.code === "ERR_NETWORK") {
         errorMessage = "Không thể kết nối tới máy chủ. Vui lòng thử lại.";
       }
-
-      // Hiển thị Toast cho tất cả lỗi còn lại (401, Mạng, 500)
       toast.error(errorMessage);
     }
   };
