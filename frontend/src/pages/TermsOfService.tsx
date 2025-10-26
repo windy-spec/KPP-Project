@@ -1,5 +1,6 @@
 import React from "react";
 import Navbar from "@/components/Navbar/Navbar";
+import Footer from "@/components/Footer/Footer";
 
 const TermsOfService = () => {
   return (
@@ -172,7 +173,7 @@ const TermsOfService = () => {
           <p>
             📞 <strong>Hotline:</strong>{" "}
             <a href="tel:0xxxxxxxxx" className="text-blue-600 hover:underline">
-              0707 739 679
+              07xx xx xxx
             </a>
           </p>
           <p className="mt-2">
@@ -181,6 +182,7 @@ const TermsOfService = () => {
           </p>
         </section>
       </div>
+      <Footer/>
     </>
   );
 };
