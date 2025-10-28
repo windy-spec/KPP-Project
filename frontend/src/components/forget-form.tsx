@@ -99,6 +99,7 @@ export function ForgetpassForm({
                   Nhập email để gửi OTP
                 </p>
               </div>
+
               {/* email */}
               <div className="flex flex-col gap-3">
                 <Label htmlFor="email" className="block text-sm">
@@ -117,6 +118,7 @@ export function ForgetpassForm({
                   </p>
                 )}
               </div>
+              
               {/* nút sen OTP*/}
               <Button
                 type="submit"

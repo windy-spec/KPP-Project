@@ -10,6 +10,8 @@ import axios from "axios";
 import { Link } from "react-router-dom"; // Sửa import Link từ 'react-router' sang 'react-router-dom'
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 // SỬA ĐỔI: Loại bỏ trường email khỏi schema
 const changePassSchema = z.object({
@@ -81,6 +83,9 @@ export function ChangepassForm({
     }
   };
 
+  const [showPassword, setShowPassword] = useState(false);
+  
+
   return (
     <div
       className={cn("flex flex-col gap-6 w-full max-w-2xl mx-auto", className)}
@@ -133,11 +138,28 @@ export function ChangepassForm({
                 <Label htmlFor="password" className="block text-sm">
                   Mật khẩu mới
                 </Label>
-                <Input
-                  type="password"
-                  id="password"
-                  {...register("password")}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    {...register("password")}
+                    className="pr-10 border-gray-500"
+                     autoComplete="new-password"
+                     data-password-toggle="true"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="text-destructive text-sm">
                     {errors.password.message}

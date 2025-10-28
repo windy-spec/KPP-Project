@@ -316,3 +316,16 @@
     }
   }
 }
+
+/* Hide native password reveal/clear controls for inputs we manage */
+input[data-password-toggle]::-ms-clear,
+input[data-password-toggle]::-ms-reveal {
+  display: none;
+}
+
+/* Try to hide WebKit/Chromium password reveal UI (best-effort) */
+input[data-password-toggle]::-webkit-credentials-auto-fill-button,
+input[data-password-toggle]::-webkit-textfield-decoration-container,
+input[data-password-toggle]::-webkit-password-reveal {
+  display: none !important;
+}
