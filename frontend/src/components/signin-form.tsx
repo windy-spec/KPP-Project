@@ -13,6 +13,7 @@ import Swal from "sweetalert2";
 import { Link } from "react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import apiClient from "@/utils/api-user";
 const signInSchema = z.object({
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -34,14 +35,14 @@ export function SigninForm({
   });
 
   const onSubmit = async (data: SignInFormValues) => {
-    const API_URL = "http://localhost:5001/api/auth/signIn";
     try {
-      const response = await axios.post(API_URL, data);
-
+      console.log("Hàm onSubmit đã được gọi!"); // ⬅️ Đặt ở đây
+      const response = await apiClient.post("/auth/signIn", data);
       if (response.status == 200) {
         const { accessToken } = response.data;
 
-        // 1. [FIX] LƯU TOKEN TRƯỚC KHI BẮT ĐẦU CHUYỂN HƯỚNG
+        // 1.  LƯU TOKEN TRƯỚC KHI BẮT ĐẦU CHUYỂN HƯỚNG
+        console.log("Token được nhận:", accessToken);
         localStorage.setItem("accessToken", accessToken);
         console.log("Access Token", accessToken); // Giữ log ở đây
 
@@ -74,7 +75,7 @@ export function SigninForm({
             timer: 2000,
             showConfirmButton: false,
           });
-          return; // [FIX] Thoát khỏi hàm sau khi hiển thị Swal
+          return; //  Thoát khỏi hàm sau khi hiển thị Swal
         }
 
         // 2. Xử lý các lỗi khác (401, 409, 500)
@@ -89,7 +90,6 @@ export function SigninForm({
   };
 
   const [showPassword, setShowPassword] = useState(false);
-  
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -107,7 +107,7 @@ export function SigninForm({
                   Đăng nhập vào tài khoản KPPaint của bạn!
                 </p>
               </div>
-              
+
               {/* username */}
               <div className="flex flex-col gap-3">
                 <Label htmlFor="username" className="block text-sm">
@@ -138,8 +138,8 @@ export function SigninForm({
                     id="password"
                     {...register("password")}
                     className="pr-10 border-gray-500"
-                     autoComplete="new-password"
-                     data-password-toggle="true"
+                    autoComplete="new-password"
+                    data-password-toggle="true"
                   />
                   <button
                     type="button"

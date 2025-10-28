@@ -66,7 +66,7 @@ export function ChangepassForm({
         await Swal.fire({
           title: "Thông báo",
           text: `Bạn đã đổi mật khẩu thành công, giờ chúng tôi sẽ chuyển hướng bạn quay lại trang đăng nhập`,
-          timer: 3000,
+
           icon: "success",
           showConfirmButton: false,
         });
@@ -84,7 +84,6 @@ export function ChangepassForm({
   };
 
   const [showPassword, setShowPassword] = useState(false);
-  
 
   return (
     <div
@@ -144,8 +143,8 @@ export function ChangepassForm({
                     id="password"
                     {...register("password")}
                     className="pr-10 border-gray-500"
-                     autoComplete="new-password"
-                     data-password-toggle="true"
+                    autoComplete="new-password"
+                    data-password-toggle="true"
                   />
                   <button
                     type="button"

@@ -3,7 +3,7 @@ import User from "../models/User.js";
 import JWT from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
-const ACCESS_TOKEN_TTL = "30m";
+const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 // FUNCTION SIGNUP
 

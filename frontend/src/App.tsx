@@ -8,11 +8,19 @@ import ChangePass from "./pages/ChangePass";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import ProtectChangePassRoute from "./components/ProtectChangePassRoute";
+import useAuthActions from "./utils/authUtility";
+import TokenTest from "./components/test";
+const AuthActionInitializer = () => {
+  useAuthActions();
+  return null;
+};
 function App() {
   return (
     <>
       <Toaster richColors />
       <BrowserRouter>
+        <AuthActionInitializer />
+
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/signin" element={<SignInPage />} />
@@ -20,6 +28,7 @@ function App() {
           <Route path="/forget" element={<ForgetPass />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
+          <Route path="/token-test" element={<TokenTest />} />
           <Route
             path="/changepass"
             element={

@@ -15,16 +15,23 @@ export const protectedRoute = (req, res, next) => {
       process.env.ACCESS_TOKEN_SECRET,
       async (err, decodeUser) => {
         if (err) {
-          console.log(err);
-          return res
-            .status(404)
-            .json({ message: "Access Token hết hạn hoặc sai" });
+          let message = "AcessToken không hợp lệ";
+          if (err.name === "TokenExpiredError") {
+            message = "AcessToken đã hết hạn.";
+            console.warn(
+              `TOKEN EXPIRED: Hết hạn. (Token ${token.substring(0, 15)} ...)`
+            );
+          } else if (err.name === "JsonWebTokenError") {
+            message = "Token bị giả mạo hoặc không đúng chữ ký.";
+          }
+          return res.status(401).json({ message: message });
         }
         const user = await User.findById(decodeUser.userID).select("-password");
         if (!user) {
           return res.status(404).json({ message: "Người dùng không tồn tại" });
         }
         req.user = user;
+        req.userID = user._id;
         next();
       }
     );
