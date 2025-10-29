@@ -19,10 +19,10 @@ const apiClient: AxiosInstance = axios.create({
 
 const handleLogout = async () => {
   if (globalLogoutAction && logoutReady) {
-    console.log("🔒 Logout an toàn được gọi qua Interceptor.");
+    console.log(" Logout an toàn được gọi qua Interceptor.");
     await globalLogoutAction();
   } else {
-    console.warn("⚠️ Interceptor chưa sẵn sàng, bỏ qua logout lần này.");
+    console.warn(" Interceptor chưa sẵn sàng, bỏ qua logout lần này.");
   }
 };
 
@@ -31,9 +31,9 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("📤 Gửi request với token:", token.slice(0, 30) + "...");
+      console.log(" Gửi request với token:", token.slice(0, 30) + "...");
     } else {
-      console.warn("⚠️ Không có token trong localStorage khi gửi request.");
+      console.warn(" Không có token trong localStorage khi gửi request.");
     }
     return config;
   },
