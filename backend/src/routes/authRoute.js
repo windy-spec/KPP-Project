@@ -12,13 +12,10 @@ const router = express.Router();
 
 // API signUp
 router.post("/signUp", signUp);
-
 // API signIn
 router.post("/signIn", signIn);
-
 // API signOut
 router.post("/signOut", signOut);
-
 // API forgotPassword
 router.post("/forgot-password", forgotPassword);
 
