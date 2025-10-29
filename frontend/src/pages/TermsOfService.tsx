@@ -10,7 +10,7 @@ const TermsOfService = () => {
         <h1 className="text-3xl font-bold mb-6 text-center text-primary uppercase">
           Điều Khoản Dịch Vụ
         </h1>
-        <p className="mb-4">
+        <p className="mb-4 text-xl">
           Công ty TNHH <strong>KPPaint</strong> luôn tôn trọng quyền riêng tư
           của Quý khách hàng và cam kết bảo vệ thông tin cá nhân của bạn. Thông
           tin cá nhân được hiểu là các dữ liệu mà bạn cung cấp cho chúng tôi
@@ -18,7 +18,7 @@ const TermsOfService = () => {
           quan khác theo quy định của pháp luật.
         </p>
 
-        <p className="mb-4">
+        <p className="mb-4 text-xl">
           Khi bạn truy cập và sử dụng trang web của chúng tôi, điều đó đồng
           nghĩa với việc bạn hoàn toàn đồng ý với các điều khoản được nêu trong
           Chính sách bảo mật này.
@@ -28,14 +28,14 @@ const TermsOfService = () => {
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             1. Mục đích và phạm vi thu thập thông tin
           </h2>
-          <p className="mb-4">
+          <p className="mb-4 text-xl">
             KPPaint chỉ thu thập và xử lý những thông tin cần thiết để thực hiện
             các giao dịch giữa khách hàng và website, không thu thập thêm bất kỳ
             dữ liệu nào khác. Thông tin của khách hàng sẽ được lưu trữ khi khách
             hàng đăng ký mua hàng, sử dụng dịch vụ hoặc yêu cầu tư vấn, giải đáp
             thắc mắc.
           </p>
-          <p>
+          <p className="text-xl">
             Chúng tôi cam kết thu thập và sử dụng thông tin cá nhân vì mục đích
             chính đáng, tuân thủ quy định pháp luật. Mọi thông tin sẽ được sử
             dụng <strong>chỉ trong nội bộ công ty</strong> và{" "}
@@ -43,7 +43,7 @@ const TermsOfService = () => {
           </p>
         </section>
 
-        <section className="mt-8">
+        <section className="mt-8 text-xl">
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             2. Phạm vi sử dụng thông tin
           </h2>
@@ -65,7 +65,7 @@ const TermsOfService = () => {
               nước có thẩm quyền.
             </li>
           </ul>
-          <p className="mt-4 italic">
+          <p className="mt-4 italic text-xl">
             * Lưu ý: Chúng tôi không chịu trách nhiệm trong trường hợp khách
             hàng tự để lộ thông tin cá nhân cho bên thứ ba khi sử dụng website{" "}
             <strong>kppaint.com</strong>.
@@ -76,7 +76,7 @@ const TermsOfService = () => {
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             3. Thời gian lưu trữ thông tin
           </h2>
-          <p>
+          <p className="text-xl">
             Thông tin của khách hàng sẽ được lưu giữ cho đến khi khách hàng thay
             đổi, yêu cầu xóa dữ liệu hoặc chỉ trong thời gian cần thiết để thực
             hiện các mục đích thu thập thông tin.
@@ -87,11 +87,11 @@ const TermsOfService = () => {
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             4. Cung cấp thông tin cho bên thứ ba
           </h2>
-          <p className="mb-4">
+          <p className="mb-4 text-xl">
             Khách hàng đồng ý rằng, trong một số trường hợp cần thiết, các cơ
             quan, tổ chức hoặc cá nhân sau có quyền tiếp cận thông tin cá nhân:
           </p>
-          <ul className="list-disc pl-6 space-y-1">
+          <ul className="list-disc pl-6 space-y-1 text-xl">
             <li>Ban quản trị và nhân viên Công ty TNHH KPPaint</li>
             <li>
               Các bên thứ ba có dịch vụ tích hợp với website
@@ -108,7 +108,7 @@ const TermsOfService = () => {
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             5. Đơn vị thu thập và quản lý thông tin cá nhân
           </h2>
-          <p>
+          <p className="text-xl">
             Mọi thông tin cá nhân được thu thập và quản lý bởi{" "}
             <strong>Công ty TNHH KPPaint</strong>. Chúng tôi chịu hoàn toàn
             trách nhiệm trong việc bảo mật và quản lý thông tin theo quy định
@@ -120,7 +120,7 @@ const TermsOfService = () => {
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             6. Quyền truy cập và chỉnh sửa thông tin
           </h2>
-          <p>
+          <p className="text-xl">
             Khách hàng có thể truy cập, chỉnh sửa hoặc yêu cầu cập nhật/xóa
             thông tin cá nhân của mình theo hướng dẫn mà KPPaint cung cấp. Chúng
             tôi cũng có thể chủ động liên hệ với khách hàng để xác nhận hoặc
@@ -132,7 +132,7 @@ const TermsOfService = () => {
           <h2 className="text-2xl font-semibold mb-3 text-orange-400">
             7. Cam kết bảo mật thông tin
           </h2>
-          <ul className="list-disc pl-6 space-y-2">
+          <ul className="list-disc pl-6 space-y-2 text-xl">
             <li>
               Việc thu thập và sử dụng thông tin chỉ được thực hiện khi có sự
               đồng ý của khách hàng, trừ trường hợp pháp luật quy định khác.
@@ -154,29 +154,29 @@ const TermsOfService = () => {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-2xl font-semibold mb-3 text-orange-400">
+          <h2 className="text-2xl font-semibold mb-3 text-orange-400 ">
             8. Tiếp nhận và giải quyết khiếu nại
           </h2>
-          <p className="mb-2">
+          <p className="mb-2 text-xl">
             Nếu khách hàng phát hiện thông tin cá nhân bị sử dụng sai mục đích
             hoặc vượt quá phạm vi cho phép, vui lòng liên hệ:
           </p>
-          <p>
+          <p className="text-xl">
             📧 <strong>Email:</strong>{" "}
             <a
-              href="mailto:Dochauminh87@gmail.com"
+              href="mailto:windyspec30@gmail.com"
               className="text-blue-600 hover:underline"
             >
               windyspec30@gmail.com
             </a>
           </p>
-          <p>
+          <p className="text-xl">
             📞 <strong>Hotline:</strong>{" "}
             <a href="tel:0xxxxxxxxx" className="text-blue-600 hover:underline">
-              07xx xx xxx
+              07xx xxx xxx
             </a>
           </p>
-          <p className="mt-2">
+          <p className="mt-2 text-xl">
             Ban quản trị sẽ nhanh chóng xem xét, phản hồi và giải quyết vấn đề
             trong thời gian sớm nhất.
           </p>

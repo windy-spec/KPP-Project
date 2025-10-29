@@ -5,7 +5,8 @@ import banner2 from "@/assets/banner/banner2.jpg";
 import banner3 from "@/assets/banner/banner3.jpg";
 import banner4 from "@/assets/banner/banner4.jpg";
 import banner5 from "@/assets/banner/banner5.jpg";
-
+import banner6 from "@/assets/banner/banner6.jpg";
+import banner7 from "@/assets/banner/banner7.jpg";
 const slides = [
   {
     title: "",
@@ -23,7 +24,7 @@ const slides = [
     title: "",
     subtitle: "",
     cta: "",
-    image: banner3,
+    image: banner6,
   },
   {
     title: "",
@@ -35,7 +36,7 @@ const slides = [
     title: "",
     subtitle: "",
     cta: "",
-    image: banner5,
+    image: banner7,
   },
 ];
 
