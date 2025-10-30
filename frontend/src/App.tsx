@@ -16,6 +16,8 @@ import IntroducePage from "./pages/IntroducePage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 // Import component chi tiết sản phẩm
 import ProductDetailPage from "./components/Product/ProductDetailPage.tsx";
+import Product from "./pages/Product.tsx";
+import Management from "./pages/AdminPage/Management.tsx";
 
 const AuthActionInitializer = () => {
   useAuthActions();
@@ -34,10 +36,12 @@ function App() {
 
           {/* 👇 ROUTE MỚI: Dẫn đến trang chi tiết sản phẩm */}
           <Route path="/san-pham/:id" element={<ProductDetailPage />} />
+          <Route path="/quan-ly" element={<Management />} />
 
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forget" element={<ForgetPass />} />
+          <Route path="/san-pham" element={<Product />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
           <Route path="/gioi-thieu" element={<IntroducePage />} />
