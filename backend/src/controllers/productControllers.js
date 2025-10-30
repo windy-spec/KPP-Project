@@ -68,11 +68,9 @@ export const updateProduct = async (req, res) => {
     }
     const nameExists = await Product.findOne({ name: name });
     if (nameExists) {
-      return res
-        .status(404)
-        .json({
-          message: "Tên sản phẩm này đang tồn tại, không thể cập nhật trùng.",
-        });
+      return res.status(404).json({
+        message: "Tên sản phẩm này đang tồn tại, không thể cập nhật trùng.",
+      });
     }
 
     if (category) {
@@ -122,3 +120,27 @@ export const deleteProduct = async (req, res) => {
     return res.status(505).json({ message: "Lỗi hệ thống" });
   }
 };
+
+// GET PRODUCT BY ID
+
+export const getProdcutById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id).populate(
+      "category",
+      "name discription"
+    );
+    if (!product) {
+      return res
+        .status(404)
+        .json({ message: "Sản phẩm không tồn tại, để tìm kiếm" });
+    }
+    return res.status(200).json(product);
+  } catch (error) {
+    console.log("Lỗi khi gọi getProductById", error);
+    return res.status(505).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Partition Page Product
+export const partionPageProdcut = async (req, res) => {};
