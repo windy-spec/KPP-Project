@@ -6,7 +6,11 @@ const cartItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  quantity: { type: Number, required: true, min: 1 },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
 });
 
 const cartSchema = new mongoose.Schema(
@@ -18,8 +22,14 @@ const cartSchema = new mongoose.Schema(
       unique: true,
     },
     items: [cartItemSchema],
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
+    created_at: {
+      type: Date,
+      default: Date.now,
+    },
+    updated_at: {
+      type: Date,
+      default: Date.now,
+    },
     final_quantity: {
       type: Number,
       required: true,
