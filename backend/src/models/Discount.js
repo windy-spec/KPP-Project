@@ -52,28 +52,34 @@ const DiscountSchema = mongoose.Schema({
 });
 
 // ĐẠI LÝ THÌ NẾU TẠO CHƯƠNG TRÌNH SALE SẼ LUÔN MẶC ĐỊNH ĐÓ LÀ 30 NGÀY, TRỪ CÁC GIÁ TRỊ ĐÃ SET SẴN
-DiscountSchema.pre("save", function (next) {
-  // 1. Chỉ chạy khi Document là AGENCY và chưa có end_date
-  if (this.type === "AGENCY" && !this.end_sale) {
-    // Lấy ngày bắt đầu (sẽ là Date.now nếu không được nhập)
-    const startDate = this.start_sale || new Date();
+DiscountSchema.pre(
+  "save",
+  function (next) {
+    // 1. Chỉ chạy khi Document là AGENCY và chưa có end_date
+    if (this.type === "AGENCY" && !this.end_sale) {
+      // Lấy ngày bắt đầu (sẽ là Date.now nếu không được nhập)
+      const startDate = this.start_sale || new Date();
 
-    // Tính toán ngày kết thúc: 30 ngày sau ngày bắt đầu
-    const defaultEndDate = new Date(startDate.getTime());
-    defaultEndDate.setDate(startDate.getDate() + 30);
+      // Tính toán ngày kết thúc: 30 ngày sau ngày bắt đầu
+      const defaultEndDate = new Date(startDate.getTime());
+      defaultEndDate.setDate(startDate.getDate() + 30);
 
-    // Gán lại giá trị cho Document
-    this.end_sale = defaultEndDate;
-    console.log(
-      `[Discount] AGENCY created with default 30-day end_sale: ${this.end_sale.toISOString()}`
-    );
+      // Gán lại giá trị cho Document
+      this.end_sale = defaultEndDate;
+      console.log(
+        `[Discount] AGENCY created with default 30-day end_sale: ${this.end_sale.toISOString()}`
+      );
+    }
+
+    // 2. Đối với SALE: Nếu end_date bị thiếu, nó sẽ là NULL.
+    // Việc này sẽ được kiểm tra ở tầng Controller để buộc nhân viên phải nhập thời hạn tùy chỉnh.
+
+    next();
+  },
+  {
+    timestamps: true,
   }
-
-  // 2. Đối với SALE: Nếu end_date bị thiếu, nó sẽ là NULL.
-  // Việc này sẽ được kiểm tra ở tầng Controller để buộc nhân viên phải nhập thời hạn tùy chỉnh.
-
-  next();
-});
+);
 
 const Discount = mongoose.Schema("Discount", DiscountSchema);
 export default Discount;

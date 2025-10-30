@@ -3,6 +3,7 @@ import Footer from '@/components/Footer/Footer'
 import React from 'react'
 import Banner from '@/components/Banner/Banner'
 import Introduce from '@/components/Introduce/Introduce'
+import HomePageProduct from '@/components/Product/HomePageProduct'
 
 const HomePage = () => {
   return (
@@ -15,6 +16,9 @@ const HomePage = () => {
       </div>
       <div>
         <Introduce/>
+      </div>
+      <div>
+        <HomePageProduct/>
       </div>
       <div>
         <Footer/>

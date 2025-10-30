@@ -128,7 +128,7 @@ export const getProdcutById = async (req, res) => {
     const { id } = req.params;
     const product = await Product.findById(id).populate(
       "category",
-      "name discription"
+      "name description"
     );
     if (!product) {
       return res
@@ -143,4 +143,33 @@ export const getProdcutById = async (req, res) => {
 };
 
 // Partition Page Product
-export const partionPageProdcut = async (req, res) => {};
+export const partionPageProdcut = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 9;
+    const maxPage = 10;
+    const sortBy = req.query.sortBy || "createdAt";
+    const order = req.query.order === "desc" ? -1 : 1;
+
+    const skip = (page - 1) * limit;
+    const totalProducts = await Product.countDocuments();
+    const totalPages = Math.min(Math.ceil(totalProducts / limit), maxPage);
+
+    const products = await Product.find()
+      .populate("category", "name description")
+      .sort({ [sortBy]: order })
+      .skip(skip)
+      .limit(limit);
+    return res.status(200).json({
+      currentPage: page,
+      totalPages,
+      totalProducts: Math.min(totalProducts, limit * maxPage),
+      products,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Lỗi khi lấy danh sách sản phẩm.",
+      error: error.message,
+    });
+  }
+};
