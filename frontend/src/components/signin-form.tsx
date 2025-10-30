@@ -50,7 +50,7 @@ export function SigninForm({
           title: "Đăng nhập thành công",
           text: "Bạn đã đăng nhập thành công, vui lòng chờ trong giây lát ",
           icon: "success",
-          timer: 3000,
+          timer: 1000,
           showConfirmButton: false,
         });
 

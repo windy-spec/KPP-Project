@@ -29,3 +29,5 @@ const invoiceSchema = new mongoose.Schema({
 
   invoice_date: { type: Date, default: Date.now },
 });
+
+const invoice = mongoose.model("invoice", invoiceSchema);

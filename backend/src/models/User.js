@@ -36,9 +36,15 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    avatarUrl: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     role: {
       type: String,
       enum: ["admin", "user"],
+      default: "user",
     },
   },
   {

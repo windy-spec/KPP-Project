@@ -9,7 +9,8 @@ const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 
 export const signUp = async (req, res) => {
   try {
-    const { username, password, email, firstname, lastname, phone } = req.body;
+    const { username, password, email, firstname, lastname, phone, role } =
+      req.body;
     if (!username || !password || !email || !firstname || !lastname) {
       return res.status(400).json({
         message:
@@ -30,8 +31,10 @@ export const signUp = async (req, res) => {
       username,
       password: hashedPassword,
       email,
+      avatarUrl: null,
       displayName: `${firstname} ${lastname}`,
       phone,
+      role: "user",
     });
 
     // return

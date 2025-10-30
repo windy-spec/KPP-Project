@@ -10,6 +10,8 @@ import TermsOfService from "./pages/TermsOfService";
 import ProtectChangePassRoute from "./components/ProtectChangePassRoute";
 import useAuthActions from "./utils/authUtility";
 import TokenTest from "./components/test";
+import IntroducePage from "./pages/IntroducePage";
+import NotFound from "./pages/NotFound";
 const AuthActionInitializer = () => {
   useAuthActions();
   return null;
@@ -23,12 +25,15 @@ function App() {
 
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="*" element={<NotFound />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forget" element={<ForgetPass />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
+          <Route path="/gioi-thieu" element={<IntroducePage />} />
           <Route path="/token-test" element={<TokenTest />} />
+
           <Route
             path="/changepass"
             element={

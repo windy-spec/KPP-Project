@@ -11,10 +11,8 @@ const useAuthActions = () => {
     } catch (error) {
       console.warn(" LOGOUT: BE signOut thất bại, dọn dẹp FE...");
     }
-
     localStorage.removeItem("accessToken");
     sessionStorage.removeItem("justLoggedIn");
-
     await Swal.fire({
       title: "Phiên làm việc hết hạn",
       text: "Vui lòng đăng nhập lại để tiếp tục.",
@@ -22,17 +20,11 @@ const useAuthActions = () => {
       timer: 3000,
       showConfirmButton: false,
     });
-
     navigate("/signin");
   };
   useEffect(() => {
     setGlobalLogoutAction(logoutAndRedirect);
   }, [navigate]);
-
-  useEffect(() => {
-    setGlobalLogoutAction(logoutAndRedirect);
-  }, [navigate]);
-
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) return;
@@ -45,11 +37,8 @@ const useAuthActions = () => {
         clearInterval(interval);
       }
     }, 5 * 60 * 1000);
-
     return () => clearInterval(interval);
   }, []);
-
   return { logoutAndRedirect };
 };
-
 export default useAuthActions;

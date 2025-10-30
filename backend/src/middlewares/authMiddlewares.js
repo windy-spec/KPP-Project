@@ -1,5 +1,33 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+// check role
+export const checkRole = (allowedRole) => {
+  return (req, res, next) => {
+    const user = req.user;
+    if (!user || !user.role) {
+      console.error(
+        "Lỗi phân quyền: Thiếu req.user hoặc req.user.role. Đảm bảo authenticate đã chạy trước đó."
+      );
+      return res.status(403).json({
+        message:
+          "Lỗi quyền: Thông tin người dùng không đủ để kiểm tra vai trò.",
+      });
+    }
+    const userRole = user.role;
+    if (allowedRole.includes(userRole)) {
+      next();
+    } else {
+      console.warn(
+        `Truy cập bị từ chối: Role [${userRole}] không được phép. (Yêu cầu: ${allowedRole.join(
+          ", "
+        )})`
+      );
+      return res.status(403).json({
+        message: "Bạn không có đủ quyền để truy cập tài nguyên này.",
+      });
+    }
+  };
+};
 
 // authorization
 export const protectedRoute = (req, res, next) => {
