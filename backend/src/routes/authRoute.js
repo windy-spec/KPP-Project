@@ -18,7 +18,6 @@ router.post("/signIn", signIn);
 router.post("/signOut", signOut);
 // API forgotPassword
 router.post("/forgot-password", forgotPassword);
-
 //API resetPassword
 router.post("/reset-password", resetPassword);
 export default router;

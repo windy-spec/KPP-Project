@@ -5,6 +5,8 @@ import authRoute from "./routes/authRoute.js";
 import cookieParser from "cookie-parser";
 import userRoute from "./routes/userRoute.js";
 import cors from "cors";
+import categoryRoute from "./routes/categoryRoute.js";
+import productRoute from "./routes/productRoute.js";
 // call env port
 
 dotenv.config();
@@ -24,6 +26,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+app.use("/api/category", categoryRoute);
+app.use("/api/product", productRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 

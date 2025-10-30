@@ -1,9 +1,7 @@
 import React, { Children, use, useEffect, useRef, useState } from "react";
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
-import userIcon from "@/assets/icon/user.png";
 import MobileHeader from "./MobileHeader";
-import { fa } from "zod/v4/locales";
 
 interface User {
   _id: string;
