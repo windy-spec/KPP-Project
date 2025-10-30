@@ -227,7 +227,7 @@ const Navbartop: React.FC = () => {
                   /* KHỐI 2: HIỂN THỊ KHI CHƯA ĐĂNG NHẬP (user không tồn tại) */
                   <a
                     href="/signin"
-                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg shadow-lg hover:bg-orange-700 transition-colors duration-200"
+                    className="px-4 py-2 text-sm font-medium text-white bg-orange-200 rounded-lg shadow-lg hover:bg-orange-300 transition-colors duration-200"
                   >
                     Đăng nhập
                   </a>
