@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import Navbar from "@/components/Navbar/Navbar";
+import Footer from "@/components/Footer/Footer";
+import { Heart, Share2, Minus, Plus, ShoppingCart } from "lucide-react";
 
 // Khai báo lại kiểu dữ liệu Product
 type Category = {
@@ -29,6 +32,58 @@ const ProductDetailPage: React.FC = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [triedHighRes, setTriedHighRes] = useState<boolean>(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    // reset image source when product changes
+    setImageSrc(product?.image_url ?? null);
+    setTriedHighRes(false);
+    setQuantity(1);
+  }, [product]);
+
+  // Try a few common filename/url patterns to discover a higher-resolution image
+  const attemptHighRes = (url: string) => {
+    if (!url) return;
+    // prevent multiple simultaneous attempts
+    if (triedHighRes) return;
+    setTriedHighRes(true);
+
+    const candidates: string[] = [];
+    // common patterns
+    candidates.push(url.replace(/thumb/i, "large"));
+    candidates.push(url.replace(/thumbnail/i, "original"));
+    candidates.push(url.replace(/-thumb/i, ""));
+    candidates.push(url.replace(/_thumb/i, ""));
+    candidates.push(url.replace(/small/i, "large"));
+    candidates.push(url.replace(/\/thumbs\//i, "/original/"));
+    candidates.push(url.replace(/-150x150/i, ""));
+    // also try removing query size params
+    candidates.push(url.replace(/([?&])size=[^&]*/i, ""));
+
+    // try each candidate in order and use the first that loads
+    (async () => {
+      for (const candidate of candidates) {
+        if (!candidate || candidate === url) continue;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => reject();
+            img.src = candidate;
+          });
+          // if loaded, update source and stop
+          setImageSrc(candidate);
+          return;
+        } catch (e) {
+          // ignore and continue
+        }
+      }
+    })();
+  };
 
   useEffect(() => {
     // Ép kiểu id thành string và kiểm tra nếu không có
@@ -97,112 +152,167 @@ const ProductDetailPage: React.FC = () => {
   if (!product) return null;
 
   return (
-    <div className="px-4 md:px-8 lg:px-16 max-w-6xl mx-auto py-12">
-      <div className="bg-white rounded-xl shadow-2xl p-6 md:p-10 border border-gray-100">
-        {/* Breadcrumb / Navigation */}
-        <div className="mb-8 text-sm text-gray-500">
-          <Link to="/" className="hover:text-orange-500 transition-colors">
-            Trang chủ
-          </Link>
-          <span className="mx-2">/</span>
-          {/* Sửa đường dẫn /san-pham */}
-          <Link
-            to="/san-pham"
-            className="hover:text-orange-500 transition-colors"
-          >
-            Sản phẩm
-          </Link>
-          <span className="mx-2">/</span>
-          <span className="font-semibold text-gray-700">{product.name}</span>
-        </div>
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <Navbar />
 
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Cột trái: Hình ảnh */}
-          <div className="md:w-1/2 flex items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="max-h-96 object-contain rounded-md shadow-md"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src =
-                  "https://placehold.co/600x400/CCCCCC/333333?text=Không+có+hình+ảnh";
-              }}
-            />
+      {/* Page content */}
+      <main className="px-4 md:px-8 lg:px-16 max-w-6xl mx-auto py-12 flex-1 w-full">
+        <div className="bg-white rounded-xl shadow-lg p-6 md:p-10 border border-gray-100">
+          {/* Breadcrumb / Navigation */}
+          <div className="mb-6 text-sm text-gray-500">
+            <Link to="/" className="hover:text-orange-500 transition-colors">
+              Trang chủ
+            </Link>
+            <span className="mx-2">/</span>
+            <Link to="/san-pham" className="hover:text-orange-500 transition-colors">
+              Sản phẩm
+            </Link>
+            <span className="mx-2">/</span>
+            <span className="font-semibold text-gray-700">{product.name}</span>
           </div>
 
-          {/* Cột phải: Chi tiết */}
-          <div className="md:w-1/2">
-            <h1 className="text-4xl font-extrabold text-slate-900 mb-2">
-              {product.name}
-            </h1>
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left: image */}
+            <div className="lg:w-1/2 flex items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200 relative">
+              <img
+                ref={imgRef}
+                src={imageSrc ?? product.image_url}
+                alt={product.name}
+                loading="eager"
+                decoding="async"
+                className="w-full max-h-[500px] object-contain rounded-lg shadow-md"
+                onLoad={(e) => {
+                  const naturalWidth = e.currentTarget.naturalWidth || 0;
+                  const clientWidth = e.currentTarget.clientWidth || 0;
+                  // if the loaded image is smaller than the displayed size, try to find a higher-res variant
+                  if (naturalWidth && clientWidth && naturalWidth < clientWidth && !triedHighRes) {
+                    attemptHighRes(imageSrc ?? product.image_url);
+                  }
+                }}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    "https://placehold.co/600x400/CCCCCC/333333?text=Không+có+hình+ảnh";
+                }}
+              />
 
-            <div className="text-lg text-gray-500 mb-6">
-              <span className="font-semibold">Danh mục: </span>
-              <span className="text-orange-600">
-                {product.category?.name || "Chưa phân loại"}
-              </span>
-            </div>
-
-            <div className="text-5xl font-extrabold text-red-600 mb-6 border-b border-gray-200 pb-4">
-              {formatVND(product.price)}
-            </div>
-
-            <div className="space-y-4 mb-8">
-              <p className="text-gray-700 leading-relaxed text-base">
-                <span className="font-semibold text-slate-700">
-                  Mô tả chi tiết:
-                </span>{" "}
-                {product.description}
-              </p>
-              <p className="text-sm text-gray-500 pt-2 border-t border-gray-100">
-                <span className="font-semibold text-gray-700">
-                  Mã sản phẩm:
-                </span>{" "}
-                {product._id}
-              </p>
-              <p
-                className={`text-sm font-semibold ${
-                  product.quantity > 0 ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {product.quantity > 0
-                  ? `Tình trạng: Còn hàng (${product.quantity} sản phẩm)`
-                  : "Tình trạng: Hết hàng"}
-              </p>
-            </div>
-
-            <div className="flex space-x-4">
-              <Button
-                className="bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 font-semibold shadow-lg shadow-orange-200 transition-all duration-300"
-                disabled={product.quantity <= 0}
-              >
-                Thêm vào Giỏ hàng
-              </Button>
-              <Button
-                variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-100 px-6 py-4"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+              {/* Favorite & Share */}
+              <div className="absolute top-4 right-4 flex flex-col gap-2">
+                <button
+                  onClick={() => setIsFavorite((v) => !v)}
+                  className={`p-2 rounded-full transition-colors shadow-sm flex items-center justify-center ${
+                    isFavorite ? "bg-red-500 text-white" : "bg-white/80 text-gray-600 hover:bg-white"
+                  }`}
+                  aria-pressed={isFavorite}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                  />
-                </svg>
-                Yêu thích
-              </Button>
+                  <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
+                </button>
+                <button className="p-2 rounded-full bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm">
+                  <Share2 size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Right: details */}
+            <div className="lg:w-1/2 space-y-6">
+              <div>
+                <div className="inline-block">
+                  <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
+                    {product.category?.name || "Chưa phân loại"}
+                  </span>
+                </div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight mt-4">
+                  {product.name}
+                </h1>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-3xl font-bold text-blue-600">
+                  {formatVND(product.price)}
+                </span>
+                <span className="text-sm text-gray-500">(VAT đã bao gồm)</span>
+              </div>
+
+              <div className="prose prose-gray max-w-none">
+                <p className="text-gray-700 leading-relaxed">{product.description}</p>
+              </div>
+
+              {/* Quantity selector & total */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">Số lượng</label>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1}
+                      className="p-3 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value || "1", 10);
+                        if (!isNaN(val) && val >= 1) setQuantity(val);
+                      }}
+                      className="w-16 text-center py-3 border-0 focus:ring-0 focus:outline-none"
+                      min="1"
+                    />
+                    <button
+                      onClick={() => setQuantity((q) => q + 1)}
+                      className="p-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+
+                  <div className="text-sm text-gray-600">
+                    Tổng: <span className="font-semibold">{formatVND(product.price * quantity)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 font-semibold flex items-center justify-center gap-3"
+                  disabled={product.quantity <= 0}
+                >
+                  <ShoppingCart size={18} />
+                  Thêm vào Giỏ hàng
+                </Button>
+
+                <Button variant={"outline"} className="sm:w-auto px-6 py-3 border-orange-500 text-orange-500 hover:border-orange-400 hover:bg-orange-400 hover:text-white transition-colors">
+                  Mua ngay
+                </Button>
+              </div>
+
+              {/* Additional Info */}
+              <div className="border-t pt-6 space-y-3 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>SKU:</span>
+                  <span className="font-medium">#{product._id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Kho hàng:</span>
+                  <span className={`font-medium ${product.quantity > 0 ? "text-green-600" : "text-red-600"}`}>
+                    {product.quantity > 0 ? `Còn ${product.quantity}` : "Hết hàng"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Vận chuyển:</span>
+                  <span className="font-medium">Miễn phí vận chuyển cho đơn hàng trên 1.000.000₫</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
