@@ -19,7 +19,7 @@ const DiscountSchema = mongoose.Schema({
   },
   target_id: {
     type: mongoose.Schema.Types.ObjectId,
-    default: null,
+    default: null,  
   },
   discount_percent: {
     type: Number,

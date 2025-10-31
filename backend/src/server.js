@@ -17,6 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // cors
+app.use(express.static("public")); // để multer upload ảnh có thể truy cập
 app.use(
   cors({
     origin: "http://localhost:5173",

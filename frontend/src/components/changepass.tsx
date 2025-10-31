@@ -66,7 +66,6 @@ export function ChangepassForm({
         await Swal.fire({
           title: "Thông báo",
           text: `Bạn đã đổi mật khẩu thành công, giờ chúng tôi sẽ chuyển hướng bạn quay lại trang đăng nhập`,
-
           icon: "success",
           showConfirmButton: false,
         });

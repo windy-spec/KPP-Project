@@ -58,7 +58,9 @@ const invoiceSchema = new mongoose.Schema(
       default: "PENDING",
     },
 
-    invoice_date: { type: Date, default: Date.now },
+    invoice_date: { 
+      type: Date,
+       default: Date.now },
   },
   {
     timestamps: true,

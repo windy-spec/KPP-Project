@@ -23,7 +23,8 @@ const upload = multer({ storage });
 router.get("/partition", partionPageProdcut);
 router.get("/", getAllProduct);
 // accept multipart/form-data with field name 'image'
-router.post("/", upload.single("image"), createProduct);
+// router.post("/", upload.single("image"), createProduct);
+router.post("/", createProduct);
 router.put("/:id", upload.single("image"), updateProduct);
 router.delete("/:id", deleteProduct);
 router.get("/:id", getProdcutById);

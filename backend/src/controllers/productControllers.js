@@ -1,5 +1,6 @@
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
+import mongoose from "mongoose";
 // CRUD PRODUCT
 
 // READ PRODUCT
@@ -59,46 +60,64 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, category, quantity, price, image_url, is_Active } = req.body;
+    console.log("🧩 updateProduct id:", id);
+    console.log("📦 Body:", req.body);
+    console.log("📷 File:", req.file);
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID sản phẩm không hợp lệ." });
+    }
+
     const product = await Product.findById(id);
     if (!product) {
-      return res
-        .status(404)
-        .json({ message: "Sản phẩm không tồn tại để cập nhật." });
-    }
-    const nameExists = await Product.findOne({ name: name });
-    if (nameExists) {
-      return res.status(404).json({
-        message: "Tên sản phẩm này đang tồn tại, không thể cập nhật trùng.",
-      });
+      return res.status(404).json({ message: "Sản phẩm không tồn tại." });
     }
 
+    const { name, category, price, quantity, description, is_Active } =
+      req.body;
+
+    // Kiểm tra trùng tên
+    if (name && name !== product.name) {
+      const nameExists = await Product.findOne({ name });
+      if (nameExists) {
+        return res.status(400).json({
+          message: "Tên sản phẩm đã tồn tại.",
+        });
+      }
+      product.name = name;
+    }
+
+    // Kiểm tra danh mục
     if (category) {
-      // B1: CHECK XEM DA NHAP DANH MUC CHUA
-      const isCategoryExists = await Category.findById(category);
-      if (!isCategoryExists) {
-        // B2: NEU DANH MUC KHONG TON TAI, THI KHONG THE SUA
+      if (!mongoose.Types.ObjectId.isValid(category)) {
+        return res.status(400).json({ message: "Category ID không hợp lệ." });
+      }
+      const categoryExists = await Category.findById(category);
+      if (!categoryExists) {
         return res.status(404).json({ message: "Danh mục không tồn tại." });
       }
-      // B3: CAP NHAT DANH MUC VAO CHO SAN PHAM
       product.category = category;
     }
-    product.name = name || product.name;
-    product.quantity = quantity || product.quantity;
-    product.price = price || product.price;
-    product.image_url =
-      image_url ||
-      product.image_url ||
-      "https://tahico.com/wp-content/uploads/2024/08/son-xit-phu-keo-bong-trong-suot-samurai-k1k.jpg";
-    product.is_Active = is_Active ?? product.is_Active;
 
-    await product.save();
-    return res
-      .status(200)
-      .json({ message: "Sửa sản phẩm thành công.", product });
+    if (price !== undefined) product.price = price;
+    if (quantity !== undefined) product.quantity = quantity;
+    if (description) product.description = description;
+    if (typeof is_Active !== "undefined") product.is_Active = is_Active;
+
+    if (req.file) {
+      product.image_url = `/uploads/${req.file.filename}`;
+    }
+
+    const updated = await product.save();
+    console.log("✅ Đã cập nhật:", updated);
+
+    res.status(200).json({
+      message: "Cập nhật sản phẩm thành công!",
+      product: updated,
+    });
   } catch (error) {
-    console.log("Lỗi khi gọi updateProduct: ", error);
-    return res.status(505).json({ message: "Lỗi hệ thống" });
+    console.error("❌ Lỗi cập nhật:", error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật sản phẩm." });
   }
 };
 

@@ -11,7 +11,7 @@ const SessionSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
       require: true,
-      unique: true,
+      unique: true, 
     },
     expiresAt: {
       type: Date,
