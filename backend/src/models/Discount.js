@@ -11,6 +11,8 @@ const DiscountSchema = mongoose.Schema({
     enum: ["SALE", "AGENCY"],
     required: true,
   },
+  //
+
   // Giup nhan vien biet duoc dang can tinh sale tren sanpham, danh muc, hay tong hoa don
   target_type: {
     type: String,
@@ -19,7 +21,7 @@ const DiscountSchema = mongoose.Schema({
   },
   target_id: {
     type: mongoose.Schema.Types.ObjectId,
-    default: null,  
+    default: null,
   },
   discount_percent: {
     type: Number,
