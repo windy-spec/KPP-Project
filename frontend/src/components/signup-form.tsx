@@ -3,15 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, Watch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
+//Zod validate
 const vietnameseNameRegex = /^[A-Za-zÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ\s]+$/;
 const signUpSchema = z.object({
   firstname: z.string().min(1, "Tên bắt buộc phải có").regex(vietnameseNameRegex, "Tên chỉ được chứa chữ cái tiếng Việt"),
@@ -37,6 +38,7 @@ export function SignupForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting, isValid },
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -100,15 +102,63 @@ export function SignupForm({
       toast.error(errorMessage);
     }
   };
+
+
+  // lấy giá trị hiện tại của password và confirmPassword
+  const passwordValue = watch("password");
+  const confirmPasswordValue = watch("confirmPassword");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+  const [strength, setStrength] = useState(0);
+  const [confirmStrength, setConfirmStrength] = useState(0);
+
+
+  // Gán strength cho password
+  useEffect(() => {
+    setStrength(calculateStrength(passwordValue || ""));
+  }, [passwordValue]);
+
+  // Gán strength cho confirm password
+  useEffect(() => {
+    setConfirmStrength(calculateStrength(confirmPasswordValue || ""));
+  }, [confirmPasswordValue]);
+
+  //PasswordStrength
+  const calculateStrength = (password: string) => {
+      let score = 0;
+      if (password.length >= 6) score++;
+      if (/[A-Z]/.test(password)) score++;
+      if (/[0-9]/.test(password)) score++;
+      if (/[^A-Za-z0-9]/.test(password)) score++;
+      if (password.length >= 10) score++;
+      return score;
+  };
+
+  const getStrengthLabel = (score: number) => {
+      switch (score) {
+        case 0:
+        case 1:
+          return { label: "Yếu", color: "bg-red-500" };
+        case 2:
+          return { label: "Trung bình", color: "bg-yellow-500" };
+        case 3:
+          return { label: "Khá mạnh", color: "bg-orange-500" };
+        case 4:
+          return { label: "Mạnh", color: "bg-green-500" };
+        case 5:
+          return { label: "Rất Mạnh", color: "bg-blue-500" };
+        default:
+          return { label: "", color: "" };
+    }
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0 border-border translate-y-5">
         <CardContent className="grid md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
+
+          <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)} autoComplete="off">
             <div className="flex flex-col gap-6">
               {/* header - logo */}
               <div className="flex flex-col items-center text-center gap-2">
@@ -168,7 +218,7 @@ export function SignupForm({
                 <Input
                   type="text"
                   id="email"
-                  placeholder="Email (vd:k@gmail.com)"
+                  placeholder="Email (vd:kppaint@gmail.com)"
                   {...register("email")}
                   className="border-gray-500"
                 />
@@ -204,6 +254,24 @@ export function SignupForm({
                     )}
                   </button>
                 </div>
+
+                {/* ✅ hiển thị thanh độ mạnh */}
+                {passwordValue && (
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${getStrengthLabel(
+                          strength
+                        ).color}`}
+                        style={{ width: `${(strength / 5) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-600">
+                      {getStrengthLabel(strength).label}
+                    </span>
+                  </div>
+                )}
+
                 {errors.password && (
                   <p className="text-destructive text-sm">
                     {errors.password.message}
@@ -236,6 +304,24 @@ export function SignupForm({
                     )}
                   </button>
                 </div>
+
+                {/* ✅ hiển thị thanh độ mạnh */}
+                {confirmPasswordValue && (
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${getStrengthLabel(
+                          confirmStrength
+                        ).color}`}
+                        style={{ width: `${(confirmStrength / 5) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-600">
+                      {getStrengthLabel(confirmStrength).label}
+                    </span>
+                  </div>
+                )}
+
                 {errors.confirmPassword && (
                   <p className="text-destructive text-sm">
                     {errors.confirmPassword.message}

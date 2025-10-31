@@ -10,7 +10,7 @@ import axios from "axios";
 import { Link } from "react-router-dom"; // Sửa import Link từ 'react-router' sang 'react-router-dom'
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 // SỬA ĐỔI: Loại bỏ trường email khỏi schema
@@ -42,6 +42,7 @@ export function ChangepassForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting, isValid },
     reset,
   } = useForm<ChangePassFormValues>({
@@ -81,14 +82,66 @@ export function ChangepassForm({
     } catch (error) {
       console.error("Lỗi gọi API đổi mật khẩu: ", error);
       let errorMessage = "Đã xảy ra lỗi hệ thống hoặc lỗi kết nối máy chủ.";
-      if (axios.isAxiosError(error) && error.response) {
+      if (axios.isAxiosError(error)) {
+        const respData = (error.response && error.response.data) as any;
+        if (respData && typeof respData.message === "string") {
+          errorMessage = respData.message;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
       }
       toast.error(errorMessage);
     }
   };
 
+  const passwordValue = watch("password");
+  const confirmPasswordValue = watch("confirmPassword");
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [strength, setStrength] = useState(0);
+  const [confirmStrength, setConfirmStrength] = useState(0);
+  
+  
+    // Gán strength cho password
+    useEffect(() => {
+      setStrength(calculateStrength(passwordValue || ""));
+    }, [passwordValue]);
+  
+    // Gán strength cho confirm password
+    useEffect(() => {
+      setConfirmStrength(calculateStrength(confirmPasswordValue || ""));
+    }, [confirmPasswordValue]);
+  
+    //PasswordStrength
+    const calculateStrength = (password: string) => {
+        let score = 0;
+        if (password.length >= 6) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+        if (password.length >= 10) score++;
+        return score;
+    };
+  
+    const getStrengthLabel = (score: number) => {
+        switch (score) {
+          case 0:
+          case 1:
+            return { label: "Yếu", color: "bg-red-500" };
+          case 2:
+            return { label: "Trung bình", color: "bg-yellow-500" };
+          case 3:
+            return { label: "Khá mạnh", color: "bg-orange-500" };
+          case 4:
+            return { label: "Mạnh", color: "bg-green-500" };
+          case 5:
+            return { label: "Rất Mạnh", color: "bg-blue-500" };
+          default:
+            return { label: "", color: "" };
+      }
+    };
+  
 
   return (
     <div
@@ -164,6 +217,17 @@ export function ChangepassForm({
                     )}
                   </button>
                 </div>
+                {/* Strength indicator */}
+                <div className="mt-2 flex items-center gap-2">
+                  <div
+                    className={`${getStrengthLabel(strength).color} h-2 rounded flex-1`}
+                    style={{ width: `${(strength / 5) * 100}%` }}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {getStrengthLabel(strength).label}
+                  </span>
+                </div>
+
                 {errors.password && (
                   <p className="text-destructive text-sm">
                     {errors.password.message}
@@ -198,6 +262,17 @@ export function ChangepassForm({
                     )}
                   </button>
                 </div>
+                {/* Strength indicator for confirm password */}
+                <div className="mt-2 flex items-center gap-2">
+                  <div
+                    className={`${getStrengthLabel(confirmStrength).color} h-2 rounded flex-1`}
+                    style={{ width: `${(confirmStrength / 5) * 100}%` }}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {getStrengthLabel(confirmStrength).label}
+                  </span>
+                </div>
+
                 {errors.confirmPassword && (
                   <p className="text-destructive text-sm">
                     {errors.confirmPassword.message}

@@ -347,7 +347,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                     {showUserMenu && (
                       <div
                         ref={menuRef}
-                        className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
+                        className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
                         role="menu"
                         aria-orientation="vertical"
                       >
