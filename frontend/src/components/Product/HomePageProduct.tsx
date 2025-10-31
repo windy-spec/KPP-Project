@@ -140,7 +140,8 @@ const HomePageProduct: React.FC = () => {
         Sản phẩm ({pagination.totalProductsCount})
       </h2>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6">
+  {/* Mobile-first: 1 cột trên mobile, 2 cột trên tablet, 3 cột trên desktop */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {products.length === 0 && (
           <div className="col-span-full text-center py-10 text-gray-500">
             Không có sản phẩm nào để hiển thị.
@@ -154,7 +155,7 @@ const HomePageProduct: React.FC = () => {
               className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100"
             >
               <Link to={`/san-pham/${p._id || p.id}`} className="block">
-                <div className="h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                <div className="h-40 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                   {p.image_url || p.image ? (
                     <img
                       src={p.image_url || p.image}
@@ -178,12 +179,12 @@ const HomePageProduct: React.FC = () => {
                   )}
                 </div>
               </Link>
-              <div className="p-4">
-                <h3 className="text-base font-semibold text-slate-800 truncate hover:text-orange-500 transition-colors">
+              <div className="p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-800 truncate hover:text-orange-500 transition-colors">
                   {p.name}
                 </h3>
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="text-xl font-extrabold text-orange-500">
+                <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-lg sm:text-xl font-extrabold text-orange-500">
                     {typeof p.price === "number"
                       ? formatVND(p.price)
                       : "Liên hệ"}
@@ -192,7 +193,7 @@ const HomePageProduct: React.FC = () => {
                   <Link to={`/san-pham/${p._id || p.id}`}>
                     <Button
                       variant={"outline"}
-                      className="border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      className="w-full sm:w-auto border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-colors text-sm"
                     >
                       Xem chi tiết
                     </Button>
@@ -236,7 +237,7 @@ const HomePageProduct: React.FC = () => {
         <Link to="/san-pham">
           <Button
             variant={"outline"}
-            className="bg-orange-300 hover:bg-white text-white font-semibold border-2 border-orange-300 hover:text-orange-500 transition-colors"
+            className="w-full sm:w-auto bg-orange-300 hover:bg-white text-white font-semibold border-2 border-orange-300 hover:text-orange-500 transition-colors"
           >
             Xem tất cả sản phẩm
           </Button>

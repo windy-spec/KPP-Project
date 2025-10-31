@@ -7,6 +7,8 @@ import searchIcon from '@/assets/icon/search_icon.png';
 const MobileHeader: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [user, setUser] = useState<{ displayName?: string; email?: string; role?: string } | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 0);
@@ -14,6 +16,62 @@ const MobileHeader: React.FC = () => {
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Try to load user info from API if accessToken exists
+  useEffect(() => {
+    const loadUser = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setUser(null);
+        setLoadingUser(false);
+        return;
+      }
+
+      try {
+        const resp = await fetch('http://localhost:5001/api/users/me', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          setUser(data.user || data);
+        } else {
+          // token invalid
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Failed to load user info', err);
+        setUser(null);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        await fetch('http://localhost:5001/api/auth/signOut', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (err) {
+      console.error('Logout error', err);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setUser(null);
+      setOpen(false);
+      // redirect to signin page
+      window.location.href = '/signin';
+    }
+  };
 
   const headerHeight = 56; // px (h-14)
   const menuApprox = 260; // approximate height of the opened menu
@@ -82,7 +140,27 @@ const MobileHeader: React.FC = () => {
                 </details>
 
                 <Link to="/lien-he" className="block py-2 text-gray-800">Liên Hệ</Link>
-                <Link to="/signin" className="block py-2 text-gray-800">Đăng nhập</Link>
+                {loadingUser ? null : user ? (
+                  <>
+                    <Link to="/account" onClick={() => setOpen(false)} className="block py-2 text-gray-800">
+                      Tài khoản ({user.displayName || user.email || 'Người dùng'})
+                    </Link>
+                    {/* Admin link */}
+                    {user.role === 'admin' && (
+                      <Link to="/quan-ly" onClick={() => setOpen(false)} className="block py-2 text-gray-800">
+                        Trang quản lý
+                      </Link>
+                    )}
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left block py-2 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      Đăng xuất
+                    </button>
+                  </>
+                ) : (
+                  <Link to="/signin" className="block py-2 text-gray-800" onClick={() => setOpen(false)}>Đăng nhập</Link>
+                )}
               </nav>
             </div>
           </div>

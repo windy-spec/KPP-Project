@@ -7,13 +7,13 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { isValid } from "zod/v3";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import { Link } from "react-router";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import apiClient from "@/utils/api-user";
+
 const signInSchema = z.object({
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -34,70 +34,122 @@ export function SigninForm({
     mode: "onTouched",
   });
 
+  // ====== State cho giới hạn đăng nhập ======
+  const [failedAttempts, setFailedAttempts] = useState<number>(() =>
+    parseInt(localStorage.getItem("failedAttempts") || "0")
+  );
+  const [lockUntil, setLockUntil] = useState<number | null>(() => {
+    const saved = localStorage.getItem("lockUntil");
+    return saved ? parseInt(saved) : null;
+  });
+  const [timer, setTimer] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // ====== Cập nhật đếm ngược khi đang bị khóa ======
+  useEffect(() => {
+  let interval: ReturnType<typeof setInterval>;
+  if (lockUntil) {
+      interval = setInterval(() => {
+        const remaining = Math.ceil((lockUntil - Date.now()) / 1000);
+        if (remaining <= 0) {
+          // Chỉ mở khóa, không reset failedAttempts
+          setLockUntil(null);
+          localStorage.removeItem("lockUntil");
+          setTimer(0);
+          clearInterval(interval);
+        } else {
+          setTimer(remaining);
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [lockUntil]);
+
+  // ====== Hàm tính thời gian khóa dựa theo số lần sai ======
+  const getLockDuration = (count: number): number | null => {
+    if (count === 5) return 30 * 1000; // 30 giây
+    if (count === 6) return 2 * 60 * 1000; // 2 phút
+    if (count >= 7) return 5 * 60 * 1000; // 5 phút
+    return null;
+  };
+
+  // ====== Hàm xử lý đăng nhập ======
   const onSubmit = async (data: SignInFormValues) => {
+    // Nếu đang bị khóa
+    if (lockUntil && Date.now() < lockUntil) {
+      toast.error(
+        `Tài khoản đang bị tạm khóa. Vui lòng thử lại sau ${timer} giây.`
+      );
+      return;
+    }
+
     try {
-      console.log("Hàm onSubmit đã được gọi!"); // ⬅️ Đặt ở đây
       const response = await apiClient.post("/auth/signIn", data);
-      if (response.status == 200) {
+
+      if (response.status === 200) {
         const { accessToken } = response.data;
 
-        // 1.  LƯU TOKEN TRƯỚC KHI BẮT ĐẦU CHUYỂN HƯỚNG
-        console.log("Token được nhận:", accessToken);
-        localStorage.setItem("accessToken", accessToken);
-        console.log("Access Token", accessToken); // Giữ log ở đây
+        // Reset lại số lần sai
+        setFailedAttempts(0);
+        localStorage.setItem("failedAttempts", "0");
+        localStorage.removeItem("lockUntil");
 
+        // Lưu token & thông báo
+        localStorage.setItem("accessToken", accessToken);
         await Swal.fire({
           title: "Đăng nhập thành công",
-          text: "Bạn đã đăng nhập thành công, vui lòng chờ trong giây lát ",
+          text: "Bạn đã đăng nhập thành công, vui lòng chờ trong giây lát...",
           icon: "success",
           timer: 1000,
           showConfirmButton: false,
         });
-
-        // 2. Chuyển hướng chỉ sau khi Swal đóng
         window.location.href = "/";
-        return;
       }
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
-      let errorMessage = "Đã xảy ra lỗi hệ thống.";
 
-      if (axios.isAxiosError(error) && error.response) {
-        const status = error.response.status;
-        const beMessage = error.response.data?.message;
+      // Nếu sai thông tin (401)
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        const newCount = failedAttempts + 1;
+        setFailedAttempts(newCount);
+        localStorage.setItem("failedAttempts", newCount.toString());
 
-        // 1. XỬ LÝ LỖI 400 (Dùng Swal)
-        if (status === 401) {
+        const duration = getLockDuration(newCount);
+        if (duration) {
+          const until = Date.now() + duration;
+          setLockUntil(until);
+          localStorage.setItem("lockUntil", until.toString());
           await Swal.fire({
-            title: "Lỗi Đăng nhập",
-            text: beMessage || "Vui lòng kiểm tra lại Username và Password.",
-            icon: "error",
-            timer: 2000,
+            title: "Tài khoản bị khóa",
+            text: `Bạn đã nhập sai ${newCount} lần. Vui lòng đợi ${duration / 1000} giây trước khi thử lại.`,
+            icon: "warning",
+            timer: duration,
             showConfirmButton: false,
           });
-          return; //  Thoát khỏi hàm sau khi hiển thị Swal
-        }
 
-        // 2. Xử lý các lỗi khác (401, 409, 500)
-        errorMessage = beMessage || `Lỗi không xác định từ BE (${status}).`;
-      } else if (axios.isAxiosError(error) && error.code === "ERR_NETWORK") {
-        errorMessage = "Không thể kết nối tới máy chủ. Vui lòng thử lại.";
+        } else {
+          toast.error(`Sai thông tin đăng nhập (${newCount}/5).`);
+        }
+        return;
       }
 
-      // Hiển thị Toast cho tất cả lỗi còn lại (401, Mạng, 500)
-      toast.error(errorMessage);
+      // Nếu lỗi mạng
+      if (axios.isAxiosError(error) && error.code === "ERR_NETWORK") {
+        toast.error("Không thể kết nối tới máy chủ. Vui lòng thử lại.");
+        return;
+      }
+
+      toast.error("Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.");
     }
   };
 
-  const [showPassword, setShowPassword] = useState(false);
-
+  // ====== Giao diện ======
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0 border-border">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-6">
-              {/* header - logo */}
               <div className="flex flex-col items-center text-center gap-2">
                 <a href="/" className="mx-auto block w-fit text-center">
                   <img src="/logo22.svg" alt="logo" className="w-24 h-auto" />
@@ -108,7 +160,6 @@ export function SigninForm({
                 </p>
               </div>
 
-              {/* username */}
               <div className="flex flex-col gap-3">
                 <Label htmlFor="username" className="block text-sm">
                   Tên đăng nhập
@@ -119,6 +170,7 @@ export function SigninForm({
                   placeholder="kppaint"
                   {...register("username")}
                   className="border-gray-500"
+                  disabled={!!lockUntil}
                 />
                 {errors.username && (
                   <p className="text-destructive text-sm">
@@ -127,10 +179,9 @@ export function SigninForm({
                 )}
               </div>
 
-              {/* password */}
               <div className="flex flex-col gap-3">
                 <Label htmlFor="password" className="block text-sm">
-                  Mật khẩu mới
+                  Mật khẩu
                 </Label>
                 <div className="relative">
                   <Input
@@ -138,12 +189,12 @@ export function SigninForm({
                     id="password"
                     {...register("password")}
                     className="pr-10 border-gray-500"
-                    autoComplete="new-password"
+                    disabled={!!lockUntil}
+                    autoComplete="current-password"
                     data-password-toggle="true"
                   />
                   <button
                     type="button"
-                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                     onClick={() => setShowPassword((s) => !s)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
@@ -161,13 +212,16 @@ export function SigninForm({
                 )}
               </div>
 
-              {/* nút đăng nhập */}
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isSubmitting || !isValid}
+                disabled={isSubmitting || !isValid || !!lockUntil}
               >
-                Đăng nhập
+                {lockUntil
+                  ? `Bị khóa (${timer}s)`
+                  : isSubmitting
+                  ? "Đang đăng nhập..."
+                  : "Đăng nhập"}
               </Button>
 
               <div className="text-center text-sm">
@@ -193,10 +247,10 @@ export function SigninForm({
           </div>
         </CardContent>
       </Card>
-      <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
+      <div className="text-xs text-balance px-6 text-center text-muted-foreground">
         Bằng cách tiếp tục, bạn đồng ý với{" "}
         <Link to="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
-        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
+        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật</Link>.
       </div>
     </div>
   );

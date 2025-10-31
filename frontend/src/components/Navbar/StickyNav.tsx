@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 // Đảm bảo các đường dẫn icon này là đúng trong project của bạn
+// Vui lòng kiểm tra lại đường dẫn file trong thư mục assets của bạn
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
 import userIcon from "@/assets/icon/user.png";
@@ -47,16 +48,17 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  // State quản lý dropdown nào đang mở
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Toggle Menu
-
   const toggleUserMenu = () => {
     setShowUserMenu((prev) => !prev);
   };
 
   // Logout
-
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -85,22 +87,25 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   };
 
   // useEffect close menu logout
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const clickOutsideMenu =
-        menuRef.current && !menuRef.current.contains(event.target as Node);
-      const clickOutsideButton =
-        buttonRef.current && !buttonRef.current.contains(event.target as Node);
-      if (clickOutsideButton && clickOutsideMenu) {
+      // Kiểm tra xem click có nằm ngoài cả nút và menu dropdown người dùng không
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node) &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
         setShowUserMenu(false);
       }
-      if (showUserMenu) {
-        document.addEventListener("mousedown", handleClickOutside);
-      }
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
+    };
+
+    if (showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showUserMenu]);
 
@@ -136,9 +141,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
 
     getUserInfo();
   }, []);
-  const [visible, setVisible] = useState(false);
-  // State quản lý dropdown nào đang mở
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Logic hiển thị/ẩn thanh nav khi cuộn
   useEffect(() => {
@@ -193,27 +195,34 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       }`}
       aria-hidden={!visible}
     >
-      <div className="pointer-events-auto">
-        <div className="max-w-9xl mx-auto px-4 bg-gray-50">
+      {/* FIX LỖI 1: Đặt background trên div ngoài cùng, để nó chiếm toàn bộ chiều ngang */}
+      <div className="pointer-events-auto bg-gray-50">
+        {/* FIX LỖI 1: Container giới hạn độ rộng nội dung và căn giữa */}
+        <div className="w-full lg:max-w-7xl mx-auto px-4 md:px-6"> 
           <div className="flex items-center justify-between h-16">
+            
             {/* left: logo */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <a
                 href="/"
-                className="flex items-center text-xl font-bold text-gray-800"
+                className="flex items-center text-xl text-gray-800"
               >
-                <img src="/logo22.svg" alt="logo" className="w-14 h-14" />
+                {/* Tối ưu kích thước logo trên md */}
+                <img src="/logo22.svg" alt="logo" className="w-10 h-10 md:w-14 md:h-14" />
                 KPPaint
               </a>
             </div>
 
-            {/* center: rounded orange nav - ID cho logic click ngoài */}
+            {/* center: rounded orange nav - FIX LỖI 2: Menu Phình ra */}
             <div
-              className="flex-1 flex justify-center px-4"
+              // Bỏ flex-1. Dùng grow-0 shrink-0 để khối menu chỉ chiếm đúng kích thước nội dung.
+              className="flex justify-center grow-0 shrink-0" 
               id="sticky-nav-menu"
             >
-              <div className="bg-orange-200 rounded-sm px-8 py-2 shadow-md">
-                <nav className="flex gap-6 items-center text-gray-800 text-sm">
+              {/* Giảm nhẹ padding ngang trên tablet và tăng trên desktop */}
+              <div className="bg-orange-200 rounded-sm px-4 md:px-4 lg:px-8 py-2 shadow-md">
+                {/* Tối ưu khoảng cách và font trên tablet */}
+                <nav className="flex gap-3 md:gap-4 lg:gap-6 items-center text-gray-800 text-xs md:text-sm">
                   {items.map((label) => {
                     const hasDropdown = isDropdown(label);
                     const isActive = openDropdown === label;
@@ -251,7 +260,8 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
 
                           {/* Menu thả xuống */}
                           <div
-                            className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-30 ${
+                            // Tối ưu chiều rộng dropdown trên tablet
+                            className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-36 md:w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-30 ${
                               isActive ? "block" : "hidden"
                             }`}
                           >
@@ -262,7 +272,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                                 key={item.label}
                                 href={item.path}
                                 onClick={() => setOpenDropdown(null)} // Đóng menu sau khi nhấp
-                                className="block px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
+                                className="block px-3 md:px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
                               >
                                 {item.label}
                               </a>
@@ -289,17 +299,18 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
             </div>
 
             {/* right: search box and icons */}
-            <div className="flex items-center gap-3 text-gray-600">
-              {/* Search form*/}
+            <div className="flex items-center gap-2 md:gap-3 text-gray-600">
+              {/* Search form (Ẩn trên tablet, chỉ hiện trên desktop (lg)) */}
               <form
                 onSubmit={(e) => e.preventDefault()}
-                className="relative"
+                className="relative hidden lg:block" 
                 aria-label="search-form"
               >
                 <input
                   type="search"
                   placeholder="Tìm kiếm sản phẩm."
-                  className="w-64 md:w-80 text-sm placeholder-gray-400 bg-white border border-gray-200 rounded-lg py-2 px-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  // Tối ưu chiều rộng trên desktop
+                  className="w-48 lg:w-64 text-sm placeholder-gray-400 bg-white border border-gray-200 rounded-lg py-2 px-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
                 />
                 {/* search icon */}
                 <img
@@ -308,6 +319,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
                 />
               </form>
+              
               {/*Cart*/}
               <button
                 aria-label="cart"
@@ -315,10 +327,8 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               >
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
               </button>
-              {/* User */}
-              {/* <button aria-label="user" className="p-1 rounded hover:bg-gray-100">
-                  <img src={userIcon} alt="user" className="w-5 h-5" />
-                </button> */}
+              
+              {/* User / Sign In */}
               <div>
                 {isLoading ? (
                   // Loading state
@@ -347,7 +357,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                     {showUserMenu && (
                       <div
                         ref={menuRef}
-                        className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
+                        className="absolute right-0 mt-2 w-64 md:w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
                         role="menu"
                         aria-orientation="vertical"
                       >
@@ -366,7 +376,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                         >
                           Đơn hàng
                         </a>
-                        {/* ✅ Chỉ hiển thị nếu role là admin */}
+                        {/* Chỉ hiển thị nếu role là admin */}
                         {user.role === "admin" && (
                           <a
                             href="/quan-ly"
@@ -390,7 +400,8 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                   /* KHỐI 2: HIỂN THỊ KHI CHƯA ĐĂNG NHẬP (user không tồn tại) */
                   <a
                     href="/signin"
-                    className="px-4 py-2 text-sm font-medium text-white bg-orange-200 rounded-lg shadow-lg hover:bg-orange-300 transition-colors duration-200"
+                    // Màu cam đậm hơn để nổi bật hơn
+                    className="px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-medium text-white bg-orange-200 rounded-lg shadow-lg hover:bg-orange-300 transition-colors duration-200"
                   >
                     Đăng nhập
                   </a>

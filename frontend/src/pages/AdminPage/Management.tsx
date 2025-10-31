@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
@@ -114,7 +114,8 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [allItems, setAllItems] = useState<ProductItem[]>([]);
   const [page, setPage] = useState<number>(1);
-  const PAGE_SIZE = 7;
+  // Số sản phẩm mỗi trang trong bảng quản trị
+  const PAGE_SIZE = 6;
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState<number>(0);
@@ -128,12 +129,18 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     null
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const start = (page - 1) * PAGE_SIZE;
   const displayedItems = allItems.slice(start, start + PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
 
   const goToPage = (n: number) => setPage(Math.min(Math.max(1, n), totalPages));
+
+  // Nếu dữ liệu thay đổi làm giảm tổng số trang, đảm bảo trang hiện tại hợp lệ
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages]);
 
   const resetForm = () => {
     setName("");
@@ -250,55 +257,53 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-lg">
-        Danh sách sản phẩm (tổng {allItems.length})
-      </h3>
+  // Form
+  const renderForm = (title: string) => {
+    return (
+      <div className="p-6 border rounded-lg bg-white shadow-sm mb-6">
+        <h3 className="font-bold text-xl mb-4 text-orange-600">{title}</h3>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 space-y-3">
+            <input
+              className="w-full border rounded px-3 py-3"
+              placeholder="Tên sản phẩm"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              type="number"
+              className="w-full border rounded px-3 py-3"
+              placeholder="Giá (VND)"
+              value={price}
+              onChange={(e) => setPrice(Number(e.target.value))}
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full border rounded px-3 py-3"
+            >
+              <option value="">-- Chọn danh mục --</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <textarea
+              className="w-full border rounded px-3 py-3"
+              placeholder="Mô tả"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
 
-      {editingId && (
-        <div className="p-6 border rounded-lg bg-white shadow-sm">
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className="flex-1 space-y-3">
-              <input
-                className="w-full border rounded px-3 py-3"
-                placeholder="Tên sản phẩm"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <input
-                type="number"
-                className="w-full border rounded px-3 py-3"
-                placeholder="Giá (VND)"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-              />
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full border rounded px-3 py-3"
-              >
-                <option value="">-- Chọn danh mục --</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                className="w-full border rounded px-3 py-3"
-                placeholder="Mô tả"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Hình ảnh
-                </label>
+            <div>
+              <label className="block text-sm font-medium mb-1">Hình ảnh</label>
+              <div className="flex items-center gap-3">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0] ?? null;
                     if (file) {
@@ -308,51 +313,102 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                     }
                   }}
                 />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={resetForm}>
-                  Hủy
+                <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                  Chọn ảnh
                 </Button>
-                <Button onClick={submit} disabled={isLoading}>
-                  {isLoading ? "Đang lưu..." : "Lưu"}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                    // không xóa oldImage nếu đang sửa và chưa chọn ảnh mới
+                    if (!editingId) setOldImage(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  disabled={!imageFile && !imagePreview && !oldImage}
+                >
+                  Xóa
                 </Button>
+                <span className="text-sm text-gray-600 truncate max-w-[240px]">
+                  {imageFile?.name || (oldImage ? "Đang dùng ảnh hiện tại" : "Chưa chọn ảnh")}
+                </span>
               </div>
             </div>
 
-            <div>
-              {imagePreview ? (
-                // 🖼 Nếu vừa chọn ảnh mới
-                <img
-                  src={imagePreview}
-                  alt="preview"
-                  className="w-40 h-40 object-cover rounded border"
-                />
-              ) : oldImage ? (
-                // 🧾 Nếu có ảnh cũ trong DB
-                <img
-                  src={getImageUrl(oldImage)}
-                  alt="current"
-                  className="w-40 h-40 object-cover rounded border"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src =
-                      "https://placehold.co/160x160/CCCCCC/333333?text=No+Image";
-                  }}
-                />
-              ) : (
-                // 🚫 Không có ảnh
-                <div className="w-40 h-40 border flex items-center justify-center text-gray-400">
-                  Chưa có ảnh
-                </div>
-              )}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setName("");
+                  setPrice(0);
+                  setCategory("");
+                  setDescription("");
+                  setImageFile(null);
+                  setImagePreview(null);
+                  setOldImage(null);
+                  setEditingId(null);
+                  setEditingProduct(null);
+                  onParentClose && onParentClose();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button onClick={submit} disabled={isLoading}>
+                {isLoading ? "Đang lưu..." : "Lưu"}
+              </Button>
             </div>
           </div>
+
+          <div>
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt="preview"
+                className="w-40 h-40 object-cover rounded border"
+              />
+            ) : oldImage ? (
+              <img
+                src={getImageUrl(oldImage)}
+                alt="current"
+                className="w-40 h-40 object-cover rounded border"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    "https://placehold.co/160x160/CCCCCC/333333?text=No+Image";
+                }}
+              />
+            ) : (
+              <div className="w-40 h-40 border flex items-center justify-center text-gray-400">
+                Chưa có ảnh
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Add form (from parent 'Thêm') when not editing */}
+      {openFromParent && !editingId && renderForm("Thêm Sản Phẩm Mới")}
+
+      {/* Edit form */}
+      {editingId && renderForm(`Chỉnh Sửa: ${editingProduct?.name || "Sản phẩm"}`)}
+
+      {/* Only show table header when not in any form */}
+      {!openFromParent && !editingId && (
+        <h3 className="font-semibold text-lg">
+          Danh sách sản phẩm (tổng {allItems.length})
+        </h3>
       )}
 
+      {/* Legacy duplicate edit form removed in favor of unified FormContent above */}
+
       {/* Table */}
-      <div className="p-4 border rounded-lg bg-white">
+  {!openFromParent && !editingId && (
+  <div className="p-4 border rounded-lg bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-600">
@@ -385,7 +441,45 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
             ))}
           </tbody>
         </table>
-      </div>
+
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Range info */}
+            <div className="text-sm text-gray-600">
+              Hiển thị {allItems.length === 0 ? 0 : start + 1}–
+              {Math.min(start + PAGE_SIZE, allItems.length)} trong tổng số {allItems.length}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => goToPage(page - 1)}
+              >
+                Trước
+              </Button>
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <Button
+                  key={n}
+                  variant={n === page ? "default" : "outline"}
+                  onClick={() => goToPage(n)}
+                >
+                  {n}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                disabled={page === totalPages}
+                onClick={() => goToPage(page + 1)}
+              >
+                Tiếp
+              </Button>
+            </div>
+          </div>
+        )}
+  </div>
+  )}
     </div>
   );
 };
