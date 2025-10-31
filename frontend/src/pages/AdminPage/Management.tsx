@@ -35,31 +35,41 @@ const Management: React.FC = () => {
       <div className="w-full bg-white overflow-hidden">
         <div className="flex min-h-screen">
           {/* Sidebar */}
-          <aside className="w-64 border-r p-6 bg-white h-screen sticky top-0">
-            <h3 className="text-lg font-semibold mb-4">Quản trị</h3>
-            <nav className="flex flex-col space-y-2">
-              {sections.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setActive(s.id)}
-                  className={`text-left px-3 py-2 rounded-lg transition-colors ${
-                    active === s.id
-                      ? "bg-orange-50 text-orange-600 font-semibold"
-                      : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </nav>
+          <aside className="w-64 border-r p-6 bg-white h-screen sticky top-0 flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Quản trị</h3>
+              <nav className="flex flex-col space-y-2">
+                {sections.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setActive(s.id)}
+                    className={`text-left px-3 py-2 rounded-lg transition-colors ${
+                      active === s.id
+                        ? "bg-orange-50 text-orange-600 font-semibold"
+                        : "hover:bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            <div className="mt-6">
+              <Button onClick={() => window.history.back()} className="w-full">
+                Quay lại
+              </Button>
+            </div>
           </aside>
 
           {/* Main */}
           <main className="flex-1 p-8 min-h-screen">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
-                {sections.find((s) => s.id === active)?.label}
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold">
+                  {sections.find((s) => s.id === active)?.label}
+                </h2>
+              </div>
 
               <Button
                 onClick={() => setParentModalFor(active)}
@@ -335,7 +345,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                 <td className="py-3">{it.category?.name || "—"}</td>
                 <td className="py-3">
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => openEdit(it._id)}>
+                    <Button onClick={() => openEdit(it._id)}>
                       Sửa
                     </Button>
                     <Button

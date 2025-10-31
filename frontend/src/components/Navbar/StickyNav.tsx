@@ -366,6 +366,16 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                         >
                           Đơn hàng
                         </a>
+                        {/* ✅ Chỉ hiển thị nếu role là admin */}
+                        {user.role === "admin" && (
+                          <a
+                            href="/quan-ly"
+                            className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
+                            role="menuitem"
+                          >
+                            Trang quản lý
+                          </a>
+                        )}
                         <button
                           onClick={handleLogout}
                           className="w-full text-left px-4 py-3 text-red-600 bg-red-50 hover:bg-red-100 transition-colors border-t border-gray-200"

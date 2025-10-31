@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "./ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +19,11 @@ const signUpSchema = z.object({
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   email: z.email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+  confirmPassword: z.string().min(6, "Vui lòng nhập lại mật khẩu"),
+})
+.refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirmPassword"], // chỉ định lỗi hiển thị ở confirmPassword
 });
 
 
@@ -97,12 +101,13 @@ export function SignupForm({
     }
   };
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 border-border">
-        <CardContent className="grid p-0 md:grid-cols-2">
+      <Card className="overflow-hidden p-0 border-border translate-y-5">
+        <CardContent className="grid md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-6">
               {/* header - logo */}
@@ -119,10 +124,7 @@ export function SignupForm({
               {/* họ và tên */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="lastname" className="block text-sm">
-                    Họ
-                  </Label>
-                  <Input type="text" id="lastname" {...register("lastname")} className="border-gray-500"/>
+                  <Input type="text" id="lastname" placeholder="Họ" {...register("lastname")} className="border-gray-500"/>
                   {errors.lastname && (
                     <p className="text-destructive text-sm">
                       {errors.lastname.message}
@@ -130,12 +132,10 @@ export function SignupForm({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="firstname" className="block text-sm">
-                    Tên
-                  </Label>
                   <Input
                     type="text"
                     id="firstname"
+                    placeholder="Tên"
                     {...register("firstname")}
                     className="border-gray-500"
                   />
@@ -149,13 +149,10 @@ export function SignupForm({
 
               {/* username */}
               <div className="flex flex-col gap-3">
-                <Label htmlFor="username" className="block text-sm">
-                  Tên đăng nhập
-                </Label>
                 <Input
                   type="text"
                   id="username"
-                  placeholder="kppaint"
+                  placeholder="Tên đăng nhập"
                   {...register("username")}
                   className="border-gray-500"
                 />
@@ -165,15 +162,13 @@ export function SignupForm({
                   </p>
                 )}
               </div>
+
               {/* email */}
               <div className="flex flex-col gap-3">
-                <Label htmlFor="email" className="block text-sm">
-                  Email
-                </Label>
                 <Input
                   type="text"
                   id="email"
-                  placeholder="k@gmail.com"
+                  placeholder="Email (vd:k@gmail.com)"
                   {...register("email")}
                   className="border-gray-500"
                 />
@@ -186,13 +181,11 @@ export function SignupForm({
 
               {/* password */}
               <div className="flex flex-col gap-3">
-                <Label htmlFor="password" className="block text-sm">
-                  Mật khẩu mới
-                </Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
                     id="password"
+                    placeholder="Mật khẩu"
                     {...register("password")}
                     className="pr-10 border-gray-500"
                      autoComplete="new-password"
@@ -214,6 +207,38 @@ export function SignupForm({
                 {errors.password && (
                   <p className="text-destructive text-sm">
                     {errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              {/* confirm password */}
+              <div className="flex flex-col gap-3">
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    placeholder="Nhập lại mật khẩu"
+                    {...register("confirmPassword")}
+                    className="pr-10 border-gray-500"
+                    autoComplete="new-password"
+                    data-password-toggle="true"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    onClick={() => setShowConfirmPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-destructive text-sm">
+                    {errors.confirmPassword.message}
                   </p>
                 )}
               </div>

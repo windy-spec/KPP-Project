@@ -20,6 +20,11 @@ const changePassSchema = z.object({
     .string()
     .length(6, "Mã OTP phải gồm đúng 6 ký tự")
     .regex(/^\d+$/, "Mã OTP chỉ được chứa chữ số"),
+  confirmPassword: z.string().min(6, "Vui lòng nhập lại mật khẩu"),
+})
+.refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirmPassword"], // chỉ định lỗi hiển thị ở confirmPassword
 });
 
 type ChangePassFormValues = z.infer<typeof changePassSchema>;
@@ -83,6 +88,7 @@ export function ChangepassForm({
   };
 
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <div
@@ -161,6 +167,40 @@ export function ChangepassForm({
                 {errors.password && (
                   <p className="text-destructive text-sm">
                     {errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              {/* confirm password */}
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="confirmPassword" className="block text-sm">
+                  Nhập lại mật khẩu
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    {...register("confirmPassword")}
+                    className="pr-10 border-gray-500"
+                    autoComplete="new-password"
+                    data-password-toggle="true"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    onClick={() => setShowConfirmPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-destructive text-sm">
+                    {errors.confirmPassword.message}
                   </p>
                 )}
               </div>
