@@ -10,6 +10,7 @@ type Category = {
   name: string;
   productCount?: number;
 };
+
 type Product = {
   _id?: string;
   id?: string;
@@ -18,6 +19,7 @@ type Product = {
   image_url?: string;
   quantity?: number;
   is_Active?: boolean;
+  category?: { _id?: string; name?: string };
 };
 
 function useQuery() {
@@ -34,9 +36,9 @@ const Products: React.FC = () => {
   const [sortingType, setSortingType] = useState<string>(
     query.get("sort") || "null"
   );
-  // price filter values are in VND
-  const PRICE_MIN = 0; // 0 VND
-  const PRICE_MAX = 5000000; // 5.000.000 VND
+
+  const PRICE_MIN = 0;
+  const PRICE_MAX = 5000000;
   const PRICE_STEP = 50000;
 
   const [price, setPrice] = useState<number | null>(
@@ -55,7 +57,6 @@ const Products: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
   const [categories, setCategories] = useState<Category[]>([]);
 
   const productRef = useRef<HTMLDivElement | null>(null);
@@ -67,25 +68,27 @@ const Products: React.FC = () => {
     if (price !== null) params.set("price", String(price));
     if (sortingType && sortingType !== "null") params.set("sort", sortingType);
     if (activeCategory) params.set("categories", activeCategory);
-    return "/api/products?" + params.toString();
+    return "/api/product?" + params.toString();
   };
 
+  // 🟢 Lấy danh mục
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await axios.get("/api/categories?limit=20&page=1");
+        const res = await axios.get("/api/category?limit=20&page=1");
         const data = res.data;
         const list: Category[] = Array.isArray(data)
           ? data
           : data?.data || data?.categories || [];
         setCategories(list);
-      } catch (err) {
-        // ignore silently for categories
+      } catch {
+        /* ignore silently */
       }
     };
     fetchCategories();
   }, []);
 
+  // 🟢 Lấy sản phẩm
   useEffect(() => {
     let mounted = true;
     const fetchProducts = async () => {
@@ -108,21 +111,19 @@ const Products: React.FC = () => {
             Math.max(1, Math.ceil((meta?.total || list.length) / limit))
         );
       } catch (err: any) {
-        setError(err?.message || "Failed to load products");
+        setError(err?.message || "Không tải được sản phẩm");
       } finally {
         if (mounted) setLoading(false);
       }
     };
-
     fetchProducts();
-
     return () => {
       mounted = false;
     };
   }, [currentPage, price, sortingType, activeCategory]);
 
+  // 🟢 Cập nhật URL khi thay đổi filter
   useEffect(() => {
-    // update URL query string for shareable links
     const params = new URLSearchParams(location.search);
     params.set("page", String(currentPage));
     if (price !== null) params.set("price", String(price));
@@ -131,6 +132,7 @@ const Products: React.FC = () => {
     else params.delete("sort");
     if (activeCategory) params.set("categories", activeCategory);
     else params.delete("categories");
+
     navigate(
       { pathname: location.pathname, search: params.toString() },
       { replace: true }
@@ -151,7 +153,7 @@ const Products: React.FC = () => {
 
   const handleClearFilter = () => {
     setPrice(null);
-    setTempPrice(100);
+    setTempPrice(PRICE_MIN);
     setActiveCategory(null);
     setSortingType("null");
     setCurrentPage(1);
@@ -173,15 +175,17 @@ const Products: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* === SIDEBAR === */}
         <aside className="lg:col-span-1">
           <div className="bg-white p-6 shadow-sm border">
+            {/* Lọc theo giá */}
             <div className="mb-8">
               <h3 className="text-mid-night font-semibold text-xl mb-4">
-                Lọc Tiền
+                Lọc theo giá
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Giá (max)</label>
+                  <label className="text-sm font-medium">Giá (tối đa)</label>
                   <span className="text-sm text-gray-600">
                     {formatVND(tempPrice)}
                   </span>
@@ -203,7 +207,7 @@ const Products: React.FC = () => {
                         <strong>{formatVND(price)}</strong>
                       </>
                     ) : (
-                      "Không có filter được áp dụng"
+                      "Không có bộ lọc giá"
                     )}
                   </p>
                   <Button
@@ -220,19 +224,28 @@ const Products: React.FC = () => {
 
             <hr className="my-5 border-gray-200" />
 
+            {/* Danh mục */}
             <div>
               <h3 className="text-xl text-mid-night font-semibold mb-4">
                 Danh mục
               </h3>
               <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
                 {categories.map((cat) => {
-                  const isActive =
-                    activeCategory?.toLowerCase() === cat.name.toLowerCase();
+                  const isActive = activeCategory === cat._id;
+
+                  console.log("[Category Check]", {
+                    activeCategory,
+                    catId: cat._id,
+                    catName: cat.name,
+                    isActive,
+                  });
+
                   return (
                     <li
                       key={cat._id || cat.id}
                       onClick={() => {
-                        setActiveCategory(cat.name);
+                        if (isActive) setActiveCategory(null);
+                        else if (cat._id) setActiveCategory(cat._id);
                         setCurrentPage(1);
                       }}
                       className={`flex items-center justify-between group cursor-pointer transition-colors ${
@@ -259,16 +272,18 @@ const Products: React.FC = () => {
           </div>
         </aside>
 
+        {/* === PRODUCT LIST === */}
         <section className="lg:col-span-3 space-y-8" ref={productRef}>
+          {/* Filter summary */}
           {price !== null && (
             <div className="bg-gray-50 p-4 rounded-lg border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">
-                    Filter Đang Áp Dụng:
+                    Bộ lọc đang áp dụng:
                   </span>
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    Giá: Dưới {price !== null ? formatVND(price) : ""}
+                    Giá: Dưới {formatVND(price)}
                   </span>
                 </div>
                 <Button
@@ -283,6 +298,7 @@ const Products: React.FC = () => {
             </div>
           )}
 
+          {/* Layout toggle + sorting */}
           <div className="flex justify-between items-center gap-4">
             <div className="flex items-center gap-2">
               <button
@@ -314,7 +330,7 @@ const Products: React.FC = () => {
               <div className="px-5 py-3 bg-gray-100 border border-gray-200 shadow-sm cursor-pointer min-w-40 transition-colors">
                 <div className="flex justify-center items-center gap-x-3">
                   <span className="text-sm text-gray-900">
-                    {sortingType === "null" ? "Default Sorting" : sortingType}
+                    {sortingType === "null" ? "Mặc định" : sortingType}
                   </span>
                   <ChevronDown className="w-5 h-5" />
                 </div>
@@ -322,14 +338,15 @@ const Products: React.FC = () => {
             </div>
           </div>
 
+          {/* Product grid/list */}
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              <span className="ml-2">Loading sản phẩm...</span>
+              <span className="ml-2">Đang tải sản phẩm...</span>
             </div>
           ) : error ? (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-600">Lỗi loading sản phẩm: {error}</p>
+              <p className="text-red-600">Lỗi: {error}</p>
             </div>
           ) : (
             <div
@@ -349,13 +366,23 @@ const Products: React.FC = () => {
                     <div className="h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                       {p.image_url ? (
                         <img
-                          src={p.image_url}
+                          src={
+                            p.image_url.startsWith("http")
+                              ? p.image_url
+                              : `http://localhost:5001${p.image_url}`
+                          }
                           alt={p.name}
                           className="object-contain h-full w-full"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src =
+                              "https://placehold.co/200x200/CCCCCC/333333?text=No+Image";
+                          }}
                         />
                       ) : (
                         <div className="text-sm text-slate-400">No image</div>
                       )}
+
                       {p.quantity !== undefined && p.quantity <= 0 && (
                         <div className="absolute left-2 top-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
                           Hết hàng
@@ -383,7 +410,7 @@ const Products: React.FC = () => {
             </div>
           )}
 
-          {/* Simple pagination controls */}
+          {/* Pagination */}
           <div className="flex items-center justify-center gap-2 mt-6">
             <Button
               variant="outline"

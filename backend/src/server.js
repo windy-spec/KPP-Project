@@ -24,11 +24,12 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/category", categoryRoute);
+app.use("/uploads", express.static("uploads"));
 app.use("/api/product", productRoute);
+app.use(express.json());
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 

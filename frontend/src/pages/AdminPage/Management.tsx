@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
+import Product from "../Product";
 
 const sections = [
   { id: "products", label: "Sản phẩm" },
@@ -9,7 +10,10 @@ const sections = [
   { id: "orders", label: "Đơn hàng" },
   { id: "users", label: "Người dùng" },
 ];
-
+const getImageUrl = (path?: string) => {
+  if (!path) return "";
+  return path.startsWith("http") ? path : `http://localhost:5001${path}`;
+};
 type AdminChildProps = { openFromParent?: boolean; onParentClose?: () => void };
 
 type ProductItem = {
@@ -118,9 +122,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [oldImage, setOldImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editInline, setEditInline] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const start = (page - 1) * PAGE_SIZE;
@@ -136,19 +142,17 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     setDescription("");
     setImageFile(null);
     setImagePreview(null);
+    setOldImage(null);
     setEditingId(null);
-    setIsModalOpen(false);
-    setEditInline(false);
+    setEditingProduct(null);
   };
 
-  /* 🧩 Fetch Categories */
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch("http://localhost:5001/api/category");
         if (!res.ok) throw new Error("Lỗi tải danh mục");
         const data = await res.json();
-        console.log("📂 Categories API:", data);
         setCategories(data);
       } catch (err) {
         console.error(err);
@@ -157,21 +161,14 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     fetchCategories();
   }, []);
 
-  /* 🧩 Fetch Products */
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
       const response = await fetch("http://localhost:5001/api/product");
       if (!response.ok) throw new Error("Lỗi khi tải sản phẩm");
       const data = await response.json();
-      console.log("📦 Products API:", data);
-
       setAllItems(
-        Array.isArray(data)
-          ? data
-          : data.products
-          ? data.products
-          : data.data || []
+        Array.isArray(data) ? data : data.products || data.data || []
       );
     } catch (error) {
       console.error("API GET lỗi:", error);
@@ -185,7 +182,6 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     fetchProducts();
   }, []);
 
-  /* 🧩 Submit (POST / PUT) */
   const submit = async () => {
     if (!name || !category) {
       toast.error("Vui lòng nhập đủ thông tin sản phẩm");
@@ -193,7 +189,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     }
 
     let endpoint = "http://localhost:5001/api/product";
-    let method = "POST";
+    let method: "POST" | "PUT" = "POST";
     let successMessage = "Thêm sản phẩm thành công";
 
     if (editingId) {
@@ -202,19 +198,16 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       successMessage = "Cập nhật sản phẩm thành công";
     }
 
-    console.log("📤 Gửi lên:", { name, price, category, description });
-
     setIsLoading(true);
     try {
       const formData = new FormData();
       formData.append("name", name);
       formData.append("price", price.toString());
-      formData.append("category", category); // category là _id
+      formData.append("category", category);
       formData.append("description", description);
       if (imageFile) formData.append("image", imageFile);
 
       const res = await fetch(endpoint, { method, body: formData });
-      console.log("🔁 status:", res.status);
       if (!res.ok) throw new Error("Lỗi thêm/cập nhật sản phẩm");
 
       await fetchProducts();
@@ -228,21 +221,20 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     }
   };
 
-  /* 🧩 Edit */
   const openEdit = (id: string) => {
     const it = allItems.find((i) => i._id === id);
     if (!it) return;
     setEditingId(id);
+    setEditingProduct(it);
     setName(it.name);
     setPrice(it.price);
     setCategory(it.category?._id || "");
     setDescription(it.description || "");
-    setImagePreview(it.image_url || null);
+    setOldImage(it.image_url ? `http://localhost:5001${it.image_url}` : null);
+    setImagePreview(null);
     setImageFile(null);
-    setEditInline(true);
   };
 
-  /* 🧩 Delete */
   const remove = async (id: string) => {
     if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này không?")) return;
     try {
@@ -264,8 +256,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
         Danh sách sản phẩm (tổng {allItems.length})
       </h3>
 
-      {/* Form Edit Inline */}
-      {editInline && (
+      {editingId && (
         <div className="p-6 border rounded-lg bg-white shadow-sm">
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="flex-1 space-y-3">
@@ -300,21 +291,57 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Hình ảnh
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    if (file) {
+                      setImageFile(file);
+                      setImagePreview(URL.createObjectURL(file));
+                      setOldImage(null);
+                    }
+                  }}
+                />
+              </div>
+
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={resetForm}>
                   Hủy
                 </Button>
-                <Button onClick={submit}>Lưu</Button>
+                <Button onClick={submit} disabled={isLoading}>
+                  {isLoading ? "Đang lưu..." : "Lưu"}
+                </Button>
               </div>
             </div>
+
             <div>
               {imagePreview ? (
+                // 🖼 Nếu vừa chọn ảnh mới
                 <img
                   src={imagePreview}
                   alt="preview"
                   className="w-40 h-40 object-cover rounded border"
                 />
+              ) : oldImage ? (
+                // 🧾 Nếu có ảnh cũ trong DB
+                <img
+                  src={getImageUrl(oldImage)}
+                  alt="current"
+                  className="w-40 h-40 object-cover rounded border"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src =
+                      "https://placehold.co/160x160/CCCCCC/333333?text=No+Image";
+                  }}
+                />
               ) : (
+                // 🚫 Không có ảnh
                 <div className="w-40 h-40 border flex items-center justify-center text-gray-400">
                   Chưa có ảnh
                 </div>
@@ -324,7 +351,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
         </div>
       )}
 
-      {/* Bảng danh sách */}
+      {/* Table */}
       <div className="p-4 border rounded-lg bg-white">
         <table className="w-full text-sm">
           <thead>
@@ -345,9 +372,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                 <td className="py-3">{it.category?.name || "—"}</td>
                 <td className="py-3">
                   <div className="flex gap-2">
-                    <Button onClick={() => openEdit(it._id)}>
-                      Sửa
-                    </Button>
+                    <Button onClick={() => openEdit(it._id)}>Sửa</Button>
                     <Button
                       variant="destructive"
                       onClick={() => remove(it._id)}
@@ -366,10 +391,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
 };
 
 /* ---------------------- CategoriesAdmin ---------------------- */
-const CategoriesAdmin: React.FC<AdminChildProps> = ({
-  openFromParent,
-  onParentClose,
-}) => {
+const CategoriesAdmin: React.FC<AdminChildProps> = () => {
   return (
     <div>
       <h3>Danh mục (Placeholder)</h3>

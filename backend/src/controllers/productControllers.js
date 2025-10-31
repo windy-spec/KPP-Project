@@ -6,16 +6,63 @@ import mongoose from "mongoose";
 // READ PRODUCT
 export const getAllProduct = async (req, res) => {
   try {
-    const product = await Product.find()
-      .populate("category", "name description")
-      .sort({ name: 1 });
-    return res.status(200).json(product);
+    const {
+      page = 1,
+      limit = 9,
+      sort = "null",
+      price,
+      categories, // query ?categories=<id>
+    } = req.query;
+
+    const query = {};
+
+    // 🟢 Nếu có filter danh mục
+    if (categories) {
+      query.category = categories;
+    }
+
+    // 🟢 Nếu có filter giá (ví dụ ?price=100000)
+    if (price) {
+      query.price = { $lte: Number(price) };
+    }
+
+    // 🟢 Đếm tổng số sản phẩm phù hợp filter
+    const total = await Product.countDocuments(query);
+
+    // 🟢 Sắp xếp
+    let sortOptions = {};
+    if (sort === "price_asc") sortOptions = { price: 1 };
+    else if (sort === "price_desc") sortOptions = { price: -1 };
+    else if (sort === "newest") sortOptions = { createdAt: -1 };
+
+    // 🟢 Phân trang
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // 🟢 Lấy dữ liệu có populate category
+    const products = await Product.find(query)
+      .populate("category", "name")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(Number(limit));
+
+    res.status(200).json({
+      success: true,
+      meta: {
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: Number(page),
+      },
+      products,
+    });
   } catch (error) {
-    console.log("Lỗi khi gọi getAllProduct: ", error);
-    return res.status(505).json({ message: "Lỗi hệ thống" });
+    console.error("Lỗi getAllProducts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách sản phẩm",
+      error: error.message,
+    });
   }
 };
-
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
   try {
@@ -76,7 +123,7 @@ export const updateProduct = async (req, res) => {
     const { name, category, price, quantity, description, is_Active } =
       req.body;
 
-    // Kiểm tra trùng tên
+    // ✅ Kiểm tra trùng tên (nếu có đổi tên)
     if (name && name !== product.name) {
       const nameExists = await Product.findOne({ name });
       if (nameExists) {
@@ -87,7 +134,7 @@ export const updateProduct = async (req, res) => {
       product.name = name;
     }
 
-    // Kiểm tra danh mục
+    // ✅ Kiểm tra danh mục
     if (category) {
       if (!mongoose.Types.ObjectId.isValid(category)) {
         return res.status(400).json({ message: "Category ID không hợp lệ." });
@@ -99,18 +146,23 @@ export const updateProduct = async (req, res) => {
       product.category = category;
     }
 
+    // ✅ Gán các giá trị khác
     if (price !== undefined) product.price = price;
     if (quantity !== undefined) product.quantity = quantity;
     if (description) product.description = description;
     if (typeof is_Active !== "undefined") product.is_Active = is_Active;
 
+    // ✅ Cập nhật ảnh (nếu có file mới)
     if (req.file) {
-      product.image_url = `/uploads/${req.file.filename}`;
+      const imagePath = `/uploads/${req.file.filename}`;
+      const fullImageUrl = `${req.protocol}://${req.get("host")}${imagePath}`;
+      product.image_url = fullImageUrl;
     }
 
+    // ✅ Lưu thay đổi
     const updated = await product.save();
-    console.log("✅ Đã cập nhật:", updated);
 
+    console.log("✅ Đã cập nhật:", updated);
     res.status(200).json({
       message: "Cập nhật sản phẩm thành công!",
       product: updated,
