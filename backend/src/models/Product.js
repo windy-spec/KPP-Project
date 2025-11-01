@@ -1,37 +1,13 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
-const ProductSchema = mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-    },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    price: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    image_url: {
-      type: String,
-    },
-    is_Active: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
-const Product = mongoose.model("Product", ProductSchema);
-export default Product;
+const ProductSchema = new mongoose.Schema({
+  name: String,
+  price: Number,
+  category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+  description: String,
+  quantity: Number,
+  avatar: String, // 🟢 ảnh đại diện chính
+  images: [String], // 🟡 các ảnh phụ
+});
+
+export default mongoose.model("Product", ProductSchema);

@@ -42,7 +42,7 @@ const DiscountSchema = mongoose.Schema({
     type: Date,
     default: function () {
       const getDateSale = this.start_sale;
-      const upOneDay = new Date(getDateSale() + 1);
+      const upOneDay = new Date(getDateSale() + 24 * 60 * 60 * 1000);
       return upOneDay;
     },
     required: false,
@@ -83,5 +83,5 @@ DiscountSchema.pre(
   }
 );
 
-const Discount = mongoose.Schema("Discount", DiscountSchema);
+const Discount = mongoose.model("Discount", DiscountSchema);
 export default Discount;

@@ -10,6 +10,7 @@ type Product = {
   price?: number;
   image?: string;
   image_url?: string;
+  images?: string[];
   description?: string;
   quantity?: number;
   is_Active?: boolean;
@@ -22,12 +23,13 @@ type PaginationState = {
   totalProductsCount: number;
 };
 
+// 🧩 Backend base URL (đổi khi deploy)
+const BASE_URL = "http://localhost:5001";
+
 const HomePageProduct: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Khai báo useRef bên trong component
   const productHeaderRef = useRef<HTMLHeadingElement>(null);
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -36,26 +38,76 @@ const HomePageProduct: React.FC = () => {
     totalProductsCount: 0,
   });
 
+  // 🌐 Chuẩn hoá đường dẫn ảnh (xử lý cả _temp)
+  // --- Chuẩn hoá đường dẫn ảnh ---
+  const normalizeImageUrl = (
+    img?: string,
+    img_url?: string
+  ): string | undefined => {
+    if (!img && !img_url) return undefined;
+
+    let path = img_url || img || "";
+
+    // 🔸 Nếu có đường dẫn tuyệt đối kiểu C:\Users\...\public\uploads\A968.jpg
+    if (path.includes("public")) {
+      path = path.split("public")[1]; // => /uploads/A968.jpg hoặc /uploads/_temp/A968.jpg
+    }
+
+    // 🔸 Chuyển dấu "\" → "/"
+    path = path.replace(/\\/g, "/");
+
+    // 🔸 Đảm bảo bắt đầu bằng "/public/uploads"
+    if (!path.startsWith("/public/")) {
+      // nếu chỉ có "/uploads/..." thì thêm /public ở đầu
+      if (path.startsWith("/uploads/")) {
+        path = "/public" + path;
+      } else if (!path.startsWith("/public/uploads/")) {
+        path = "/public/uploads/" + path.replace(/^\/+/, "");
+      }
+    }
+
+    // 🔸 Nếu đã là URL đầy đủ thì giữ nguyên
+    if (/^https?:\/\//.test(path)) return path;
+
+    // 🔸 Trả về URL đầy đủ
+    return `${BASE_URL}${path}`;
+  };
+
+  // 🧠 Lấy danh sách sản phẩm
   const fetchProducts = useCallback(async (page: number) => {
     try {
       setLoading(true);
-      // Gọi API với tham số page hiện tại
       const res = await axios.get(`/api/product/partition?page=${page}`);
-
       const data = res.data;
-      // Đảm bảo lấy đúng key 'products'
       const list: Product[] = data?.products || [];
 
-      setProducts(list);
-      // Cập nhật State phân trang từ dữ liệu trả về
+      console.log("📦 Dữ liệu gốc từ backend:", list);
+
+      // 🔹 Chuẩn hoá ảnh (ưu tiên images[0], image_url, image)
+      const normalized = list.map((p) => {
+        const rawImg =
+          (Array.isArray(p.images) && p.images.length > 0
+            ? p.images[0]
+            : undefined) ||
+          p.image_url ||
+          p.image;
+
+        return {
+          ...p,
+          image: normalizeImageUrl(rawImg),
+        };
+      });
+
+      console.log("🖼️ Sau khi normalize:", normalized);
+
+      setProducts(normalized);
       setPagination({
         currentPage: data?.currentPage || 1,
         totalPages: data?.totalPages || 1,
         totalProductsCount: data?.totalProducts || 0,
       });
     } catch (err: any) {
-      console.error("Failed to load products", err);
-      // Xử lý lỗi từ response backend hoặc lỗi mạng
+      console.error("❌ Lỗi load sản phẩm:", err);
       setError(
         err?.response?.data?.error || err.message || "Failed to load products"
       );
@@ -65,7 +117,6 @@ const HomePageProduct: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Gọi hàm fetch khi component mount và khi currentPage thay đổi
     fetchProducts(pagination.currentPage);
   }, [pagination.currentPage, fetchProducts]);
 
@@ -76,10 +127,8 @@ const HomePageProduct: React.FC = () => {
       page !== pagination.currentPage
     ) {
       setPagination((prev) => ({ ...prev, currentPage: page }));
-
-      // LOGIC CUỘN TRANG VỪA PHẢI: Cuộn đến tiêu đề sản phẩm với offset nhỏ
       if (productHeaderRef.current) {
-        const yOffset = -50; // Offset 50px từ phía trên
+        const yOffset = -50;
         const y =
           productHeaderRef.current.getBoundingClientRect().top +
           window.scrollY +
@@ -132,7 +181,6 @@ const HomePageProduct: React.FC = () => {
 
   return (
     <section className="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-12">
-      {/* ⚠️ GẮN REF VÀO TIÊU ĐỀ SẢN PHẨM */}
       <h2
         ref={productHeaderRef}
         className="text-2xl font-bold mb-6 text-slate-800"
@@ -140,13 +188,13 @@ const HomePageProduct: React.FC = () => {
         Sản phẩm ({pagination.totalProductsCount})
       </h2>
 
-  {/* Mobile-first: 1 cột trên mobile, 2 cột trên tablet, 3 cột trên desktop */}
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {products.length === 0 && (
           <div className="col-span-full text-center py-10 text-gray-500">
             Không có sản phẩm nào để hiển thị.
           </div>
         )}
+
         {products
           .filter((p) => p.is_Active !== false)
           .map((p) => (
@@ -156,15 +204,12 @@ const HomePageProduct: React.FC = () => {
             >
               <Link to={`/san-pham/${p._id || p.id}`} className="block">
                 <div className="h-40 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                  {p.image_url || p.image ? (
+                  {p.image ? (
                     <img
-                      src={p.image_url || p.image}
+                      src={p.image}
                       alt={p.name}
                       className="object-contain h-full w-full p-2"
-                      // Fallback khi hình ảnh bị lỗi
-                      onError={(
-                        e: React.SyntheticEvent<HTMLImageElement, Event>
-                      ) => {
+                      onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = `https://placehold.co/300x200/CCCCCC/333333?text=${p.name.substring(
                           0,
@@ -189,7 +234,6 @@ const HomePageProduct: React.FC = () => {
                       ? formatVND(p.price)
                       : "Liên hệ"}
                   </div>
-                  {/* Link Xem chi tiết đã được sửa thành /san-pham/:id */}
                   <Link to={`/san-pham/${p._id || p.id}`}>
                     <Button
                       variant={"outline"}
@@ -204,10 +248,8 @@ const HomePageProduct: React.FC = () => {
           ))}
       </div>
 
-      {/* --- PHÂN TRANG (PAGINATION) --- */}
       {pagination.totalPages > 1 && (
         <div className="flex justify-center items-center space-x-2 mt-12">
-          {/* Nút Previous */}
           <Button
             onClick={() => handlePageChange(pagination.currentPage - 1)}
             disabled={pagination.currentPage === 1}
@@ -217,10 +259,8 @@ const HomePageProduct: React.FC = () => {
             Trước
           </Button>
 
-          {/* Các nút số trang */}
           {renderPaginationButtons()}
 
-          {/* Nút Next */}
           <Button
             onClick={() => handlePageChange(pagination.currentPage + 1)}
             disabled={pagination.currentPage === pagination.totalPages}
@@ -232,7 +272,6 @@ const HomePageProduct: React.FC = () => {
         </div>
       )}
 
-      {/* --- Xem tất cả sản phẩm --- */}
       <div className="mt-6 text-center">
         <Link to="/san-pham">
           <Button

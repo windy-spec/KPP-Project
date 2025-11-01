@@ -22,9 +22,14 @@ const invoiceItemSchema = new mongoose.Schema({
     default: 0,
   },
 });
+
 const invoiceSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     recipient_info: {
       name: {
         type: String,
@@ -57,14 +62,12 @@ const invoiceSchema = new mongoose.Schema(
       enum: ["PENDING", "PAID", "SHIPPED", "CANCELLED"],
       default: "PENDING",
     },
-
-    invoice_date: { 
+    invoice_date: {
       type: Date,
-       default: Date.now },
+      default: Date.now,
+    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 const invoice = mongoose.model("invoice", invoiceSchema);

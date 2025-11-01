@@ -1,31 +1,34 @@
 import express from "express";
-import multer from "multer";
-import path from "path";
+import { upload } from "../middlewares/upload.js";
 import {
   createProduct,
   deleteProduct,
   getAllProduct,
   getProdcutById,
-  partionPageProdcut,
+  partitionPageProduct,
   updateProduct,
 } from "../controllers/productControllers.js";
 
 const router = express.Router();
 
 // multer storage (save to public/uploads)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) =>
-    cb(null, path.join(process.cwd(), "public", "uploads")),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
-});
-const upload = multer({ storage });
 
-router.get("/partition", partionPageProdcut);
+const productUploadMiddleware = upload.fields([
+  { name: "avatar", maxCount: 1 },
+  { name: "images", maxCount: 10 },
+]);
+
+router.get("/partition", partitionPageProduct);
 router.get("/", getAllProduct);
-// accept multipart/form-data with field name 'image'
-// router.post("/", upload.single("image"), createProduct);
-router.post("/", createProduct);
-router.put("/:id", upload.single("image"), updateProduct);
+
+console.log("✅ productRoute loaded");
+
+// Áp dụng middleware chấp nhận nhiều trường cho POST
+router.post("/", productUploadMiddleware, createProduct);
+
+// 🚨 ĐÃ SỬA LỖI TẠI ĐÂY: Áp dụng middleware chấp nhận nhiều trường cho PUT
+router.put("/:id", productUploadMiddleware, updateProduct);
+
 router.delete("/:id", deleteProduct);
 router.get("/:id", getProdcutById);
 
