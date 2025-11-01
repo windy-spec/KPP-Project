@@ -301,7 +301,7 @@ export const partitionPageProduct = async (req, res) => {
 
     const products = await Product.find()
       .populate("category", "name")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: 1 })
       .skip(skip)
       .limit(limit);
 
