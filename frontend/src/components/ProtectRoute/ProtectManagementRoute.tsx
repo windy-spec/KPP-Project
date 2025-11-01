@@ -20,8 +20,9 @@ const ProtectManagementRoute: React.FC<Props> = ({ children }) => {
           return;
         }
         const res = await apiClient.get("/users/me");
-        const user = res.data;
-        if (user?.role === "admin") {
+        const data = res.data as any;
+        const role = data?.user?.role ?? data?.role;
+        if (role === "admin") {
           setAllowed(true);
         } else {
           toast.error("Bạn không có quyền truy cập trang quản trị");

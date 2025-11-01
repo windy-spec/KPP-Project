@@ -362,7 +362,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                         aria-orientation="vertical"
                       >
                         <a
-                          href="/account"
+                          href="/tai-khoan"
                           className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
                           role="menuitem"
                         >

@@ -142,7 +142,7 @@ const MobileHeader: React.FC = () => {
                 <Link to="/lien-he" className="block py-2 text-gray-800">Liên Hệ</Link>
                 {loadingUser ? null : user ? (
                   <>
-                    <Link to="/account" onClick={() => setOpen(false)} className="block py-2 text-gray-800">
+                    <Link to="/tai-khoan" onClick={() => setOpen(false)} className="block py-2 text-gray-800">
                       Tài khoản ({user.displayName || user.email || 'Người dùng'})
                     </Link>
                     {/* Admin link */}
