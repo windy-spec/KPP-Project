@@ -47,8 +47,8 @@ export function SigninForm({
 
   // ====== Cập nhật đếm ngược khi đang bị khóa ======
   useEffect(() => {
-  let interval: ReturnType<typeof setInterval>;
-  if (lockUntil) {
+    let interval: ReturnType<typeof setInterval>;
+    if (lockUntil) {
       interval = setInterval(() => {
         const remaining = Math.ceil((lockUntil - Date.now()) / 1000);
         if (remaining <= 0) {
@@ -72,7 +72,6 @@ export function SigninForm({
     if (count >= 7) return 5 * 60 * 1000; // 5 phút
     return null;
   };
-
   // ====== Hàm xử lý đăng nhập ======
   const onSubmit = async (data: SignInFormValues) => {
     // Nếu đang bị khóa
@@ -96,6 +95,7 @@ export function SigninForm({
 
         // Lưu token & thông báo
         localStorage.setItem("accessToken", accessToken);
+        localStorage.removeItem("failedAttempts");
         await Swal.fire({
           title: "Đăng nhập thành công",
           text: "Bạn đã đăng nhập thành công, vui lòng chờ trong giây lát...",
@@ -107,13 +107,22 @@ export function SigninForm({
       }
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
-
       // Nếu sai thông tin (401)
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         const newCount = failedAttempts + 1;
         setFailedAttempts(newCount);
         localStorage.setItem("failedAttempts", newCount.toString());
-
+        const lastChance = 5;
+        const showLastChance = lastChance - newCount;
+        if (showLastChance > 0) {
+          await Swal.fire({
+            title: "Thông báo",
+            text: `Bạn hãy kiểm tra lại mật khẩu trước khi nhập, bạn còn ${showLastChance} lần thử.`,
+            icon: "warning",
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        }
         const duration = getLockDuration(newCount);
         if (duration) {
           const until = Date.now() + duration;
@@ -121,12 +130,13 @@ export function SigninForm({
           localStorage.setItem("lockUntil", until.toString());
           await Swal.fire({
             title: "Tài khoản bị khóa",
-            text: `Bạn đã nhập sai ${newCount} lần. Vui lòng đợi ${duration / 1000} giây trước khi thử lại.`,
+            text: `Bạn đã nhập sai ${newCount} lần. Vui lòng đợi ${
+              duration / 1000
+            } giây trước khi thử lại.`,
             icon: "warning",
             timer: duration,
             showConfirmButton: false,
           });
-
         } else {
           toast.error(`Sai thông tin đăng nhập (${newCount}/5).`);
         }
