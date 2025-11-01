@@ -9,7 +9,7 @@ import ChangePass from "./pages/ChangePass.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
 import TermsOfService from "./pages/TermsOfService.tsx";
 // Thêm phần mở rộng cho component
-import ProtectChangePassRoute from "./components/ProtectChangePassRoute.tsx";
+import ProtectChangePassRoute from "./components/ProtectRoute/ProtectChangePassRoute.tsx";
 import useAuthActions from "./utils/authUtility.ts"; // Giả định utility là .ts
 import TokenTest from "./components/test.tsx";
 import IntroducePage from "./pages/IntroducePage.tsx";
@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound.tsx";
 import ProductDetailPage from "./components/Product/ProductDetailPage.tsx";
 import Product from "./pages/Product.tsx";
 import Management from "./pages/AdminPage/Management.tsx";
+import ProtectManagementRoute from "./components/ProtectRoute/ProtectManagementRoute.tsx";
 import UserPage from "./pages/UserPage.tsx";
 
 const AuthActionInitializer = () => {
@@ -37,7 +38,14 @@ function App() {
 
           {/* 👇 ROUTE MỚI: Dẫn đến trang chi tiết sản phẩm */}
           <Route path="/san-pham/:id" element={<ProductDetailPage />} />
-          <Route path="/quan-ly" element={<Management />} />
+          <Route
+            path="/quan-ly"
+            element={
+              <ProtectManagementRoute>
+                <Management />
+              </ProtectManagementRoute>
+            }
+          />
 
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />

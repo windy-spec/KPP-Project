@@ -41,6 +41,7 @@ type ProductItem = {
 type Category = {
   _id: string;
   name: string;
+  description?: string;
 };
 
 /* ---------------------- Component chính ---------------------- */
@@ -52,7 +53,7 @@ const Management: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-64 border-r p-6 bg-white h-screen sticky top-0 flex flex-col justify-between">
+        <aside className="w-64 border-r border-gray-100 p-6 bg-white h-screen sticky top-0 flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-semibold mb-4">Quản trị</h3>
             <nav className="flex flex-col space-y-2">
@@ -80,7 +81,7 @@ const Management: React.FC = () => {
         </aside>
 
         {/* Main */}
-        <main className="flex-1 p-8 min-h-screen">
+  <main className="flex-1 p-8 min-h-screen">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
               {sections.find((s) => s.id === active)?.label}
@@ -93,14 +94,19 @@ const Management: React.FC = () => {
             </Button>
           </div>
 
-          <div className="border rounded-lg p-4 bg-white">
+          <div className="border border-gray-100 rounded-lg p-4 bg-white">
             {active === "products" && (
               <ProductsAdmin
                 openFromParent={parentModalFor === "products"}
                 onParentClose={() => setParentModalFor(null)}
               />
             )}
-            {active === "categories" && <CategoriesAdmin />}
+            {active === "categories" && (
+              <CategoriesAdmin
+                openFromParent={parentModalFor === "categories"}
+                onParentClose={() => setParentModalFor(null)}
+              />
+            )}
             {active === "orders" && <OrdersAdmin />}
             {active === "users" && <UsersAdmin />}
           </div>
@@ -119,10 +125,12 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   const [allItems, setAllItems] = useState<ProductItem[]>([]);
   const [page, setPage] = useState<number>(1);
   const PAGE_SIZE = 10;
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [quantity, setQuantity] = useState<number>(1);
   const [name, setName] = useState("");
   const [price, setPrice] = useState<number>(0);
+  const [priceInput, setPriceInput] = useState<string>("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -145,6 +153,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   const resetForm = () => {
     setName("");
     setPrice(0);
+    setPriceInput("");
     setCategory("");
     setDescription("");
     setQuantity(1);
@@ -179,6 +188,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       const data = await res.json();
       setAllItems(data.products || []);
       setTotalPages(data.totalPages || 1);
+      setSelectedIds(new Set());
     } catch {
       toast.error("Không thể tải sản phẩm");
     } finally {
@@ -235,6 +245,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     setEditingProduct(it);
     setName(it.name);
     setPrice(it.price);
+    setPriceInput(
+      it.price
+        ? String(it.price).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+        : ""
+    );
     setCategory(it.category?._id || "");
     setDescription(it.description || "");
     setOldAvatar(it.avatar || "");
@@ -257,28 +272,81 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     }
   };
 
+  const removeMany = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setIsLoading(true);
+    try {
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`http://localhost:5001/api/product/${id}`, { method: "DELETE" })
+        )
+      );
+      const okCount = results.filter((r) => r.ok).length;
+      if (okCount > 0) {
+        toast.success(`Đã xóa ${okCount} sản phẩm`);
+      } else {
+        toast.error("Xóa thất bại");
+      }
+      setSelectedIds(new Set());
+      await fetchProducts();
+    } catch {
+      toast.error("Xóa thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+  };
+
+  const toggleSelectAllCurrent = () => {
+    const currentIds = allItems.map((i) => i._id);
+    const allSelected = currentIds.every((id) => selectedIds.has(id));
+    setSelectedIds(allSelected ? new Set() : new Set(currentIds));
+  };
+
   const renderForm = (title: string) => (
-    <div className="p-6 border rounded-lg bg-white shadow-sm mb-6">
+    <div className="p-6 border border-gray-100 rounded-lg bg-white shadow-sm mb-6">
       <h3 className="font-bold text-xl mb-4 text-orange-600">{title}</h3>
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-3">
           <input
-            className="w-full border rounded px-3 py-3"
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
             placeholder="Tên sản phẩm"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
-            type="number"
-            className="w-full border rounded px-3 py-3"
+            type="text"
+            inputMode="numeric"
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
             placeholder="Giá (VND)"
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
+            value={priceInput}
+            onChange={(e) => {
+              const raw = e.target.value;
+              // Keep digits only
+              const digits = raw.replace(/\D/g, "");
+              if (!digits) {
+                setPrice(0);
+                setPriceInput("");
+                return;
+              }
+              const num = parseInt(digits, 10);
+              setPrice(num);
+              const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+              setPriceInput(formatted);
+            }}
           />
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full border rounded px-3 py-3"
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
           >
             <option value="">-- Chọn danh mục --</option>
             {categories.map((c) => (
@@ -288,14 +356,14 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
             ))}
           </select>
           <textarea
-            className="w-full border rounded px-3 py-3"
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
             placeholder="Mô tả"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
           <input
             type="number"
-            className="w-full border rounded px-3 py-3"
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
             placeholder="Số lượng"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
@@ -348,16 +416,16 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                 <img
                   src={avatarPreview}
                   alt="preview"
-                  className="w-40 h-40 object-cover rounded border"
+                  className="w-40 h-40 object-cover rounded border border-gray-100"
                 />
               ) : oldAvatar ? (
                 <img
                   src={getImageUrl(oldAvatar)}
                   alt="old avatar"
-                  className="w-40 h-40 object-cover rounded border"
+                  className="w-40 h-40 object-cover rounded border border-gray-100"
                 />
               ) : (
-                <div className="w-40 h-40 border flex items-center justify-center text-gray-400">
+                <div className="w-40 h-40 border border-gray-100 flex items-center justify-center text-gray-400">
                   Chưa có ảnh
                 </div>
               )}
@@ -424,7 +492,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                       key={i}
                       src={src}
                       alt="preview"
-                      className="w-32 h-32 object-cover rounded border"
+                      className="w-32 h-32 object-cover rounded border border-gray-100"
                     />
                   ))
                 : oldImages.map((img, i) => (
@@ -432,7 +500,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                       key={i}
                       src={getImageUrl(img)}
                       alt="old"
-                      className="w-32 h-32 object-cover rounded border"
+                      className="w-32 h-32 object-cover rounded border border-gray-100"
                     />
                   ))}
             </div>
@@ -467,21 +535,77 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
           <h3 className="font-semibold text-lg mb-2">
             Danh sách sản phẩm ({allItems.length})
           </h3>
-          <div className="p-4 border rounded-lg bg-white">
+          <div className="p-4 border border-gray-100 rounded-lg bg-white">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm text-gray-600">
+                {selectedIds.size > 0 ? `Đã chọn ${selectedIds.size}` : ""}
+              </div>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Bỏ đã chọn
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">Xóa đã chọn</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Xóa nhiều sản phẩm?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Bạn chắc chắn muốn xóa {selectedIds.size} sản phẩm đã chọn? Hành động này không thể hoàn tác.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => removeMany(Array.from(selectedIds))}
+                        >
+                          Xóa
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+            </div>
+
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-600">
-                  <th>Ảnh</th>
-                  <th>Tên</th>
-                  <th>Giá</th>
-                  <th>Danh mục</th>
-                  <th>Hành động</th>
+                  <th className="w-10 px-2">
+                    <input
+                      type="checkbox"
+                      checked={
+                        allItems.length > 0 &&
+                        allItems.every((i) => selectedIds.has(i._id))
+                      }
+                      onChange={() => toggleSelectAllCurrent()}
+                    />
+                  </th>
+                  <th className="px-2 md:px-4">Ảnh</th>
+                  <th className="px-2 md:px-4">Tên</th>
+                  <th className="px-2 md:px-4">Giá</th>
+                  <th className="px-2 md:px-4">Danh mục</th>
+                  <th className="px-2 md:px-4">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {allItems.map((it) => (
-                  <tr key={it._id} className="border-t hover:bg-gray-50">
-                    <td className="py-3">
+                  <tr key={it._id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(it._id)}
+                        onChange={() => toggleSelect(it._id)}
+                      />
+                    </td>
+                    <td className="py-3 px-2 md:px-4">
                       {it.avatar && (
                         <img
                           src={getImageUrl(it.avatar)}
@@ -490,12 +614,12 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                         />
                       )}
                     </td>
-                    <td className="py-3">{it.name}</td>
-                    <td className="py-3">
+                    <td className="py-3 px-2 md:px-4">{it.name}</td>
+                    <td className="py-3 px-2 md:px-4">
                       {new Intl.NumberFormat("vi-VN").format(it.price)} đ
                     </td>
-                    <td className="py-3">{it.category?.name || "—"}</td>
-                    <td className="py-3">
+                    <td className="py-3 px-2 md:px-4">{it.category?.name || "—"}</td>
+                    <td className="py-3 px-2 md:px-4">
                       <div className="flex gap-2">
                         <Button onClick={() => openEdit(it._id)}>Sửa</Button>
                         <AlertDialog>
@@ -560,8 +684,272 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   );
 };
 
-/* ---------------------- Placeholder ---------------------- */
-const CategoriesAdmin = () => <div>Danh mục (Placeholder)</div>;
+/* ---------------------- CategoriesAdmin ---------------------- */
+const CategoriesAdmin: React.FC<AdminChildProps> = ({
+  openFromParent,
+  onParentClose,
+}) => {
+  const [items, setItems] = useState<Category[]>([]);
+  const [name, setName] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setEditingId(null);
+  };
+
+  const fetchAll = async () => {
+    try {
+      const res = await fetch("http://localhost:5001/api/category");
+      setItems(await res.json());
+      setSelectedIds(new Set());
+    } catch {
+      toast.error("Không tải được danh mục");
+    }
+  };
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const submit = async () => {
+    if (!name.trim()) {
+      toast.error("Vui lòng nhập tên danh mục");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const endpoint = editingId
+        ? `http://localhost:5001/api/category/${editingId}`
+        : "http://localhost:5001/api/category";
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(editingId ? "Cập nhật danh mục thành công" : "Thêm danh mục thành công");
+      resetForm();
+      onParentClose && onParentClose();
+      await fetchAll();
+    } catch {
+      toast.error("Lưu danh mục thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openEdit = (id: string) => {
+    const it = items.find((i) => i._id === id);
+    if (!it) return;
+    setEditingId(id);
+    setName(it.name);
+    setDescription(it.description || "");
+  };
+
+  const remove = async (id: string) => {
+    try {
+      const res = await fetch(`http://localhost:5001/api/category/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Đã xóa danh mục");
+      await fetchAll();
+    } catch {
+      toast.error("Xóa danh mục thất bại");
+    }
+  };
+
+  const removeMany = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setIsLoading(true);
+    try {
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`http://localhost:5001/api/category/${id}`, { method: "DELETE" })
+        )
+      );
+      const okCount = results.filter((r) => r.ok).length;
+      if (okCount > 0) toast.success(`Đã xóa ${okCount} danh mục`);
+      else toast.error("Xóa danh mục thất bại");
+      setSelectedIds(new Set());
+      await fetchAll();
+    } catch {
+      toast.error("Xóa danh mục thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const ids = items.map((i) => i._id);
+    const allSelected = ids.every((id) => selectedIds.has(id));
+    setSelectedIds(allSelected ? new Set() : new Set(ids));
+  };
+
+  const renderForm = (title: string) => (
+    <div className="p-6 border border-gray-100 rounded-lg bg-white shadow-sm mb-6">
+      <h3 className="font-bold text-xl mb-4 text-orange-600">{title}</h3>
+      <div className="space-y-4 md:space-y-5">
+        <div>
+          <label className="block text-sm text-gray-700 mb-1">Tên danh mục</label>
+          <input
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
+            placeholder="Nhập tên danh mục"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-700 mb-1">Mô tả (tuỳ chọn)</label>
+          <textarea
+            className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
+            placeholder="Nhập mô tả cho danh mục"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              resetForm();
+              onParentClose && onParentClose();
+            }}
+          >
+            Hủy
+          </Button>
+          <Button onClick={submit} disabled={isLoading}>
+            {isLoading ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {openFromParent && !editingId && renderForm("Thêm Danh Mục Mới")}
+      {editingId && renderForm("Chỉnh sửa danh mục")}
+
+      {!openFromParent && !editingId && (
+        <div className="p-4 border border-gray-100 rounded-lg bg-white">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm text-gray-600">
+              {selectedIds.size > 0 ? `Đã chọn ${selectedIds.size}` : ""}
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Bỏ đã chọn
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">Xóa đã chọn</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xóa nhiều danh mục?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Bạn chắc chắn muốn xóa {selectedIds.size} danh mục đã chọn? Hành động này không thể hoàn tác.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => removeMany(Array.from(selectedIds))}
+                      >
+                        Xóa
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
+          </div>
+
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-600">
+                <th className="w-10 px-2">
+                  <input
+                    type="checkbox"
+                    checked={items.length > 0 && items.every((i) => selectedIds.has(i._id))}
+                    onChange={() => toggleSelectAll()}
+                  />
+                </th>
+                <th className="px-2 md:px-4">Tên</th>
+                <th className="px-2 md:px-4">Mô tả</th>
+                <th className="w-40 px-2 md:px-4">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it) => (
+                <tr key={it._id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="py-3 px-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(it._id)}
+                      onChange={() => toggleSelect(it._id)}
+                    />
+                  </td>
+                  <td className="py-3 px-2 md:px-4">{it.name}</td>
+                  <td className="py-3 px-2 md:px-4 text-gray-700">{it.description || "—"}</td>
+                  <td className="py-3 px-2 md:px-4">
+                    <div className="flex gap-2">
+                      <Button onClick={() => openEdit(it._id)}>Sửa</Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive">Xóa</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Xóa danh mục?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Hành động này sẽ xóa vĩnh viễn danh mục <b>{it.name}</b>.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => remove(it._id)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Xóa
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
 const OrdersAdmin = () => <div>Đơn hàng (Placeholder)</div>;
 const UsersAdmin = () => <div>Người dùng (Placeholder)</div>;
 
