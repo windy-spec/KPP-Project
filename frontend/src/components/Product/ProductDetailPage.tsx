@@ -294,7 +294,7 @@ const ProductDetailPage: React.FC = () => {
                 <span className="text-3xl font-bold text-blue-600">
                   {formatVND(product.price)}
                 </span>
-                <span className="text-sm text-gray-500">(VAT đã bao gồm)</span> 
+                <span className="text-sm text-gray-500">(đã bao gồm VAT)</span> 
               </div>
               <div className="prose prose-gray max-w-none">
                 <p className="text-gray-700 leading-relaxed">
