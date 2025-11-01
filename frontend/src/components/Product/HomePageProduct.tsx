@@ -27,6 +27,7 @@ type PaginationState = {
 const BASE_URL = "http://localhost:5001";
 
 const HomePageProduct: React.FC = () => {
+  const MAX_HOME_ITEMS = 6; // Chỉ hiển thị khoảng 6 sản phẩm trên trang chủ
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,13 +180,19 @@ const HomePageProduct: React.FC = () => {
       </div>
     );
 
+  const visibleProducts = products
+    .filter((p) => p.is_Active !== false)
+    .slice(0, MAX_HOME_ITEMS);
+
+  const SHOW_PAGINATION = false; // Ẩn phân trang trên trang chủ
+
   return (
     <section className="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-12">
       <h2
         ref={productHeaderRef}
         className="text-2xl font-bold mb-6 text-slate-800"
       >
-        Sản phẩm ({pagination.totalProductsCount})
+        Sản phẩm nổi bật
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -195,9 +202,7 @@ const HomePageProduct: React.FC = () => {
           </div>
         )}
 
-        {products
-          .filter((p) => p.is_Active !== false)
-          .map((p) => (
+        {visibleProducts.map((p) => (
             <div
               key={p._id || p.id || p.name}
               className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100"
@@ -248,7 +253,7 @@ const HomePageProduct: React.FC = () => {
           ))}
       </div>
 
-      {pagination.totalPages > 1 && (
+      {SHOW_PAGINATION && pagination.totalPages > 1 && (
         <div className="flex justify-center items-center space-x-2 mt-12">
           <Button
             onClick={() => handlePageChange(pagination.currentPage - 1)}

@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound.tsx";
 import ProductDetailPage from "./components/Product/ProductDetailPage.tsx";
 import Product from "./pages/Product.tsx";
 import Management from "./pages/AdminPage/Management.tsx";
+import UserPage from "./pages/UserPage.tsx";
 
 const AuthActionInitializer = () => {
   useAuthActions();
@@ -42,6 +43,7 @@ function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forget" element={<ForgetPass />} />
           <Route path="/san-pham" element={<Product />} />
+          <Route path="/tai-khoan" element={<UserPage />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
           <Route path="/gioi-thieu" element={<IntroducePage />} />
