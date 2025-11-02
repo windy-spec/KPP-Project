@@ -28,12 +28,9 @@ app.use(
 );
 app.use(cookieParser());
 app.use("/public", express.static(path.join(process.cwd(), "public")));
-
 app.use("/api/category", categoryRoute);
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
-
 app.use("/api/product", productRoute);
-console.log("✅ Mounted /api/product route");
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 

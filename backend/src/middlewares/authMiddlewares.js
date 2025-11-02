@@ -68,3 +68,8 @@ export const protectedRoute = (req, res, next) => {
     res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
+export const verifyAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin")
+    return res.status(403).json({ message: "Không có quyền truy cập" });
+  next();
+};

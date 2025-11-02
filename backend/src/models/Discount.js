@@ -1,89 +1,41 @@
+// backend/src/models/Discount.js
 import mongoose from "mongoose";
 
 const DiscountSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-    },
-
-    // Đối tượng áp dụng: SALE (khách lẻ) / AGENCY (đại lý)
+    name: { type: String, required: true, trim: true },
     type: {
       type: String,
       enum: ["SALE", "AGENCY"],
       required: true,
     },
-
-    // Loại khuyến mãi cụ thể (Flash sale, Seasonal, Combo,...)
-    promotion_type: {
-      type: String,
-      enum: ["FLASHSALE", "SEASONAL", "COMBO", "GENERAL"],
-      default: "GENERAL",
-    },
-
-    // Đối tượng tác động
     target_type: {
       type: String,
       enum: ["PRODUCT", "CATEGORY", "ORDER_TOTAL"],
       required: true,
     },
-
     target_id: {
       type: mongoose.Schema.Types.ObjectId,
+      refPath: "target_type", // Cho phép dynamic ref (Product/Category)
       default: null,
     },
+    discount_percent: { type: Number, min: 0, max: 100, required: true },
+    min_quantity: { type: Number, default: 1 },
+    start_sale: { type: Date, required: true },
+    end_sale: { type: Date },
+    isActive: { type: Boolean, default: true },
 
-    discount_percent: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 100,
-    },
+    // 🔥 Quan trọng: thêm reference tới các DiscountTier
+    tiers: [{ type: mongoose.Schema.Types.ObjectId, ref: "DiscountTier" }],
 
-    min_quantity: {
-      type: Number,
-      default: 1,
-    },
-
-    start_sale: {
-      type: Date,
-      default: Date.now,
-    },
-
-    end_sale: {
-      type: Date,
-      default: function () {
-        const getDateSale = this.start_sale;
-        const upOneDay = new Date(getDateSale.getTime() + 24 * 60 * 60 * 1000);
-        return upOneDay;
-      },
-    },
-
-    // Liên kết đến SaleProgram (chương trình khuyến mãi)
+    // Nếu bạn có chương trình khuyến mãi tổng (SaleProgram)
     program_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SaleProgram",
       default: null,
     },
-
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
   },
   { timestamps: true }
 );
 
-// Nếu là AGENCY và chưa có ngày kết thúc → mặc định 30 ngày
-DiscountSchema.pre("save", function (next) {
-  if (this.type === "AGENCY" && !this.end_sale) {
-    const startDate = this.start_sale || new Date();
-    const defaultEndDate = new Date(startDate.getTime());
-    defaultEndDate.setDate(startDate.getDate() + 30);
-    this.end_sale = defaultEndDate;
-  }
-  next();
-});
-
-const Discount = mongoose.model("Discount", DiscountSchema);
-export default Discount;
+export default mongoose.model("Discount", DiscountSchema);

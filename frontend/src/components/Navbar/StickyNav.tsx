@@ -198,17 +198,17 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       {/* FIX LỖI 1: Đặt background trên div ngoài cùng, để nó chiếm toàn bộ chiều ngang */}
       <div className="pointer-events-auto bg-gray-50">
         {/* FIX LỖI 1: Container giới hạn độ rộng nội dung và căn giữa */}
-        <div className="w-full lg:max-w-7xl mx-auto px-4 md:px-6"> 
+        <div className="w-full lg:max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between h-16">
-            
             {/* left: logo */}
             <div className="flex items-center gap-2 md:gap-3">
-              <a
-                href="/"
-                className="flex items-center text-xl text-gray-800"
-              >
+              <a href="/" className="flex items-center text-xl text-gray-800">
                 {/* Tối ưu kích thước logo trên md */}
-                <img src="/logo22.svg" alt="logo" className="w-10 h-10 md:w-14 md:h-14" />
+                <img
+                  src="/logo22.svg"
+                  alt="logo"
+                  className="w-10 h-10 md:w-14 md:h-14"
+                />
                 KPPaint
               </a>
             </div>
@@ -216,7 +216,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
             {/* center: rounded orange nav - FIX LỖI 2: Menu Phình ra */}
             <div
               // Bỏ flex-1. Dùng grow-0 shrink-0 để khối menu chỉ chiếm đúng kích thước nội dung.
-              className="flex justify-center grow-0 shrink-0" 
+              className="flex justify-center grow-0 shrink-0"
               id="sticky-nav-menu"
             >
               {/* Giảm nhẹ padding ngang trên tablet và tăng trên desktop */}
@@ -303,7 +303,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               {/* Search form (Ẩn trên tablet, chỉ hiện trên desktop (lg)) */}
               <form
                 onSubmit={(e) => e.preventDefault()}
-                className="relative hidden lg:block" 
+                className="relative hidden lg:block"
                 aria-label="search-form"
               >
                 <input
@@ -319,7 +319,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
                 />
               </form>
-              
+
               {/*Cart*/}
               <button
                 aria-label="cart"
@@ -327,7 +327,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               >
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
               </button>
-              
+
               {/* User / Sign In */}
               <div>
                 {isLoading ? (
@@ -384,6 +384,15 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                             role="menuitem"
                           >
                             Trang quản lý
+                          </a>
+                        )}
+                        {user.role?.toLowerCase() === "admin" && (
+                          <a
+                            href="/quan-ly/sale"
+                            className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
+                            role="menuitem"
+                          >
+                            Quản lý Sale
                           </a>
                         )}
                         <button

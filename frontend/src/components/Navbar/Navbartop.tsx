@@ -217,13 +217,31 @@ const Navbartop: React.FC = () => {
 
                         {/* ✅ Chỉ hiển thị nếu role là admin */}
                         {user.role === "admin" && (
-                          <a
-                            href="/quan-ly"
-                            className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
-                            role="menuitem"
-                          >
-                            Trang quản lý
-                          </a>
+                          <>
+                            <a
+                              href="/quan-ly"
+                              className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
+                              role="menuitem"
+                            >
+                              Trang quản lý
+                            </a>
+
+                            <a
+                              href="/quan-ly/discount"
+                              className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
+                              role="menuitem"
+                            >
+                              Quản lý Discount
+                            </a>
+
+                            <a
+                              href="/quan-ly/sale"
+                              className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
+                              role="menuitem"
+                            >
+                              Quản lý Chương trình Sale
+                            </a>
+                          </>
                         )}
 
                         <button
