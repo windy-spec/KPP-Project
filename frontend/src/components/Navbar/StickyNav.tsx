@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom";
 // Đảm bảo các đường dẫn icon này là đúng trong project của bạn
 // Vui lòng kiểm tra lại đường dẫn file trong thư mục assets của bạn
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
-import userIcon from "@/assets/icon/user.png";
 
 // Dữ liệu cấu trúc cho Dropdown
 const dropdownItems = {
@@ -166,10 +166,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [threshold]);
 
-  // Hàm xử lý việc mở/đóng dropdown
-  const handleDropdownToggle = (label: string) => {
-    setOpenDropdown(openDropdown === label ? null : label);
-  };
+  // Dropdown mở bằng hover, không cần nút toggle
 
   // Hàm đóng dropdown khi người dùng nhấp ra ngoài (Cải thiện UX)
   useEffect(() => {
@@ -230,37 +227,24 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
 
                     if (hasDropdown) {
                       return (
-                        // Container relative cho dropdown absolute
-                        <div key={label} className="relative">
-                          <button
-                            onClick={() => handleDropdownToggle(label)}
-                            className={`flex items-center transition-colors duration-200 py-1 gap-1 text-gray-800 hover:text-white ${
-                              isActive ? "text-white" : ""
-                            }`}
+                        // Hiển thị dropdown khi hover và bỏ mũi tên
+                        <div
+                          key={label}
+                          className="relative"
+                          onMouseEnter={() => setOpenDropdown(label)}
+                          onMouseLeave={() => setOpenDropdown(null)}
+                        >
+                          {/* Label điều hướng trực tiếp */}
+                          <a
+                            href={path}
+                            onClick={() => setOpenDropdown(null)}
+                            className="hover:text-white transition-colors duration-200 py-1"
                           >
                             {label}
-                            {/* Mũi tên */}
-                            <svg
-                              className={`w-3 h-3 transition-transform duration-200 ${
-                                isActive ? "rotate-180" : ""
-                              }`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="m6 9 6 6 6-6" />
-                            </svg>
-                          </button>
+                          </a>
 
                           {/* Menu thả xuống */}
                           <div
-                            // Tối ưu chiều rộng dropdown trên tablet
                             className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-36 md:w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-30 ${
                               isActive ? "block" : "hidden"
                             }`}
@@ -271,7 +255,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                               <a
                                 key={item.label}
                                 href={item.path}
-                                onClick={() => setOpenDropdown(null)} // Đóng menu sau khi nhấp
+                                onClick={() => setOpenDropdown(null)}
                                 className="block px-3 md:px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
                               >
                                 {item.label}
@@ -321,12 +305,13 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               </form>
               
               {/*Cart*/}
-              <button
+              <Link
+                to="/gio-hang"
                 aria-label="cart"
                 className="p-1 rounded hover:bg-gray-100"
               >
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
-              </button>
+              </Link>
               
               {/* User / Sign In */}
               <div>

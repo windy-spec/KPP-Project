@@ -20,6 +20,8 @@ import Product from "./pages/Product.tsx";
 import Management from "./pages/AdminPage/Management.tsx";
 import ProtectManagementRoute from "./components/ProtectRoute/ProtectManagementRoute.tsx";
 import UserPage from "./pages/UserPage.tsx";
+import CartPage from "./pages/CartPage.tsx";
+import PaymentPage from "./pages/PaymentPage.tsx";
 
 const AuthActionInitializer = () => {
   useAuthActions();
@@ -52,6 +54,8 @@ function App() {
           <Route path="/forget" element={<ForgetPass />} />
           <Route path="/san-pham" element={<Product />} />
           <Route path="/tai-khoan" element={<UserPage />} />
+          <Route path="/gio-hang" element={<CartPage />} />
+          <Route path="/thanh-toan" element={<PaymentPage />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
           <Route path="/gioi-thieu" element={<IntroducePage />} />
