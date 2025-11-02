@@ -27,7 +27,7 @@ type PaginationState = {
 const BASE_URL = "http://localhost:5001";
 
 const HomePageProduct: React.FC = () => {
-  const MAX_HOME_ITEMS = 6; // Chỉ hiển thị khoảng 6 sản phẩm trên trang chủ
+  const MAX_HOME_ITEMS = 9; // Chỉ hiển thị khoảng 6 sản phẩm trên trang chủ
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -239,14 +239,6 @@ const HomePageProduct: React.FC = () => {
                       ? formatVND(p.price)
                       : "Liên hệ"}
                   </div>
-                  <Link to={`/san-pham/${p._id || p.id}`}>
-                    <Button
-                      variant={"outline"}
-                      className="w-full sm:w-auto border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-colors text-sm"
-                    >
-                      Xem chi tiết
-                    </Button>
-                  </Link>
                 </div>
               </div>
             </div>

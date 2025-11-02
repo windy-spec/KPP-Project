@@ -88,9 +88,9 @@ const MobileHeader: React.FC = () => {
             </Link>
 
             <div className="flex items-center gap-2">
-              <button aria-label="cart" className="p-2 rounded hover:bg-gray-100">
+              <Link to="/gio-hang" aria-label="cart" className="p-2 rounded hover:bg-gray-100">
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
-              </button>
+              </Link>
 
               <button
                 aria-label="menu"

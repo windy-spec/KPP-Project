@@ -1,4 +1,5 @@
 import React, { Children, use, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
 import MobileHeader from "./MobileHeader";
@@ -16,7 +17,7 @@ const Navbartop: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Toggle Menu
 
@@ -156,12 +157,13 @@ const Navbartop: React.FC = () => {
                 />
               </form>
               {/*Cart*/}
-              <button
+              <Link
+                to="/gio-hang"
                 aria-label="cart"
                 className="p-1 rounded hover:bg-gray-100"
               >
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
-              </button>
+              </Link>
               {/* User */}
               {/* <button aria-label="user" className="p-1 rounded hover:bg-gray-100">
                 <img src={userIcon} alt="user" className="w-5 h-5" />

@@ -170,17 +170,27 @@ const Products: React.FC = () => {
   useEffect(() => {
     productRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
+
+  const [bgStyle, setBgStyle] = useState({});
+  useEffect(() => {
+    const percent = ((tempPrice - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100;
+    setBgStyle({
+      background: `linear-gradient(to right, #f97316 ${percent}%, #e5e7eb ${percent}%)`,
+    });
+  }, [tempPrice]);
+
+
   return (
     <div className="px-4 py-8 mx-auto md:px-8 lg:px-16 md:py-12 max-w-7xl">
       <div className="flex items-center justify-center gap-6 mb-10">
-        <h2 className="text-3xl font-extrabold tracking-tight text-gray-800 md:text-4xl">
+        <h2 className="text-3xl font-extrabold tracking-tight text-gray-800 md:text-3xl">
           Khám Phá Sản Phẩm Của Chúng Tôi
         </h2>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* === SIDEBAR === */}
         <aside className="lg:col-span-1">
-          <div className="bg-white p-6 shadow-sm border">
+          <div className="bg-white p-6 shadow-lg border-0.9">
             {/* Lọc theo giá */}
             <div className="mb-8">
               <h3 className="text-mid-night font-semibold text-xl mb-4">
@@ -202,15 +212,16 @@ const Products: React.FC = () => {
                   step={PRICE_STEP}
                   value={tempPrice}
                   onChange={(e) => setTempPrice(Number(e.target.value))}
-                  className="w-full"
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  style={bgStyle}
                 />
 
                 <div className="pt-2">
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-xs text-gray-600 mb-3">
                     {price !== null ? (
                       <>
                         Hiển thị sản phẩm dưới
-                        <strong>{formatVND(price)}</strong>
+                        <strong className="px-1">{formatVND(price)}</strong>
                       </>
                     ) : (
                       "Không có bộ lọc giá"
@@ -248,8 +259,8 @@ const Products: React.FC = () => {
                       }}
                       className={`flex items-center justify-between group cursor-pointer transition-colors ${
                         isActive
-                          ? "text-blue-600 font-medium"
-                          : "hover:text-blue-600"
+                          ? "text-orange-500 font-medium"
+                          : "hover:text-orange-500"
                       }`}
                     >
                       <p className="truncate">{cat.name}</p>
@@ -257,8 +268,8 @@ const Products: React.FC = () => {
                       <span
                         className={`text-xs border rounded-md px-2 py-0.5 min-w-[24px] h-5 flex items-center justify-center transition ${
                           isActive
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "group-hover:bg-blue-600 group-hover:text-white"
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "group-hover:bg-orange-500 group-hover:text-white"
                         }`}
                       >
                         {cat.productCount ?? "-"}
@@ -352,10 +363,6 @@ const Products: React.FC = () => {
                           ? formatVND(p.price)
                           : "Liên hệ"}
                       </div>
-
-                      <Link to={`/san-pham/${p._id || p.id}`}>
-                        <Button variant="outline">Xem</Button>
-                      </Link>
                     </div>
                   </div>
                 </div>

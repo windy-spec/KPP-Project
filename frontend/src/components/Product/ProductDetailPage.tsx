@@ -291,10 +291,9 @@ const ProductDetailPage: React.FC = () => {
                 </h1>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold text-blue-600">
+                <span className="text-3xl font-bold text-red-500">
                   {formatVND(product.price)}
                 </span>
-                <span className="text-sm text-gray-500">(đã bao gồm VAT)</span> 
               </div>
               <div className="prose prose-gray max-w-none">
                 <p className="text-gray-700 leading-relaxed">
@@ -336,8 +335,8 @@ const ProductDetailPage: React.FC = () => {
                   </div>
 
                   <div className="text-sm text-gray-600">
-                    Tổng:
-                    <span className="font-semibold">
+                    Tổng: 
+                    <span className="font-semibold px-1">
                       {formatVND(product.price * quantity)}
                     </span>
                   </div>

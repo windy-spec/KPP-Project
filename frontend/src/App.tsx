@@ -18,6 +18,7 @@ import ChangePass from "./pages/ChangePass.tsx";
 // ⚙️ Route bảo vệ
 import ProtectChangePassRoute from "./components/ProtectRoute/ProtectChangePassRoute.tsx";
 import ProtectAdminRoute from "./components/ProtectRoute/ProtectAdminRoute.tsx";
+import ProtectManagementRoute from "./components/ProtectRoute/ProtectManagementRoute.tsx";
 
 // 👑 Admin Pages
 import Management from "./pages/AdminPage/Management.tsx";
@@ -27,8 +28,11 @@ import SaleProgramPage from "./pages/AdminPage/SaleProgramPage.tsx";
 // ⚙️ Khác
 import TokenTest from "./components/test.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import useAuthActions from "./utils/authUtility.ts";
-
+// Import component chi tiết sản phẩm
+import UserPage from "./pages/UserPage.tsx";
+import useAuthActions from "./utils/authUtility.ts"; // Giả định utility là .tss
+import CartPage from "./pages/CartPage.tsx";
+import PaymentPage from "./pages/PaymentPage.tsx";
 const AuthActionInitializer = () => {
   useAuthActions();
   return null;
@@ -47,9 +51,15 @@ function App() {
           {/* 🧱 Sản phẩm */}
           <Route path="/san-pham" element={<Product />} />
           <Route path="/san-pham/:id" element={<ProductDetailPage />} />
+          <Route
+            path="/quan-ly"
+            element={
+              <ProtectManagementRoute>
+                <Management />
+              </ProtectManagementRoute>
+            }
+          />
 
-          {/* 👑 Khu vực ADMIN */}
-          <Route path="/quan-ly" element={<Management />} />
           <Route
             path="/quan-ly/sale"
             element={
@@ -71,6 +81,13 @@ function App() {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forget" element={<ForgetPass />} />
+          <Route path="/san-pham" element={<Product />} />
+          <Route path="/tai-khoan" element={<UserPage />} />
+          <Route path="/gio-hang" element={<CartPage />} />
+          <Route path="/thanh-toan" element={<PaymentPage />} />
+          <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
+          <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
+          <Route path="/gioi-thieu" element={<IntroducePage />} />
           <Route path="/token-test" element={<TokenTest />} />
 
           {/* 🧰 Đổi mật khẩu */}

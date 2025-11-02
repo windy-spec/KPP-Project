@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { ChevronDown } from 'lucide-react'; // Cài đặt lucide-react nếu bạn muốn dùng icon hiện đại. Nếu không, dùng SVG trực tiếp.
 
 
 const dropdownItems = {
@@ -61,22 +60,28 @@ const Navbarbot: React.FC = () => {
 
                 if (hasDropdown) {
                   return (
-                    // Bọc bằng div với class relative để định vị dropdown
-                    <div key={label} className="relative">
-                      {/* Nút Dropdown */}
-                      <button
-                        onClick={() => handleDropdownToggle(label)}
-                        className={`flex items-center transition-colors duration-200 pb-1 gap-1 text-gray-800 hover:text-white ${isActive ? "text-white border-b-2 border-orange-600" : ""}`}
+                    // Hiển thị dropdown khi hover và bỏ mũi tên
+                    <div
+                      key={label}
+                      className="relative"
+                      onMouseEnter={() => setOpenDropdown(label)}
+                      onMouseLeave={() => setOpenDropdown(null)}
+                    >
+                      {/* Label điều hướng trực tiếp */}
+                      <NavLink
+                        to={to}
+                        end={to === "/"}
+                        onClick={() => setOpenDropdown(null)}
+                        className={({ isActive }) =>
+                          `transition-colors duration-200 pb-1 ${
+                            isActive
+                              ? "text-white border-b-2 border-orange-600"
+                              : "hover:text-white text-gray-800"
+                          }`
+                        }
                       >
                         {label}
-                        {/* Mũi tên ChevronDown */}
-                        <svg
-                          className={`w-4 h-4 transition-transform duration-200 ${isActive ? "rotate-180" : ""}`}
-                          xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        >
-                          <path d="m6 9 6 6 6-6"/>
-                        </svg>
-                      </button>
+                      </NavLink>
 
                       {/* Menu thả xuống */}
                       <div
@@ -86,7 +91,7 @@ const Navbarbot: React.FC = () => {
                           <NavLink
                             key={item.label}
                             to={item.to}
-                            onClick={() => setOpenDropdown(null)} // Đóng menu khi nhấp vào link con
+                            onClick={() => setOpenDropdown(null)}
                             className="block px-4 py-2 text-gray-800 text-base hover:bg-orange-100 transition-colors duration-150"
                           >
                             {item.label}
