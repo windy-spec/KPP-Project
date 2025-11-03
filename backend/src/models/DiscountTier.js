@@ -8,8 +8,17 @@ const DiscountTierSchema = new mongoose.Schema(
       ref: "Discount",
       required: true,
     },
-    min_quantity: { type: Number, required: true, min: 1 },
-    discount_percent: { type: Number, required: true, min: 0, max: 100 },
+    min_quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    discount_percent: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
+    },
   },
   { timestamps: true }
 );

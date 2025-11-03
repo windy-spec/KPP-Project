@@ -1,23 +1,29 @@
 import express from "express";
 import {
   createDiscount,
-  getAllDiscounts,
+  getDiscounts,
   getDiscountById,
   updateDiscount,
   deleteDiscount,
+  applyDiscount, // Quan trọng
 } from "../controllers/discountControllers.js";
-import { verifyAdmin } from "../middlewares/authMiddlewares.js";
+import { protectedRoute, checkRole } from "../middlewares/authMiddlewares.js";
 
 const router = express.Router();
-console.log("✅ Discount route loaded");
-router.get("/", async (req, res) => {
-  res.json({ message: "Discount API hoạt động!" });
-});
-router.get("/:id", getDiscountById);
 
-// Protect create/update/delete
-router.post("/", verifyAdmin, createDiscount);
-router.put("/:id", verifyAdmin, updateDiscount);
-router.delete("/:id", verifyAdmin, deleteDiscount);
+// Route đặc biệt: Áp dụng mã (Dành cho user đã đăng nhập, KHÔNG checkRole)
+router.post("/apply", protectedRoute, applyDiscount);
+
+// Routes cho Admin (dùng checkRole)
+router
+  .route("/")
+  .post(protectedRoute, checkRole(["admin"]), createDiscount)
+  .get(getDiscounts); // <-- Public GET
+
+router
+  .route("/:id")
+  .get(getDiscountById) // <-- Public GET
+  .put(protectedRoute, checkRole(["admin"]), updateDiscount)
+  .delete(protectedRoute, checkRole(["admin"]), deleteDiscount);
 
 export default router;

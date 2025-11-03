@@ -3,7 +3,11 @@ import mongoose from "mongoose";
 
 const DiscountSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     type: {
       type: String,
       enum: ["SALE", "AGENCY"],
@@ -19,14 +23,35 @@ const DiscountSchema = new mongoose.Schema(
       refPath: "target_type", // Cho phép dynamic ref (Product/Category)
       default: null,
     },
-    discount_percent: { type: Number, min: 0, max: 100, required: true },
-    min_quantity: { type: Number, default: 1 },
-    start_sale: { type: Date, required: true },
-    end_sale: { type: Date },
-    isActive: { type: Boolean, default: true },
+    discount_percent: {
+      type: Number,
+      min: 0,
+      max: 100,
+      required: true,
+    },
+    min_quantity: {
+      type: Number,
+      default: 1,
+    },
+    start_sale: {
+      type: Date,
+      required: true,
+    },
+    end_sale: {
+      type: Date,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
 
     // 🔥 Quan trọng: thêm reference tới các DiscountTier
-    tiers: [{ type: mongoose.Schema.Types.ObjectId, ref: "DiscountTier" }],
+    tiers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "DiscountTier",
+      },
+    ],
 
     // Nếu bạn có chương trình khuyến mãi tổng (SaleProgram)
     program_id: {

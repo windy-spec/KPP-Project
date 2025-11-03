@@ -8,7 +8,8 @@ import cors from "cors";
 import categoryRoute from "./routes/categoryRoute.js";
 import productRoute from "./routes/productRoute.js";
 import path from "path";
-// call env port
+import discountRoute from "./routes/discountRoute.js";
+import SaleProgram from "./routes/saleProgramRoute.js"; // call env port
 
 dotenv.config();
 
@@ -29,7 +30,9 @@ app.use(
 app.use(cookieParser());
 app.use("/public", express.static(path.join(process.cwd(), "public")));
 app.use("/api/category", categoryRoute);
+app.use("/api/saleprogram", SaleProgram);
 app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
+app.use("/api/discount", discountRoute);
 app.use("/api/product", productRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
