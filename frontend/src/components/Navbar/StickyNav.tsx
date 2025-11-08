@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
+import apiClient from "../../utils/api-user";
 // Đảm bảo các đường dẫn icon này là đúng trong project của bạn
 // Vui lòng kiểm tra lại đường dẫn file trong thư mục assets của bạn
 import searchIcon from "@/assets/icon/search_icon.png";
@@ -52,6 +53,10 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const [visible, setVisible] = useState(false);
   // State quản lý dropdown nào đang mở
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  // categories fetched from backend for product dropdown
+  const [categories, setCategories] = useState<Array<any>>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [catError, setCatError] = useState<string | null>(null);
   const closeTimer = useRef<number | null>(null);
 
   const clearCloseTimer = () => {
@@ -176,6 +181,29 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
 
   // Dropdown mở bằng hover, không cần nút toggle
 
+  // Fetch categories for product dropdown
+  useEffect(() => {
+    let mounted = true;
+    const fetchCategories = async () => {
+      setCatLoading(true);
+      setCatError(null);
+      try {
+        const res = await apiClient.get("/category");
+        if (!mounted) return;
+        setCategories(Array.isArray(res.data) ? res.data : []);
+      } catch (err: any) {
+        console.error("Lỗi khi lấy danh mục:", err);
+        if (mounted) setCatError("Không thể tải danh mục");
+      } finally {
+        if (mounted) setCatLoading(false);
+      }
+    };
+    fetchCategories();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Hàm đóng dropdown khi người dùng nhấp ra ngoài (Cải thiện UX)
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -276,18 +304,39 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                               closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
                             }}
                           >
-                            {dropdownItems[
-                              label as keyof typeof dropdownItems
-                            ].map((item) => (
-                              <a
-                                key={item.label}
-                                href={item.path}
-                                onClick={() => setOpenDropdown(null)}
-                                className="block px-3 md:px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
-                              >
-                                {item.label}
-                              </a>
-                            ))}
+                            {label === "Sản Phẩm" ? (
+                              catLoading ? (
+                                <div className="px-3 py-2 text-sm text-gray-500">Đang tải...</div>
+                              ) : catError ? (
+                                <div className="px-3 py-2 text-sm text-red-500">{catError}</div>
+                              ) : categories.length ? (
+                                categories.map((cat) => (
+                                  <Link
+                                    key={cat._id || cat.id || cat.name}
+                                    to={`/san-pham?categories=${encodeURIComponent(cat._id || cat.id || cat.name)}`}
+                                    onClick={() => setOpenDropdown(null)}
+                                    className="block px-3 md:px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
+                                  >
+                                    {cat.name}
+                                  </Link>
+                                ))
+                              ) : (
+                                <div className="px-3 py-2 text-sm text-gray-500">Không có danh mục</div>
+                              )
+                            ) : (
+                              dropdownItems[
+                                label as keyof typeof dropdownItems
+                              ].map((item) => (
+                                <Link
+                                  key={item.label}
+                                  to={item.path}
+                                  onClick={() => setOpenDropdown(null)}
+                                  className="block px-3 md:px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
+                                >
+                                  {item.label}
+                                </Link>
+                              ))
+                            )}
                           </div>
                         </div>
                       );
