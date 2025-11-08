@@ -25,19 +25,16 @@ const SaleProgramTable: React.FC = () => {
   const [programs, setPrograms] = useState<any[]>([]);
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [allDiscounts, setAllDiscounts] = useState<DiscountStub[]>([]);
   const token = localStorage.getItem("accessToken");
   const authHeaders = {
     headers: { Authorization: `Bearer ${token}` },
-  };
-
+  }; // Chỉ cần fetch Programs (vì backend đã populate 'discounts')
   const fetchPrograms = async () => {
     try {
       const res = await axios.get(
         "http://localhost:5001/api/saleprogram",
         authHeaders
-      );
-      // Xử lý an toàn
+      ); // Xử lý an toàn
       let programData = [];
       if (Array.isArray(res.data)) {
         programData = res.data;
@@ -52,9 +49,8 @@ const SaleProgramTable: React.FC = () => {
 
   useEffect(() => {
     fetchPrograms();
-  }, []);
+  }, []); // HÀM "ẨN" (SOFT DELETE)
 
-  // HÀM "ẨN" (SOFT DELETE)
   const handleSoftDelete = async (id: string) => {
     const confirm = await Swal.fire({
       title: "Ẩn chương trình này?",
@@ -65,15 +61,15 @@ const SaleProgramTable: React.FC = () => {
       cancelButtonText: "Hủy",
     });
     if (confirm.isConfirmed) {
+      // Gọi route DELETE /:id (logic "Ẩn" của backend)
       await axios.delete(
         `http://localhost:5001/api/saleprogram/${id}`,
         authHeaders
       );
       fetchPrograms();
     }
-  };
+  }; // HÀM "XÓA CỨNG" (HARD DELETE)
 
-  // HÀM "XÓA CỨNG" (HARD DELETE)
   const handleHardDelete = async (id: string) => {
     const confirm = await Swal.fire({
       title: "XÓA VĨNH VIỄN?",
@@ -85,6 +81,7 @@ const SaleProgramTable: React.FC = () => {
       cancelButtonText: "Hủy",
     });
     if (confirm.isConfirmed) {
+      // Gọi route /hard-delete/
       await axios.delete(
         `http://localhost:5001/api/saleprogram/hard-delete/${id}`,
         authHeaders
@@ -111,6 +108,7 @@ const SaleProgramTable: React.FC = () => {
       <table className="w-full bg-white border">
         <thead>
           <tr>
+            <th className="p-2 border">Hình ảnh</th>
             <th className="p-2 border">Tên</th>
             <th className="p-2 border">Ngày bắt đầu</th>
             <th className="p-2 border">Ngày kết thúc</th>
@@ -119,21 +117,35 @@ const SaleProgramTable: React.FC = () => {
             <th className="p-2 border">Thao tác</th>
           </tr>
         </thead>
+
         <tbody>
           {programs.map((p) => {
-            // === 1. TẠO BIẾN LÀM MỜ ===
+            // Áp dụng làm mờ cho từng ô, trừ ô "Thao tác"
             const rowClass = !p.isActive ? "opacity-50" : "";
-
             return (
               <tr key={p._id}>
-                {/* === 2. ÁP DỤNG BIẾN LÀM MỜ CHO TỪNG Ô === */}
+                <td className={`border p-2 ${rowClass}`}>
+                  <img
+                    // Nếu p.banner_image CÓ, dùng nó.
+                    // Nếu KHÔNG, dùng link placeholder.
+                    src={
+                      p.banner_image ||
+                      "https://bizweb.dktcdn.net/100/484/769/themes/920806/assets/banner_collection.png?1751883355177"
+                    }
+                    alt={p.name}
+                    className="w-24 h-12 object-cover rounded"
+                  />
+                </td>
+
                 <td className={`border p-2 ${rowClass}`}>{p.name}</td>
+
                 <td className={`border p-2 ${rowClass}`}>
                   {formatDate(p.start_date)}
                 </td>
                 <td className={`border p-2 ${rowClass}`}>
                   {formatDate(p.end_date)}
                 </td>
+
                 <td className={`border p-2 text-sm ${rowClass}`}>
                   {p.discounts && p.discounts.length > 0 ? (
                     p.discounts.map((d: any) => (
@@ -143,6 +155,7 @@ const SaleProgramTable: React.FC = () => {
                     <span className="text-gray-400">Không có</span>
                   )}
                 </td>
+
                 <td className={`border p-2 ${rowClass}`}>
                   {p.isActive ? (
                     <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
@@ -154,8 +167,8 @@ const SaleProgramTable: React.FC = () => {
                     </span>
                   )}
                 </td>
+                {/* Ô "Thao tác" không có 'rowClass' để luôn sáng */}
 
-                {/* === 3. KHÔNG ÁP DỤNG LÀM MỜ CHO Ô NÀY === */}
                 <td className="border p-2 text-center">
                   <button
                     onClick={() => {
@@ -166,14 +179,16 @@ const SaleProgramTable: React.FC = () => {
                   >
                     Sửa
                   </button>
+
                   <button
-                    onClick={() => handleSoftDelete(p._id)}
+                    onClick={() => handleSoftDelete(p._id)} // Nút "Ẩn"
                     className="px-2 py-1 bg-gray-500 text-white rounded mr-2"
                   >
                     Ẩn
                   </button>
+
                   <button
-                    onClick={() => handleHardDelete(p._id)}
+                    onClick={() => handleHardDelete(p._id)} // Nút "Xóa"
                     className="px-2 py-1 bg-red-500 text-white rounded"
                   >
                     Xóa
