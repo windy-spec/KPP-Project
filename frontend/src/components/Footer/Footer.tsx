@@ -94,9 +94,9 @@ const Footer: React.FC = () => {
                 <MapPin size={18}/>
                 <a href="https://www.google.com/maps/place/180+Cao+L%E1%BB%97,+Ph%C6%B0%E1%BB%9Dng+4,+Qu%E1%BA%ADn+8,+Th%C3%A0nh+ph%E1%BB%91+H%E1%BB%93+Ch%C3%AD+Minh+70000,+Vi%E1%BB%87t+Nam/@10.7374393,106.675109,17z/data=!3m1!4b1!4m6!3m5!1s0x31752fad3fb62a95:0xa9576c84a879d1fe!8m2!3d10.7374393!4d106.6776839!16s%2Fg%2F11kqgt034q?entry=ttu&g_ep=EgoyMDI1MTAyMi4wIKXMDSoASAFQAw%3D%3D" target="_blank">
                   <span className="text-lg hover:text-orange-300 transition-all duration-300 cursor-pointer">
-                    180 Đường Cao Lỗ Quận 8
+                    180 Cao Lỗ Quận 8
                     <br />
-                    Phường 15, TP. Hồ Chí Minh
+                    Phường 4, TP. Hồ Chí Minh
                   </span>
                 </a>
               </div>

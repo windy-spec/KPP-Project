@@ -130,7 +130,7 @@ export function ForgetpassForm({
 
               <div className="text-center text-sm">
                 Đã nhớ tài khoản?{" "}
-                <a href="/signin" className="underline underline-offset-4">
+                <a href="/signin" className="text-orange-400 hover:text-orange-600">
                   Đăng nhập ngay
                 </a>
               </div>
@@ -138,10 +138,10 @@ export function ForgetpassForm({
           </form>
         </CardContent>
       </Card>
-      <div className="text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offset-4">
+      <div className="text-xs text-balance px-6 text-center text-muted-foreground">
         Bằng cách tiếp tục, bạn đồng ý với{" "}
-        <Link to="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
-        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật của chúng tôi</Link>.
+        <Link to="/dieu-khoan-dich-vu" className="font-bold">Điều khoản dịch vụ</Link> và{" "}
+        <Link to="/chinh-sach-bao-mat" className="font-bold">Chính sách bảo mật của chúng tôi</Link>.
       </div>
     </div>
   );

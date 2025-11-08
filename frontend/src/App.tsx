@@ -33,6 +33,8 @@ import UserPage from "./pages/UserPage.tsx";
 import useAuthActions from "./utils/authUtility.ts"; // Giả định utility là .tss
 import CartPage from "./pages/CartPage.tsx";
 import PaymentPage from "./pages/PaymentPage.tsx";
+import ContactPage from "./pages/ContactPage.tsx";
+import DiscountPage from "./pages/DiscountPage.tsx";
 const AuthActionInitializer = () => {
   useAuthActions();
   return null;
@@ -84,6 +86,8 @@ function App() {
           <Route path="/san-pham" element={<Product />} />
           <Route path="/tai-khoan" element={<UserPage />} />
           <Route path="/gio-hang" element={<CartPage />} />
+          <Route path="/lien-he" element={<ContactPage />} />
+          <Route path="/chiet-khau" element={<DiscountPage />} />
           <Route path="/thanh-toan" element={<PaymentPage />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />

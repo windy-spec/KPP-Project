@@ -5,6 +5,7 @@ import {
   getSaleProgramById,
   updateSaleProgram,
   deleteSaleProgram,
+  hardDeleteSaleProgram,
 } from "../controllers/saleProgramControllers.js";
 import { protectedRoute, checkRole } from "../middlewares/authMiddlewares.js";
 
@@ -19,5 +20,7 @@ router
   .get(getSaleProgramById)
   .put(protectedRoute, checkRole(["admin"]), updateSaleProgram)
   .delete(protectedRoute, checkRole(["admin"]), deleteSaleProgram);
-
+router
+  .route("/hard-delete/:id")
+  .delete(protectedRoute, checkRole(["admin"]), hardDeleteSaleProgram);
 export default router;

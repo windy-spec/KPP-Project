@@ -236,13 +236,13 @@ export function SigninForm({
 
               <div className="text-center text-sm">
                 Chưa có tài khoản?{" "}
-                <a href="/signup" className="underline underline-offset-4">
+                <a href="/signup" className="text-orange-400 hover:text-orange-600">
                   Đăng ký
                 </a>
               </div>
               <div className="text-center text-sm">
                 Quên mật khẩu?{" "}
-                <a href="/forget" className="underline underline-offset-4">
+                <a href="/forget" className="text-orange-400 hover:text-orange-600">
                   Nhấn vào đây
                 </a>
               </div>
@@ -259,8 +259,8 @@ export function SigninForm({
       </Card>
       <div className="text-xs text-balance px-6 text-center text-muted-foreground">
         Bằng cách tiếp tục, bạn đồng ý với{" "}
-        <Link to="/dieu-khoan-dich-vu">Điều khoản dịch vụ</Link> và{" "}
-        <Link to="/chinh-sach-bao-mat">Chính sách bảo mật</Link>.
+        <Link to="/dieu-khoan-dich-vu" className="font-bold">Điều khoản dịch vụ</Link> và{" "}
+        <Link to="/chinh-sach-bao-mat" className="font-bold">Chính sách bảo mật</Link>.
       </div>
     </div>
   );

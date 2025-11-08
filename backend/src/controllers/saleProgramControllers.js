@@ -1,9 +1,9 @@
 // backend/src/controllers/saleProgramControllers.js
 import SaleProgram from "../models/SaleProgram.js";
-import Discount from "../models/Discount.js"; // <-- Phải import Discount
+import Discount from "../models/Discount.js"; // <-- 1. Import Discount
 import mongoose from "mongoose";
 
-// === SỬA HÀM CREATE: Thêm transaction và cập nhật chéo ===
+// === 1. SỬA HÀM CREATE ===
 export const createSaleProgram = async (req, res) => {
   // Frontend gửi 'discounts' là mảng ID
   const { discounts, ...programData } = req.body;
@@ -12,19 +12,19 @@ export const createSaleProgram = async (req, res) => {
   try {
     session.startTransaction();
 
-    // 1. Kiểm tra tên
+    // 1. Kiểm tra tên (Code gốc của ông)
     const existsProgram = await SaleProgram.findOne({ name: programData.name });
     if (existsProgram) {
       await session.abortTransaction();
       return res
-        .status(400) // 400 Bad Request thì đúng hơn 404
+        .status(400)
         .json({ message: "Tên chương trình khuyến mãi đã tồn tại." });
     }
 
-    // 2. Tạo SaleProgram
+    // 2. Tạo SaleProgram (Code đã sửa)
     const newProgram = new SaleProgram({
       ...programData,
-      discounts: discounts || [],
+      discounts: discounts || [], // <-- LẤY DISCOUNTS TỪ REQ.BODY
       createdBy: req.user.id,
     });
     const savedProgram = await newProgram.save({ session });
@@ -33,43 +33,43 @@ export const createSaleProgram = async (req, res) => {
     if (discounts && discounts.length > 0) {
       await Discount.updateMany(
         { _id: { $in: discounts } },
-        { $set: { program_id: savedProgram._id } }, // <-- Bước quan trọng
+        { $set: { program_id: savedProgram._id } },
         { session }
       );
     }
 
     await session.commitTransaction();
-    res.status(201).json(savedProgram); // 201 Created
+    res.status(201).json(savedProgram);
   } catch (error) {
     await session.abortTransaction();
     return res
-      .status(500) // 500 thì đúng hơn 505
+      .status(500)
       .json({ message: "Lỗi máy chủ", error: error.message });
   } finally {
     session.endSession();
   }
 };
 
-// === SỬA HÀM GET ALL: Gỡ bộ lọc ngày/active VÀ thêm populate ===
+// === 2. SỬA HÀM GET ALL ===
+// (Hàm này lấy TẤT CẢ program cho trang Admin, gỡ bỏ lọc)
 export const getAllSaleProgram = async (req, res) => {
   try {
-    // 1. GỠ BỎ TẤT CẢ BỘ LỌC (để find({}))
-    const program = await SaleProgram.find({})
+    const programs = await SaleProgram.find({}) // Gỡ bộ lọc
       .populate({
-        path: "discounts", // 2. Populate (lồng) mảng 'discounts'
-        select: "name", // 3. Chỉ cần lấy tên của discount
+        path: "discounts",
+        select: "name", // Lấy tên discount
       })
-      .sort({ createdAt: -1 }); // Sắp xếp cho dễ nhìn
+      .sort({ createdAt: -1 });
 
-    return res.status(200).json(program);
+    return res.status(200).json(programs);
   } catch (error) {
     return res
-      .status(500) // (Nên dùng 500 cho lỗi server)
+      .status(500)
       .json({ message: "Lỗi máy chủ", error: error.message });
   }
 };
 
-// === SỬA HÀM UPDATE: Thêm transaction và logic (gỡ/thêm) ===
+// === 3. SỬA HÀM UPDATE ===
 export const updateSaleProgram = async (req, res) => {
   const { id } = req.params;
   const { discounts: newDiscountIds, ...programData } = req.body;
@@ -93,27 +93,25 @@ export const updateSaleProgram = async (req, res) => {
       { new: true, runValidators: true, session }
     );
 
-    // 3. CẬP NHẬT CHÉO:
-    // 3a. Gỡ program_id khỏi các discount CŨ (bị xóa khỏi program)
+    // 3. CẬP NHẬT CHÉO (Gỡ cũ, Thêm mới)
     const removedDiscounts = oldDiscountIds.filter(
       (d) => !newDiscountIds.includes(d)
     );
     if (removedDiscounts.length > 0) {
       await Discount.updateMany(
         { _id: { $in: removedDiscounts } },
-        { $set: { program_id: null } }, // <-- Set về null
+        { $set: { program_id: null } },
         { session }
       );
     }
 
-    // 3b. Thêm program_id cho các discount MỚI (được thêm vào program)
     const addedDiscounts = newDiscountIds.filter(
       (d) => !oldDiscountIds.includes(d)
     );
     if (addedDiscounts.length > 0) {
       await Discount.updateMany(
         { _id: { $in: addedDiscounts } },
-        { $set: { program_id: updatedProgram._id } }, // <-- Set ID program
+        { $set: { program_id: updatedProgram._id } },
         { session }
       );
     }
@@ -130,7 +128,9 @@ export const updateSaleProgram = async (req, res) => {
   }
 };
 
-// HÀM DELETE (SOFT) CỦA BẠN - Đã đúng logic
+// === 4. CÁC HÀM CÒN LẠI (GIỮ NGUYÊN) ===
+
+// DELETE PROGRAM (SOFT DELETE)
 export const deleteSaleProgram = async (req, res) => {
   try {
     const program = await SaleProgram.findByIdAndUpdate(
@@ -141,7 +141,6 @@ export const deleteSaleProgram = async (req, res) => {
     if (!program) {
       return res.status(404).json({ message: "Không tim thấy chương trình." });
     }
-    // Logic này rất hay: tắt program thì tắt luôn discount con
     await Discount.updateMany(
       { _id: { $in: program.discounts } },
       { isActive: false }
@@ -154,7 +153,7 @@ export const deleteSaleProgram = async (req, res) => {
   }
 };
 
-// HÀM FIND BY ID CỦA BẠN - Đã đúng logic
+// FIND BY ID SALEPROGRAM
 export const getSaleProgramById = async (req, res) => {
   try {
     const program = await SaleProgram.findById(req.params.id).populate(
@@ -168,5 +167,47 @@ export const getSaleProgramById = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Lỗi máy chủ", error: error.message });
+  }
+};
+
+// HARD DELETE
+export const hardDeleteSaleProgram = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ message: "ID không hợp lệ" });
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    // 1. Tìm Program để lấy danh sách discount con
+    const program = await SaleProgram.findById(id).session(session);
+    if (!program) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Không tìm thấy chương trình" });
+    }
+
+    // 2. "Thả" các Discount con (set program_id về null)
+    if (program.discounts && program.discounts.length > 0) {
+      await Discount.updateMany(
+        { _id: { $in: program.discounts } },
+        { $set: { program_id: null } }, // <-- "Thả" discount
+        { session }
+      );
+    }
+
+    // 3. Xóa vĩnh viễn SaleProgram
+    await SaleProgram.findByIdAndDelete(id, { session });
+
+    await session.commitTransaction();
+    res.status(200).json({ message: "Đã xóa vĩnh viễn chương trình" });
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("Lỗi khi xóa cứng program:", error);
+    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+  } finally {
+    session.endSession();
   }
 };

@@ -4,14 +4,19 @@ import axios from "axios";
 
 type Props = { editing?: any | null; onClose: () => void };
 
+// === 1. THÊM program_id VÀO TYPE ===
 type Discount = {
   _id: string;
   name: string;
   type: "SALE" | "AGENCY";
   discount_percent: number;
+  start_sale: string;
+  end_sale: string;
+  program_id: string | null; // <-- THÊM TRƯỜNG NÀY
 };
 
 const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
+  // ... (tất cả state của ông giữ nguyên) ...
   const [name, setName] = useState(editing?.name || "");
   const [description, setDescription] = useState(editing?.description || "");
   const [startDate, setStartDate] = useState(
@@ -20,26 +25,28 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
   const [endDate, setEndDate] = useState(
     editing ? (editing.end_date || "").slice(0, 10) : ""
   );
+
   const token = localStorage.getItem("accessToken");
   const authHeaders = {
     headers: { Authorization: `Bearer ${token}` },
   };
-  const [allDiscounts, setAllDiscounts] = useState<Discount[]>([]);
 
+  const [allDiscounts, setAllDiscounts] = useState<Discount[]>([]);
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>(
     editing?.discounts.map((d: any) => d._id || d) || []
   );
-
   const [isActive, setIsActive] = useState(editing?.isActive ?? true);
   const [typeFilter, setTypeFilter] = useState<"SALE" | "AGENCY">("SALE");
   const [discountToAdd, setDiscountToAdd] = useState<string>("");
 
+  // ... (hàm fetchDiscounts, handleSubmit giữ nguyên) ...
   const fetchDiscounts = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:5001/api/discount",
-        authHeaders
-      );
+      const res = await axios.get("http://localhost:5001/api/discount", {
+        ...authHeaders,
+        params: { cache: "no-store" },
+      });
+
       let discountData: Discount[] = [];
       if (Array.isArray(res.data)) {
         discountData = res.data;
@@ -85,11 +92,47 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
     onClose();
   };
 
+  // === 2. SỬA LẠI LOGIC LỌC useMemo ===
   const availableDiscounts = useMemo(() => {
-    return allDiscounts.filter(
-      (d) => d.type === typeFilter && !selectedDiscounts.includes(d._id)
-    );
-  }, [allDiscounts, typeFilter, selectedDiscounts]);
+    const p_start = startDate ? new Date(startDate) : null;
+    const p_end = endDate
+      ? new Date(new Date(endDate).getTime() + 86400000)
+      : null;
+
+    // Lấy ID của program đang Sửa (nếu có)
+    const currentProgramId = editing?._id;
+
+    return allDiscounts.filter((d) => {
+      // Lọc theo loại (SALE/AGENCY)
+      if (d.type !== typeFilter) return false;
+      // Lọc theo "đã chọn" (trong lần này)
+      if (selectedDiscounts.includes(d._id)) return false;
+
+      // === LỌC MỚI: LỌC DISCOUNT ĐÃ CÓ CHỦ ===
+      if (d.program_id && d.program_id !== currentProgramId) {
+        // Discount này đã thuộc về 1 program KHÁC -> Ẩn nó đi
+        return false;
+      }
+      // (Nếu d.program_id == null (sale lẻ) -> OK)
+      // (Nếu d.program_id == currentProgramId (đang sửa) -> OK)
+
+      // Lọc theo ngày (logic cũ)
+      const d_start = new Date(d.start_sale);
+      const d_end = d.end_sale ? new Date(d.end_sale) : null;
+
+      if (p_start && d_start < p_start) return false;
+      if (p_end && (!d_end || d_end > p_end)) return false;
+
+      return true;
+    });
+  }, [
+    allDiscounts,
+    typeFilter,
+    selectedDiscounts,
+    startDate,
+    endDate,
+    editing,
+  ]); // <-- 3. Thêm 'editing'
 
   const selectedDiscountsFull = useMemo(() => {
     return selectedDiscounts
@@ -108,13 +151,11 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
     setSelectedDiscounts(selectedDiscounts.filter((id) => id !== idToRemove));
   };
 
+  // ... (Phần return JSX của ông giữ nguyên, không cần sửa) ...
   return (
     <div className="fixed inset-0 flex justify-center items-start bg-black/20 p-6 overflow-y-auto z-50">
       <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-lg mt-10">
-        <h3 className="font-semibold text-lg mb-4">
-          {editing ? "Chỉnh sửa chương trình" : "Tạo mới chương trình"}
-        </h3>
-
+        {/* ... (Toàn bộ JSX của ông) ... */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Hàng 1: Tên, Mô tả */}
           <div>
@@ -234,6 +275,9 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
                     )
                   </option>
                 ))}
+                {availableDiscounts.length === 0 && (
+                  <option disabled>Không có discount nào khớp</option>
+                )}
               </select>
             </div>
             <button
@@ -266,7 +310,7 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
               </button>
               <button
                 type="submit"
-                className="bg-orange-500 text-white px-4 py-2 rounded" // Đổi bg-primary
+                className="bg-orange-500 text-white px-4 py-2 rounded"
               >
                 Lưu
               </button>
