@@ -207,7 +207,7 @@ const ProductDetailPage: React.FC = () => {
                   alt={product.name}
                   loading="eager"
                   decoding="async"
-                  className="w-full max-h-[400px] object-contain rounded-lg transition-opacity duration-300"
+                  className="max-w-full max-h-[400px] object-contain rounded-lg transition-opacity duration-300"
                   onLoad={(e) => {
                     const naturalWidth = e.currentTarget.naturalWidth || 0;
                     const clientWidth = e.currentTarget.clientWidth || 0;
@@ -335,7 +335,7 @@ const ProductDetailPage: React.FC = () => {
                   </div>
 
                   <div className="text-sm text-gray-600">
-                    Tổng: 
+                    Tổng:
                     <span className="font-semibold px-1">
                       {formatVND(product.price * quantity)}
                     </span>

@@ -130,7 +130,7 @@ const SaleProgramTable: React.FC = () => {
                     // Nếu KHÔNG, dùng link placeholder.
                     src={
                       p.banner_image ||
-                      "https://bizweb.dktcdn.net/100/484/769/themes/920806/assets/banner_collection.png?1751883355177"
+                      "http://localhost:5001/uploads/z7202827791249_3f9f56e84a986117c7fd0030d0bb593a.jpg"
                     }
                     alt={p.name}
                     className="w-24 h-12 object-cover rounded"
