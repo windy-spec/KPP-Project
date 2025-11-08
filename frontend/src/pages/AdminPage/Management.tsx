@@ -53,7 +53,7 @@ const Management: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-gray-100 p-6 bg-white h-screen sticky top-0 flex flex-col justify-between">
+        <aside className="w-64 border-r shadow-lg border-gray-100 p-6 bg-white h-screen sticky top-0 flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-semibold mb-4">Quản trị</h3>
             <nav className="flex flex-col space-y-2">
@@ -94,7 +94,7 @@ const Management: React.FC = () => {
             </Button>
           </div>
 
-          <div className="border border-gray-100 rounded-lg p-4 bg-white">
+          <div className="border border-gray-100 rounded-lg p-4 bg-white shadow-lg">
             {active === "products" && (
               <ProductsAdmin
                 openFromParent={parentModalFor === "products"}
@@ -802,7 +802,7 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
   };
 
   const renderForm = (title: string) => (
-    <div className="p-6 border border-gray-100 rounded-lg bg-white shadow-sm mb-6">
+    <div className="p-6 border border-gray-100 rounded-lg bg-white shadow-lg mb-6">
       <h3 className="font-bold text-xl mb-4 text-orange-600">{title}</h3>
       <div className="space-y-4 md:space-y-5">
         <div>

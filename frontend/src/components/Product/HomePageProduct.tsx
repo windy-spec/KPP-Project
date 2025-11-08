@@ -187,7 +187,7 @@ const HomePageProduct: React.FC = () => {
   const SHOW_PAGINATION = false; // Ẩn phân trang trên trang chủ
 
   return (
-    <section className="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-12">
+  <section className="px-4 md:px-8 lg:px-16 w-4/5 max-w-7xl mx-auto py-12">
       <h2
         ref={productHeaderRef}
         className="text-2xl font-bold mb-6 text-slate-800"

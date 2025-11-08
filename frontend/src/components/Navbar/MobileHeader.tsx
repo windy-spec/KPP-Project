@@ -80,7 +80,7 @@ const MobileHeader: React.FC = () => {
     <>
       {/* Fixed header so it always stays visible */}
       <div className={`fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 ${isScrolled ? 'shadow-sm' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4">
+  <div className="w-4/5 max-w-7xl mx-auto px-4">
           <div className="h-14 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
               <img src="/logo22.svg" alt="logo" className="w-10 h-10" />
@@ -106,7 +106,7 @@ const MobileHeader: React.FC = () => {
         {/* Menu panel fixed under header when open */}
         {open && (
           <div className="fixed left-0 right-0 top-[56px] z-40 border-t border-gray-100 bg-white">
-            <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="w-4/5 max-w-7xl mx-auto px-4 py-3">
               <form className="mb-3" onSubmit={(e) => e.preventDefault()}>
                 <div className="relative">
                   <input

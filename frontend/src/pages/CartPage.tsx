@@ -105,7 +105,7 @@ const CartPage: React.FC = () => {
     <>
         <Navbar/>
         <div className="bg-gray-50 min-h-screen py-4 md:py-6">
-        <div className="max-w-7xl mx-auto px-4">
+  <div className="w-4/5 max-w-7xl mx-auto px-4">
             {/* Steps */}
             <div className="bg-white border-0.9 shadow-lg mb-4">
                 <div className="text-3xl text-center">

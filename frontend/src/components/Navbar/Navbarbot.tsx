@@ -39,24 +39,31 @@ const toPath = (label: string) => {
 const Navbarbot: React.FC = () => {
   // State để theo dõi mục dropdown nào đang mở
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const closeTimer = React.useRef<number | null>(null);
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => clearCloseTimer();
+  }, []);
 
   const items = rawItems.map((label) => ({ label, to: toPath(label) }));
-
-  // Hàm xử lý việc mở/đóng dropdown
-  const handleDropdownToggle = (label: string) => {
-    setOpenDropdown(openDropdown === label ? null : label);
-  };
 
   const isDropdown = (label: string) => dropdownItems.hasOwnProperty(label);
 
   return (
     <div className="hidden md:block bg-orange-200">
-        <div className="max-w-7xl mx-auto px-4 h-13">
+  <div className="w-4/5 max-w-7xl mx-auto px-4 h-13">
           <div className="py-3">
             <nav className="flex flex-wrap gap-16 text-lg text-gray-800 justify-center">
               {items.map(({ label, to }) => {
                 const hasDropdown = isDropdown(label);
-                const isActive = hasDropdown ? openDropdown === label : false;
 
                 if (hasDropdown) {
                   return (
@@ -64,8 +71,14 @@ const Navbarbot: React.FC = () => {
                     <div
                       key={label}
                       className="relative"
-                      onMouseEnter={() => setOpenDropdown(label)}
-                      onMouseLeave={() => setOpenDropdown(null)}
+                      onMouseEnter={() => {
+                        clearCloseTimer();
+                        setOpenDropdown(label);
+                      }}
+                      onMouseLeave={() => {
+                        clearCloseTimer();
+                        closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
+                      }}
                     >
                       {/* Label điều hướng trực tiếp */}
                       <NavLink
@@ -85,7 +98,19 @@ const Navbarbot: React.FC = () => {
 
                       {/* Menu thả xuống */}
                       <div
-                        className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20 ${openDropdown === label ? "block" : "hidden"}`}
+                        className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20 origin-top transition-all duration-200 ease-out ${
+                          openDropdown === label
+                            ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                            : "opacity-0 -translate-y-1 scale-95 pointer-events-none"
+                        }`}
+                        onMouseEnter={() => {
+                          clearCloseTimer();
+                          setOpenDropdown(label);
+                        }}
+                        onMouseLeave={() => {
+                          clearCloseTimer();
+                          closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
+                        }}
                       >
                         {dropdownItems[label as keyof typeof dropdownItems].map((item) => (
                           <NavLink
