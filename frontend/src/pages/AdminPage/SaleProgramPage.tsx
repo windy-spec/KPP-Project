@@ -62,7 +62,7 @@ const SaleProgramPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Xóa chương trình này?")) return;
-    await fetch(``, {
+    await fetch(`http://localhost:5001/api/saleprogram/${id}`, {
       method: "DELETE",
     });
     fetchPrograms();

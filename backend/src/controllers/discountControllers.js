@@ -73,11 +73,9 @@ export const createDiscount = async (req, res) => {
 // @access  Public
 export const getDiscounts = async (req, res) => {
   try {
-    const discounts = await Discount.find({
-      isActive: true,
-      start_sale: { $lte: new Date() },
-      $or: [{ end_sale: null }, { end_sale: { $gte: new Date() } }],
-    }).populate("tiers");
+    const discounts = await Discount.find({})
+      .sort({ createdAt: -1 }) // Sắp xếp cho dễ nhìn
+      .populate("tiers");
     res.status(200).json(discounts);
   } catch (error) {
     res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
@@ -99,23 +97,74 @@ export const getDiscountById = async (req, res) => {
   }
 };
 
-// @desc    Cập nhật discount
-// @route   PUT /api/v1/discounts/:id
-// @access  Admin
-export const updateDiscount = async (req, res) => {
+export const updateDiscountWithTiers = async (req, res) => {
+  const { id } = req.params; // Lấy ID của discount cần sửa
+
+  // Tách 'tiers' (dữ liệu thô) ra khỏi phần còn lại
+  const { tiers, ...discountData } = req.body;
+
+  // Kiểm tra xem ID có hợp lệ không
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ message: "Discount không tìm thấy" });
+  }
+
+  const session = await mongoose.startSession();
   try {
-    // (Lưu ý: logic cập nhật/xóa tiers phức tạp, tạm thời chỉ update discount chính)
-    const updatedDiscount = await Discount.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true, runValidators: true }
-    );
-    if (!updatedDiscount) {
-      return res.status(404).json({ message: "Không tìm thấy mã giảm giá." });
+    session.startTransaction();
+
+    // === BƯỚC 1: Tìm Discount cha ===
+    const discountToUpdate = await Discount.findById(id).session(session);
+    if (!discountToUpdate) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Discount không tìm thấy" });
     }
-    res.status(200).json(updatedDiscount);
+
+    // === BƯỚC 2: Xóa TẤT CẢ các tier con CŨ ===
+    // Dùng mảng 'tiers' cũ (mảng ObjectId) đang lưu trong discount
+    if (discountToUpdate.tiers && discountToUpdate.tiers.length > 0) {
+      await DiscountTier.deleteMany(
+        { _id: { $in: discountToUpdate.tiers } },
+        { session }
+      );
+    }
+
+    // === BƯỚC 3: Tạo các tier MỚI (giống hệt hàm create) ===
+    let newTierIds = [];
+    if (tiers && tiers.length > 0) {
+      // 'tiers' lúc này là [{ min_quantity, discount_percent }] từ frontend
+      const tiersToCreate = tiers.map((tier) => ({
+        ...tier,
+        discount_id: discountToUpdate._id, // Liên kết với cha
+      }));
+
+      const newTiers = await DiscountTier.insertMany(tiersToCreate, {
+        session,
+      });
+      newTierIds = newTiers.map((t) => t._id);
+    }
+
+    // === BƯỚC 4: Cập nhật Discount cha (cha) ===
+    // Cập nhật các trường (name, type, v.v...) VÀ mảng 'tiers' mới
+    Object.assign(discountToUpdate, discountData); // Cập nhật các trường như name, type...
+    discountToUpdate.tiers = newTierIds; // Gán mảng ID tier mới
+
+    await discountToUpdate.save({ session });
+
+    // === KẾT THÚC ===
+    await session.commitTransaction();
+
+    // Trả về data mới nhất
+    const result = await Discount.findById(id).populate("tiers");
+    res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+    await session.abortTransaction();
+    console.error("Lỗi khi cập nhật discount:", error);
+    res.status(500).json({
+      message: "Lỗi máy chủ khi cập nhật discount",
+      error: error.message,
+    });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -137,6 +186,61 @@ export const deleteDiscount = async (req, res) => {
       .json({ message: "Đã vô hiệu hóa mã giảm giá.", disabledDiscount });
   } catch (error) {
     res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
+  }
+};
+
+// @desc    Xóa CỨNG discount và các tier liên quan
+// @route   DELETE /api/v1/discounts/hard-delete/:id
+// @access  Admin
+export const hardDeleteDiscount = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ message: "ID không hợp lệ" });
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    // 1. Tìm Discount cha để lấy thông tin
+    const discount = await Discount.findById(id).session(session);
+    if (!discount) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Discount không tìm thấy" });
+    }
+
+    // 2. Xóa tất cả DiscountTier (Con)
+    if (discount.tiers && discount.tiers.length > 0) {
+      await DiscountTier.deleteMany(
+        { _id: { $in: discount.tiers } },
+        { session }
+      );
+    }
+
+    // 3. Gỡ Discount này ra khỏi SaleProgram (nếu có)
+    if (discount.program_id) {
+      await SaleProgram.findByIdAndUpdate(
+        discount.program_id,
+        { $pull: { discounts: discount._id } }, // $pull: gỡ ID khỏi mảng
+        { session }
+      );
+    }
+
+    // 4. Xóa chính Discount (Cha)
+    await Discount.findByIdAndDelete(id, { session });
+
+    await session.commitTransaction();
+
+    res.status(200).json({ message: "Đã xóa vĩnh viễn discount" });
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("Lỗi khi xóa cứng discount:", error);
+    res
+      .status(500)
+      .json({ message: "Lỗi máy chủ khi xóa", error: error.message });
+  } finally {
+    session.endSession();
   }
 };
 

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
 import { toast } from "sonner";
-
+import Swal from "sweetalert2";
 type Tier = {
   condition_type: "QUANTITY" | "TOTAL_PRICE";
   min_value: number;
@@ -44,20 +44,39 @@ const SaleAdminPage: React.FC = () => {
     min_quantity: 1,
     isActive: true,
     tiers: [],
+    start_sale: "",
+    end_sale: "",
   });
 
   // search & pagination
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
 
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+
   const fetchDiscounts = async () => {
     setLoading(true);
     try {
       const res = await fetch("http://localhost:5001/api/discount", {
         headers: { "Content-Type": "application/json" },
+        cache: "no-store", // <-- FIX 1: Thêm dòng này để chống caching
       });
       const data = await res.json();
-      setDiscounts(data);
+
+      // === FIX 2: Thêm logic parsing an toàn ===
+      if (Array.isArray(data)) {
+        setDiscounts(data);
+      } else if (data && Array.isArray(data.discounts)) {
+        // Nếu API trả về { discounts: [...] }
+        setDiscounts(data.discounts);
+      } else if (data && Array.isArray(data.data)) {
+        // Nếu API trả về { data: [...] }
+        setDiscounts(data.data);
+      } else {
+        setDiscounts([]);
+      }
+      // === Kết thúc FIX 2 ===
     } catch (err) {
       console.error(err);
       toast.error("Không tải được danh sách discount");
@@ -65,9 +84,56 @@ const SaleAdminPage: React.FC = () => {
       setLoading(false);
     }
   };
+  const fetchSelectData = async () => {
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        fetch("http://localhost:5001/api/product"),
+        fetch("http://localhost:5001/api/category"),
+      ]);
+      if (!prodRes.ok || !catRes.ok) {
+        throw new Error("Failed to fetch product/category data");
+      }
 
+      const prodData = await prodRes.json();
+      const catData = await catRes.json();
+
+      // === BẮT ĐẦU SỬA ===
+      // Kiểm tra xem prodData có phải là mảng không
+      if (Array.isArray(prodData)) {
+        setProducts(prodData);
+      }
+      // Kiểm tra xem nó có được bọc trong key 'products' không
+      else if (prodData && Array.isArray(prodData.products)) {
+        setProducts(prodData.products);
+      }
+      // Kiểm tra xem nó có được bọc trong key 'data' không
+      else if (prodData && Array.isArray(prodData.data)) {
+        setProducts(prodData.data);
+      }
+      // Nếu không thì fallback về mảng rỗng
+      else {
+        setProducts([]);
+      }
+
+      // Làm tương tự cho categories
+      if (Array.isArray(catData)) {
+        setCategories(catData);
+      } else if (catData && Array.isArray(catData.categories)) {
+        setCategories(catData.categories);
+      } else if (catData && Array.isArray(catData.data)) {
+        setCategories(catData.data);
+      } else {
+        setCategories([]);
+      }
+      // === KẾT THÚC SỬA ===
+    } catch (err) {
+      console.error(err);
+      toast.error("Không tải được danh sách sản phẩm/danh mục");
+    }
+  };
   useEffect(() => {
     fetchDiscounts();
+    fetchSelectData();
   }, []);
 
   // open create modal
@@ -82,31 +148,46 @@ const SaleAdminPage: React.FC = () => {
       min_quantity: 1,
       isActive: true,
       tiers: [],
+      start_sale: "",
+      end_sale: "",
     });
     setOpenModal(true);
   };
 
   // open edit modal
   const openEdit = (d: Discount) => {
-    // normalize tiers: ensure tiers is Tier[] (API returns populated tiers objects)
-    const normalized: Discount = {
+    // 1. Normalize tiers (bạn đã làm)
+    const normalizedTiers = Array.isArray(d.tiers)
+      ? (d.tiers as any[])
+          .map((t) =>
+            typeof t === "string"
+              ? null
+              : {
+                  // === SỬA TÊN TRƯỜNG KHI ĐỌC VÀO ===
+                  condition_type: t.condition_type || "QUANTITY", // (Giả sử)
+                  min_value: t.min_quantity, // <-- Đổi t.min_value
+                  percent: t.discount_percent, // <-- Đổi t.percent
+                }
+          )
+          .filter(Boolean)
+      : [];
+
+    // 2. Format lại toàn bộ object cho Form
+    const formattedDiscount = {
       ...d,
-      tiers: Array.isArray(d.tiers)
-        ? (d.tiers as any[])
-            .map((t) =>
-              typeof t === "string"
-                ? null
-                : {
-                    condition_type: t.condition_type,
-                    min_value: t.min_value,
-                    percent: t.percent,
-                  }
-            )
-            .filter(Boolean)
-        : [],
+      // === FORMAT DATE CHO Ô INPUT ===
+      start_sale: d.start_sale
+        ? new Date(d.start_sale).toISOString().slice(0, 10)
+        : "",
+      end_sale: d.end_sale
+        ? new Date(d.end_sale).toISOString().slice(0, 10)
+        : "",
+      // === GÁN LẠI TIERS ĐÃ CHUẨN HÓA ===
+      tiers: normalizedTiers,
     };
+
     setEditing(d);
-    setForm(normalized);
+    setForm(formattedDiscount); // <-- Dùng object đã format
     setOpenModal(true);
   };
 
@@ -138,26 +219,41 @@ const SaleAdminPage: React.FC = () => {
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("accessToken");
+
+    // === BẮT ĐẦU SỬA ĐỔI ===
+
+    // 1. "Dịch" lại mảng tiers từ FE -> BE
+    const formattedTiers = ((form.tiers as Tier[]) || []).map((t) => ({
+      min_quantity: t.min_value, // <-- Đổi 'min_value' thành 'min_quantity'
+      discount_percent: t.percent, // <-- Đổi 'percent' thành 'discount_percent'
+      // Lưu ý: 'condition_type' sẽ bị bỏ qua
+    }));
+
+    // 2. Tách mảng 'tiers' gốc ra khỏi 'form'
+    const { tiers, ...restOfForm } = form;
+
+    // 3. Tạo payload cuối cùng để gửi đi
+    const payload = {
+      ...restOfForm, // Gồm: name, type, target_type, target_id...
+      tiers: formattedTiers, // Sử dụng mảng tiers đã được "dịch"
+    };
+
+    // === KẾT THÚC SỬA ĐỔI ===
+
     try {
-      const payload: any = { ...form };
-      // if no tiers, we may keep discount_percent fallback
-      if (
-        !payload.tiers ||
-        (Array.isArray(payload.tiers) && payload.tiers.length === 0)
-      ) {
-        // allow discount_percent to be used
-      }
+      // Logic gửi request (bạn đã làm ở tin nhắn trước)
       const method = editing ? "PUT" : "POST";
       const url = editing
         ? `http://localhost:5001/api/discount/${editing!._id}`
         : "http://localhost:5001/api/discount";
+
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload), // <-- Gửi payload đã được "dịch"
       });
 
       if (!res.ok) {
@@ -168,6 +264,8 @@ const SaleAdminPage: React.FC = () => {
           editing ? "Cập nhật thành công" : "Tạo discount thành công"
         );
         setOpenModal(false);
+        setQuery(""); // Reset thanh tìm kiếm
+        setPage(1); // Đưa về trang 1
         await fetchDiscounts();
       }
     } catch (err) {
@@ -179,18 +277,42 @@ const SaleAdminPage: React.FC = () => {
   // Delete
   const handleDelete = async (id?: string) => {
     if (!id) return;
-    if (!confirm("Bạn có chắc chắn muốn xoá discount này?")) return;
+
+    // === BẮT ĐẦU THAY THẾ ===
+    // Dùng Swal.fire() thay cho confirm()
+    const result = await Swal.fire({
+      title: "Bạn có chắc chắn?",
+      text: "Bạn sẽ XÓA VĨNH VIỄN discount này! Không thể hoàn tác!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33", // Màu đỏ cho nút xóa
+      cancelButtonColor: "#3085d6", // Màu xanh cho nút hủy
+      confirmButtonText: "Vâng, xóa vĩnh viễn!",
+      cancelButtonText: "Hủy",
+    });
+
+    // Nếu người dùng bấm "Hủy" (hoặc đóng)
+    if (!result.isConfirmed) {
+      return;
+    }
+    // === KẾT THÚC THAY THẾ ===
+
+    // Logic xóa giữ nguyên
     const token = localStorage.getItem("accessToken");
     try {
-      const res = await fetch(`http://localhost:5001/api/discount/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      });
+      const res = await fetch(
+        `http://localhost:5001/api/discount/hard-delete/${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        }
+      );
+
       if (!res.ok) {
         const err = await res.json();
         toast.error(err?.message || "Xóa thất bại");
       } else {
-        toast.success("Đã xóa");
+        toast.success("Đã xóa vĩnh viễn");
         fetchDiscounts();
       }
     } catch (err) {
@@ -198,7 +320,6 @@ const SaleAdminPage: React.FC = () => {
       toast.error("Xảy ra lỗi");
     }
   };
-
   // filtered & pagination
   const filtered = discounts.filter((d) => {
     const q = query.trim().toLowerCase();
@@ -246,6 +367,7 @@ const SaleAdminPage: React.FC = () => {
                   <th className="p-3 text-left">Áp dụng cho</th>
                   <th className="p-3 text-left">% cơ bản</th>
                   <th className="p-3 text-left">Tiers</th>
+                  <th className="p-3 text-left">Trạng thái</th>
                   <th className="p-3 text-center">Hành động</th>
                 </tr>
               </thead>
@@ -260,14 +382,26 @@ const SaleAdminPage: React.FC = () => {
                       {d.tiers && (d.tiers as any[]).length > 0 ? (
                         (d.tiers as any[]).map((t: any, i: number) => (
                           <div key={i} className="text-sm">
-                            {t.condition_type === "QUANTITY"
-                              ? `Mua >= ${t.min_value}`
-                              : `Đơn >= ${t.min_value}`}{" "}
-                            → {t.percent}%
+                            {/* API (t) không có 'condition_type' hoặc 'min_value'.
+                           Nó có 'min_quantity' và 'discount_percent'.
+                            Chúng ta sẽ hiển thị theo tên trường đúng từ API.
+                            */}
+                            {`Mua >= ${t.min_quantity}`} → {t.discount_percent}%
                           </div>
                         ))
                       ) : (
                         <span className="text-sm text-gray-400">Không có</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {d.isActive ? (
+                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          Đang hoạt động
+                        </span>
+                      ) : (
+                        <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          Đã ẩn
+                        </span>
                       )}
                     </td>
                     <td className="p-3 text-center">
@@ -281,7 +415,7 @@ const SaleAdminPage: React.FC = () => {
                         onClick={() => handleDelete(d._id)}
                         className="px-3 py-1 bg-red-500 text-white rounded"
                       >
-                        Xóa
+                        Xoá{" "}
                       </button>
                     </td>
                   </tr>
@@ -353,13 +487,48 @@ const SaleAdminPage: React.FC = () => {
                 <select
                   className="border p-2 rounded"
                   value={form.target_type}
-                  onChange={(e) =>
-                    setForm({ ...form, target_type: e.target.value as any })
-                  }
+                  onChange={(e) => {
+                    const newTargetType = e.target.value as any;
+                    setForm({
+                      ...form,
+                      target_type: newTargetType,
+                      target_id: null,
+                      // Nếu là ORDER_TOTAL, tự động xóa hết tier
+                      tiers: newTargetType === "ORDER_TOTAL" ? [] : form.tiers,
+                    });
+                  }}
                 >
                   <option value="PRODUCT">PRODUCT</option>
                   <option value="CATEGORY">CATEGORY</option>
                   <option value="ORDER_TOTAL">ORDER_TOTAL</option>
+                </select>
+                {/* 2. THÊM DROPDOWN MỚI NÀY VÀO */}
+                <select
+                  className="border p-2 rounded"
+                  value={form.target_id || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, target_id: e.target.value || null })
+                  }
+                  // Vô hiệu hóa khi áp dụng cho tổng đơn
+                  disabled={form.target_type === "ORDER_TOTAL"}
+                  required={form.target_type !== "ORDER_TOTAL"}
+                >
+                  <option value="">— Chọn đối tượng —</option>
+                  {form.target_type === "PRODUCT" &&
+                    products.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  {form.target_type === "CATEGORY" &&
+                    categories.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  {form.target_type === "ORDER_TOTAL" && (
+                    <option value="">(Áp dụng tổng đơn)</option>
+                  )}
                 </select>
                 <input
                   type="number"
@@ -374,72 +543,118 @@ const SaleAdminPage: React.FC = () => {
                   }
                 />
               </div>
-
-              {/* Tiers list */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="font-medium">
-                    Discount tiers (mức giảm theo điều kiện)
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Ngày bắt đầu
                   </label>
-                  <button
-                    type="button"
-                    onClick={addTier}
-                    className="text-sm bg-green-500 text-white px-3 py-1 rounded"
-                  >
-                    Thêm tier
-                  </button>
+                  <input
+                    type="date"
+                    className="border p-2 rounded w-full mt-1"
+                    value={form.start_sale ? form.start_sale.slice(0, 10) : ""}
+                    onChange={(e) =>
+                      setForm({ ...form, start_sale: e.target.value })
+                    }
+                    required // <-- Rất quan trọng vì schema yêu cầu
+                  />
                 </div>
-                <div className="space-y-2">
-                  {((form.tiers as Tier[]) || []).map((t, idx) => (
-                    <div
-                      key={idx}
-                      className="grid grid-cols-6 gap-2 items-center"
-                    >
-                      <select
-                        value={t.condition_type}
-                        onChange={(e) =>
-                          updateTier(
-                            idx,
-                            "condition_type",
-                            e.target.value as any
-                          )
-                        }
-                        className="col-span-2 border p-2 rounded"
-                      >
-                        <option value="QUANTITY">Số lượng</option>
-                        <option value="TOTAL_PRICE">Tổng tiền</option>
-                      </select>
-                      <input
-                        type="number"
-                        value={t.min_value}
-                        onChange={(e) =>
-                          updateTier(idx, "min_value", Number(e.target.value))
-                        }
-                        className="col-span-2 border p-2 rounded"
-                      />
-                      <input
-                        type="number"
-                        value={t.percent}
-                        onChange={(e) =>
-                          updateTier(idx, "percent", Number(e.target.value))
-                        }
-                        className="col-span-1 border p-2 rounded"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeTier(idx)}
-                        className="col-span-1 bg-red-500 text-white p-2 rounded"
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  ))}
-                  {((form.tiers as Tier[]) || []).length === 0 && (
-                    <div className="text-sm text-gray-500">Chưa có tier</div>
-                  )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Ngày kết thúc (tùy chọn)
+                  </label>
+                  <input
+                    type="date"
+                    className="border p-2 rounded w-full mt-1"
+                    value={form.end_sale ? form.end_sale.slice(0, 10) : ""}
+                    onChange={(e) =>
+                      setForm({ ...form, end_sale: e.target.value })
+                    }
+                  />
                 </div>
               </div>
-
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  checked={form.isActive ?? true} // Mặc định là true
+                  onChange={(e) =>
+                    setForm({ ...form, isActive: e.target.checked })
+                  }
+                />
+                <label
+                  htmlFor="isActive"
+                  className="text-sm font-medium text-gray-900"
+                >
+                  Kích hoạt (cho phép discount này hoạt động)
+                </label>
+              </div>
+              {/* Tiers list */}
+              {form.target_type !== "ORDER_TOTAL" && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="font-medium">
+                      Discount tiers (mức giảm theo điều kiện)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addTier}
+                      className="text-sm bg-green-500 text-white px-3 py-1 rounded"
+                    >
+                      Thêm tier
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {((form.tiers as Tier[]) || []).map((t, idx) => (
+                      <div
+                        key={idx}
+                        className="grid grid-cols-6 gap-2 items-center"
+                      >
+                        <select
+                          value={t.condition_type}
+                          onChange={(e) =>
+                            updateTier(
+                              idx,
+                              "condition_type",
+                              e.target.value as any
+                            )
+                          }
+                          className="col-span-2 border p-2 rounded"
+                        >
+                          <option value="QUANTITY">Số lượng</option>
+                          <option value="TOTAL_PRICE">Tổng tiền</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={t.min_value}
+                          onChange={(e) =>
+                            updateTier(idx, "min_value", Number(e.target.value))
+                          }
+                          className="col-span-2 border p-2 rounded"
+                        />
+                        <input
+                          type="number"
+                          value={t.percent}
+                          onChange={(e) =>
+                            updateTier(idx, "percent", Number(e.target.value))
+                          }
+                          className="col-span-1 border p-2 rounded"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeTier(idx)}
+                          className="col-span-1 bg-red-500 text-white p-2 rounded"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    ))}
+                    {((form.tiers as Tier[]) || []).length === 0 && (
+                      <div className="text-sm text-gray-500">Chưa có tier</div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3 justify-end">
                 <button
                   type="button"

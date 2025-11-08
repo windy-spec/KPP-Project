@@ -3,9 +3,10 @@ import {
   createDiscount,
   getDiscounts,
   getDiscountById,
-  updateDiscount,
   deleteDiscount,
-  applyDiscount, // Quan trọng
+  applyDiscount,
+  updateDiscountWithTiers,
+  hardDeleteDiscount, // Quan trọng
 } from "../controllers/discountControllers.js";
 import { protectedRoute, checkRole } from "../middlewares/authMiddlewares.js";
 
@@ -23,7 +24,7 @@ router
 router
   .route("/:id")
   .get(getDiscountById) // <-- Public GET
-  .put(protectedRoute, checkRole(["admin"]), updateDiscount)
+  .put(protectedRoute, checkRole(["admin"]), updateDiscountWithTiers)
   .delete(protectedRoute, checkRole(["admin"]), deleteDiscount);
-
+router.delete("/hard-delete/:id", hardDeleteDiscount);
 export default router;
