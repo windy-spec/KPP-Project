@@ -1,4 +1,4 @@
-import React, { Children, use, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
@@ -125,7 +125,7 @@ const Navbartop: React.FC = () => {
 
       {/* Desktop: original topbar */}
       <div className="hidden md:block">
-        <div className="max-w-7xl mx-auto px-4">
+  <div className="w-4/5 max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-14">
             {/* left: logo */}
             <div className="flex items-center gap-4">

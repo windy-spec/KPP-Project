@@ -52,6 +52,14 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const [visible, setVisible] = useState(false);
   // State quản lý dropdown nào đang mở
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
 
   // Toggle Menu
   const toggleUserMenu = () => {
@@ -181,7 +189,10 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      clearCloseTimer();
+    };
   }, []);
 
   return (
@@ -195,7 +206,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       {/* FIX LỖI 1: Đặt background trên div ngoài cùng, để nó chiếm toàn bộ chiều ngang */}
       <div className="pointer-events-auto bg-gray-50">
         {/* FIX LỖI 1: Container giới hạn độ rộng nội dung và căn giữa */}
-        <div className="w-full lg:max-w-7xl mx-auto px-4 md:px-6">
+  <div className="w-full lg:w-4/5 lg:max-w-7xl mx-auto px-4 md:px-6"> 
           <div className="flex items-center justify-between h-16">
             {/* left: logo */}
             <div className="flex items-center gap-2 md:gap-3">
@@ -231,8 +242,14 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                         <div
                           key={label}
                           className="relative"
-                          onMouseEnter={() => setOpenDropdown(label)}
-                          onMouseLeave={() => setOpenDropdown(null)}
+                          onMouseEnter={() => {
+                            clearCloseTimer();
+                            setOpenDropdown(label);
+                          }}
+                          onMouseLeave={() => {
+                            clearCloseTimer();
+                            closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
+                          }}
                         >
                           {/* Label điều hướng trực tiếp */}
                           <a
@@ -245,9 +262,19 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
 
                           {/* Menu thả xuống */}
                           <div
-                            className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-36 md:w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-30 ${
-                              isActive ? "block" : "hidden"
+                            className={`absolute left-1/2 transform -translate-x-1/2 mt-2 w-36 md:w-40 bg-white border border-gray-200 rounded-lg shadow-xl z-30 origin-top transition-all duration-200 ease-out ${
+                              isActive
+                                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                                : "opacity-0 -translate-y-1 scale-95 pointer-events-none"
                             }`}
+                            onMouseEnter={() => {
+                              clearCloseTimer();
+                              setOpenDropdown(label);
+                            }}
+                            onMouseLeave={() => {
+                              clearCloseTimer();
+                              closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
+                            }}
                           >
                             {dropdownItems[
                               label as keyof typeof dropdownItems

@@ -1,26 +1,57 @@
-import React, { useEffect, useState } from "react";
+// frontend/src/components/Admin/SaleProgramForm.tsx
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 
 type Props = { editing?: any | null; onClose: () => void };
+
+type Discount = {
+  _id: string;
+  name: string;
+  type: "SALE" | "AGENCY";
+  discount_percent: number;
+};
 
 const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
   const [name, setName] = useState(editing?.name || "");
   const [description, setDescription] = useState(editing?.description || "");
   const [startDate, setStartDate] = useState(
-    editing ? editing.start_date.slice(0, 10) : ""
+    editing ? (editing.start_date || "").slice(0, 10) : ""
   );
   const [endDate, setEndDate] = useState(
-    editing ? editing.end_date.slice(0, 10) : ""
+    editing ? (editing.end_date || "").slice(0, 10) : ""
   );
-  const [discounts, setDiscounts] = useState<any[]>([]);
+  const token = localStorage.getItem("accessToken");
+  const authHeaders = {
+    headers: { Authorization: `Bearer ${token}` },
+  };
+  const [allDiscounts, setAllDiscounts] = useState<Discount[]>([]);
+
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>(
-    editing?.discounts || []
+    editing?.discounts.map((d: any) => d._id || d) || []
   );
+
   const [isActive, setIsActive] = useState(editing?.isActive ?? true);
+  const [typeFilter, setTypeFilter] = useState<"SALE" | "AGENCY">("SALE");
+  const [discountToAdd, setDiscountToAdd] = useState<string>("");
 
   const fetchDiscounts = async () => {
-    const res = await axios.get("http://localhost:5001/api/discount");
-    setDiscounts(res.data);
+    try {
+      const res = await axios.get(
+        "http://localhost:5001/api/discount",
+        authHeaders
+      );
+      let discountData: Discount[] = [];
+      if (Array.isArray(res.data)) {
+        discountData = res.data;
+      } else if (res.data && Array.isArray(res.data.data)) {
+        discountData = res.data.data;
+      } else if (res.data && Array.isArray(res.data.discounts)) {
+        discountData = res.data.discounts;
+      }
+      setAllDiscounts(discountData);
+    } catch (err) {
+      console.error("Lỗi khi tải discounts:", err);
+    }
   };
 
   useEffect(() => {
@@ -41,28 +72,58 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
     if (editing) {
       await axios.put(
         `http://localhost:5001/api/saleprogram/${editing._id}`,
-        payload
+        payload,
+        authHeaders
       );
     } else {
-      await axios.post("http://localhost:5001/api/saleprogram", payload);
+      await axios.post(
+        "http://localhost:5001/api/saleprogram",
+        payload,
+        authHeaders
+      );
     }
     onClose();
   };
 
+  const availableDiscounts = useMemo(() => {
+    return allDiscounts.filter(
+      (d) => d.type === typeFilter && !selectedDiscounts.includes(d._id)
+    );
+  }, [allDiscounts, typeFilter, selectedDiscounts]);
+
+  const selectedDiscountsFull = useMemo(() => {
+    return selectedDiscounts
+      .map((id) => allDiscounts.find((d) => d._id === id))
+      .filter((d): d is Discount => !!d);
+  }, [selectedDiscounts, allDiscounts]);
+
+  const handleAddDiscount = () => {
+    if (discountToAdd && !selectedDiscounts.includes(discountToAdd)) {
+      setSelectedDiscounts([...selectedDiscounts, discountToAdd]);
+      setDiscountToAdd("");
+    }
+  };
+
+  const handleRemoveDiscount = (idToRemove: string) => {
+    setSelectedDiscounts(selectedDiscounts.filter((id) => id !== idToRemove));
+  };
+
   return (
-    <div className="fixed inset-0 flex justify-center items-start bg-black/20 p-6">
-      <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-lg">
+    <div className="fixed inset-0 flex justify-center items-start bg-black/20 p-6 overflow-y-auto z-50">
+      <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-lg mt-10">
         <h3 className="font-semibold text-lg mb-4">
           {editing ? "Chỉnh sửa chương trình" : "Tạo mới chương trình"}
         </h3>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Hàng 1: Tên, Mô tả */}
           <div>
             <label className="block text-sm">Tên chương trình</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full border rounded px-2 py-1"
+              required
             />
           </div>
           <div>
@@ -74,6 +135,7 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
             />
           </div>
 
+          {/* Hàng 2: Ngày */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm">Ngày bắt đầu</label>
@@ -82,6 +144,7 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full border rounded px-2 py-1"
+                required
               />
             </div>
             <div>
@@ -91,31 +154,100 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full border rounded px-2 py-1"
+                required
               />
             </div>
           </div>
 
+          {/* Khu vực Discount đã chọn */}
           <div>
-            <label className="block text-sm">Chọn discount</label>
-            <select
-              multiple
-              value={selectedDiscounts}
-              onChange={(e) =>
-                setSelectedDiscounts(
-                  Array.from(e.target.selectedOptions, (opt) => opt.value)
-                )
-              }
-              className="w-full border rounded px-2 py-1 h-32"
-            >
-              {discounts.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name} ({d.discount_percent}%)
-                </option>
+            <label className="block text-sm font-medium">
+              Các Discount đã thêm
+            </label>
+            <div className="border rounded p-2 mt-1 min-h-[50px] space-y-1">
+              {selectedDiscountsFull.length === 0 && (
+                <p className="text-sm text-gray-500">Chưa có discount nào</p>
+              )}
+              {selectedDiscountsFull.map((d) => (
+                <div
+                  key={d._id}
+                  className="flex justify-between items-center bg-gray-100 p-1 rounded"
+                >
+                  <span className="text-sm">{d.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveDiscount(d._id)}
+                    className="text-red-500 hover:text-red-700 font-bold px-2"
+                  >
+                    Xóa
+                  </button>
+                </div>
               ))}
-            </select>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* Bộ lọc RADIO */}
+          <div>
+            <label className="block text-sm font-medium">
+              Lọc để thêm Discount
+            </label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="discountType"
+                  value="SALE"
+                  checked={typeFilter === "SALE"}
+                  onChange={() => setTypeFilter("SALE")}
+                />{" "}
+                SALE
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="discountType"
+                  value="AGENCY"
+                  checked={typeFilter === "AGENCY"}
+                  onChange={() => setTypeFilter("AGENCY")}
+                />{" "}
+                AGENCY
+              </label>
+            </div>
+          </div>
+
+          {/* Dropdown "Thêm discount" */}
+          <div className="flex items-end gap-2">
+            <div className="flex-grow">
+              <label className="block text-sm">Chọn discount để thêm</label>
+              <select
+                value={discountToAdd}
+                onChange={(e) => setDiscountToAdd(e.target.value)}
+                className="w-full border rounded px-2 py-1.5"
+              >
+                <option value="">— Chọn —</option>
+                {availableDiscounts.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.name} (
+                    {d.discount_percent
+                      ? `${d.discount_percent}%`
+                      : "Bậc thang"}
+                    )
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddDiscount}
+              disabled={!discountToAdd}
+              className="bg-green-500 text-white px-4 py-1.5 rounded disabled:opacity-50"
+            >
+              Thêm
+            </button>
+          </div>
+
+          {/* Nút cuối */}
+          <div className="flex items-center justify-between pt-2">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -124,12 +256,21 @@ const SaleProgramForm: React.FC<Props> = ({ editing, onClose }) => {
               />
               Kích hoạt
             </label>
-            <button
-              type="submit"
-              className="bg-primary text-white px-4 py-2 rounded"
-            >
-              Lưu
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="bg-orange-500 text-white px-4 py-2 rounded" // Đổi bg-primary
+              >
+                Lưu
+              </button>
+            </div>
           </div>
         </form>
       </div>
