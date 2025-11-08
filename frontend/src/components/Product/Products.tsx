@@ -95,6 +95,17 @@ const Products: React.FC = () => {
     fetchCategories();
   }, []); // 🟢 Lấy sản phẩm
 
+  // Sync activeCategory with URL query when location.search changes (so external navigation updates filter)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const catFromUrl = params.get("categories");
+    if (catFromUrl !== activeCategory) {
+      setActiveCategory(catFromUrl);
+      setCurrentPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
   useEffect(() => {
     let mounted = true;
     const fetchProducts = async () => {

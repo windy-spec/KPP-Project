@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import cartIcon from '@/assets/icon/shopping-bag.png';
 import searchIcon from '@/assets/icon/search_icon.png';
+import apiClient from '../../utils/api-user';
 
 const MobileHeader: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState<{ displayName?: string; email?: string; role?: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [categories, setCategories] = useState<Array<any>>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [catError, setCatError] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 0);
@@ -50,6 +54,27 @@ const MobileHeader: React.FC = () => {
     };
 
     loadUser();
+  }, []);
+
+  // fetch categories for mobile menu
+  useEffect(() => {
+    let mounted = true;
+    const fetchCategories = async () => {
+      setCatLoading(true);
+      setCatError(null);
+      try {
+        const res = await apiClient.get('/category');
+        if (!mounted) return;
+        setCategories(Array.isArray(res.data) ? res.data : []);
+      } catch (err: any) {
+        console.error('Lỗi khi lấy danh mục:', err);
+        if (mounted) setCatError('Không thể tải danh mục');
+      } finally {
+        if (mounted) setCatLoading(false);
+      }
+    };
+    fetchCategories();
+    return () => { mounted = false; };
   }, []);
 
   const handleLogout = async () => {
@@ -125,9 +150,21 @@ const MobileHeader: React.FC = () => {
                 <details className="bg-white">
                   <summary className="py-2 cursor-pointer">Sản Phẩm</summary>
                   <div className="pl-4">
-                    <Link to="/san-pham/dung-cu" className="block py-1 text-gray-700">Dụng cụ sơn</Link>
-                    <Link to="/san-pham/son-nuoc" className="block py-1 text-gray-700">Sơn nước</Link>
-                    <Link to="/san-pham/son-xit" className="block py-1 text-gray-700">Sơn xịt</Link>
+                    {catLoading ? (
+                      <div className="py-1 text-sm text-gray-500">Đang tải...</div>
+                    ) : catError ? (
+                      <div className="py-1 text-sm text-red-500">{catError}</div>
+                    ) : categories.length ? (
+                      categories.map((cat) => (
+                        <Link key={cat._id || cat.id || cat.name} to={`/san-pham?categories=${encodeURIComponent(cat._id || cat.id || cat.name)}`} onClick={() => setOpen(false)} className="block py-1 text-gray-700">{cat.name}</Link>
+                      ))
+                    ) : (
+                      <>
+                        <Link to="/san-pham/dung-cu" className="block py-1 text-gray-700">Dụng cụ sơn</Link>
+                        <Link to="/san-pham/son-nuoc" className="block py-1 text-gray-700">Sơn nước</Link>
+                        <Link to="/san-pham/son-xit" className="block py-1 text-gray-700">Sơn xịt</Link>
+                      </>
+                    )}
                   </div>
                 </details>
 
