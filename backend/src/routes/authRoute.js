@@ -1,23 +1,37 @@
 import express from "express";
 import {
+  signUp,
   signIn,
   signOut,
-  signUp,
   forgotPassword,
   resetPassword,
+  getProfile,
 } from "../controllers/authControllers.js";
+import { protectedRoute as protect } from "../middlewares/authMiddlewares.js";
+
 const router = express.Router();
 
-// get API:
+// === CÁC ROUTE CÔNG KHAI (Public) ===
 
-// API signUp
-router.post("/signUp", signUp);
-// API signIn
-router.post("/signIn", signIn);
-// API signOut
-router.post("/signOut", signOut);
-// API forgotPassword
+// Đăng ký
+router.post("/signup", signUp);
+
+// Đăng nhập
+router.post("/signin", signIn);
+
+// Đăng xuất
+router.post("/signout", signOut);
+
+// Quên mật khẩu (gửi OTP)
 router.post("/forgot-password", forgotPassword);
-//API resetPassword
+
+// Đặt lại mật khẩu (với OTP)
 router.post("/reset-password", resetPassword);
+
+// === CÁC ROUTE ĐƯỢC BẢO VỆ (Protected) ===
+
+// Lấy thông tin user (dùng cho trang thanh toán)
+// Yêu cầu phải gửi kèm Access Token
+router.get("/profile", protect, getProfile);
+
 export default router;

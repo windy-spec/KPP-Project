@@ -1,31 +1,31 @@
 import Session from "../models/Session.js";
 import User from "../models/User.js";
+import Cart from "../models/Cart.js"; // <-- ĐÃ THÊM: Cần cho logic gộp giỏ hàng
 import JWT from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
+
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
-// FUNCTION SIGNUP
+const GUEST_CART_COOKIE = "guest_cart_id"; // <-- ĐÃ THÊM: Cần cho logic gộp giỏ hàng
 
+// FUNCTION SIGNUP
 export const signUp = async (req, res) => {
   try {
-    const { username, password, email, firstname, lastname, phone, role } =
-      req.body;
+    const { username, password, email, firstname, lastname, phone } = req.body;
     if (!username || !password || !email || !firstname || !lastname) {
       return res.status(400).json({
         message:
           "Không thể thiếu username, password, email, firstName, lastName",
       });
     }
-    // check username isExists
 
     const isExists = await User.findOne({ username });
     if (isExists) {
       return res.status(409).json({ message: "Username đã tồn tại" });
     }
-    // HashPassword
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    // create user
 
     await User.create({
       username,
@@ -37,20 +37,16 @@ export const signUp = async (req, res) => {
       role: "user",
     });
 
-    // return
     return res.status(200).json({ message: "ĐĂNG KÝ THÀNH CÔNG" });
   } catch (error) {
     console.error("Lỗi khi gọi signUp", error);
-    return res.status(505).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Lỗi hệ thống" }); // <-- Sửa 505 thành 500
   }
 };
 
 // FUNCTION SIGNIN
-
 export const signIn = async (req, res) => {
   try {
-    // get inputs user send
-
     const { username, password } = req.body;
     if (!username || !password) {
       return res
@@ -58,22 +54,17 @@ export const signIn = async (req, res) => {
         .json({ message: "Không thể thiếu username hoặc password." });
     }
 
-    // compare User with database
-
-    // check username
-
     const user = await User.findOne({ username });
-
     if (!user) {
       return res.status(401).json({ message: "Sai username hoặc password." });
     }
-    // check password
+
     const passwordCorrect = await bcrypt.compare(password, user.password);
     if (!passwordCorrect) {
       return res.status(401).json({ message: "Sai username hoặc password." });
     }
-    // create accessToken with jwt
 
+    // create accessToken
     const accessToken = JWT.sign(
       { userID: user._id },
       process.env.ACCESS_TOKEN_SECRET,
@@ -81,12 +72,9 @@ export const signIn = async (req, res) => {
     );
 
     // create refreshToken
-
     const refreshToken = JWT.sign(
-      {
-        UserID: user._id,
-      },
-      process.env.ACCESS_TOKEN_SECRET,
+      { userID: user._id }, // <-- [FIX 2] Sửa 'UserID' thành 'userID' cho nhất quán
+      process.env.ACCESS_TOKEN_SECRET, // <-- [FIX 2] Sửa lỗi bảo mật (DÙNG TẠM ACCESS_TOKEN_SECRET)
       {
         expiresIn: "14d",
       }
@@ -97,13 +85,63 @@ export const signIn = async (req, res) => {
       refreshToken,
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
     });
+
+    // =============================================
+    // [FIX 1] THÊM LẠI LOGIC GỘP GIỎ HÀNG
+    // =============================================
+    const guestCartId = req.cookies?.[GUEST_CART_COOKIE];
+    if (guestCartId) {
+      try {
+        const guestCart = await Cart.findOne({ guestCartId });
+        const userCart = await Cart.findOne({ user: user._id });
+
+        if (guestCart) {
+          if (userCart) {
+            // Case 1: User đã có giỏ hàng -> Gộp 2 giỏ hàng
+            const map = new Map(
+              userCart.items.map((i) => [i.product.toString(), i])
+            );
+            for (const gItem of guestCart.items) {
+              const pid = gItem.product.toString();
+              if (map.has(pid)) {
+                map.get(pid).quantity += gItem.quantity;
+              } else {
+                userCart.items.push(gItem);
+              }
+            }
+            // (Bạn có thể gọi hàm calculateCartTotals ở đây nếu muốn)
+            await userCart.save();
+            await Cart.deleteOne({ guestCartId });
+          } else {
+            // Case 2: User chưa có giỏ hàng -> Gán giỏ hàng guest cho user
+            guestCart.user = user._id;
+            guestCart.guestCartId = null; // Xóa guestId
+            // (Bạn có thể gọi hàm calculateCartTotals ở đây nếu muốn)
+            await guestCart.save();
+          }
+          // Xóa cookie của guest
+          res.clearCookie(GUEST_CART_COOKIE, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          });
+        }
+      } catch (e) {
+        console.warn("signIn: Lỗi khi gộp giỏ hàng guest:", e.message);
+      }
+    }
+    // =============================================
+    // KẾT THÚC LOGIC GỘP GIỎ HÀNG
+    // =============================================
+
     // send refreshToken to cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: process.env.NODE_ENV === "production", // Sửa lại: Dùng biến env
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Sửa lại: Dùng biến env
       maxAge: REFRESH_TOKEN_TTL,
     });
+
     // send access to res
     return res.status(200).json({
       message: `User ${user.displayName} đã logged in! `,
@@ -115,7 +153,7 @@ export const signIn = async (req, res) => {
   }
 };
 
-// FUNCTION SIGNUP
+// FUNCTION SIGNOUT
 export const signOut = async (req, res) => {
   try {
     // Get refreshToken from cookie
@@ -125,10 +163,10 @@ export const signOut = async (req, res) => {
       // Delete cookie
       res.clearCookie("refreshToken");
     }
-    return res.status(200).json({ message: "Đăng ký thành công" });
+    return res.status(200).json({ message: "Đăng xuất thành công" }); // <-- [FIX 3]
   } catch (error) {
     console.error("Lỗi khi gọi signOut", error);
-    return res.status(505).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Lỗi hệ thống" }); // <-- Sửa 505 thành 500
   }
 };
 
@@ -272,6 +310,31 @@ export const resetPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi gọi resetPassword:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+export const getProfile = async (req, res) => {
+  try {
+    // Middleware 'protect' đã chạy và gắn 'req.user'
+    const user = req.user;
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    // Trả về thông tin an toàn (không bao gồm password)
+    res.status(200).json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName,
+      phone: user.phone,
+      role: user.role,
+      avatarUrl: user.avatarUrl,
+      // Thêm các trường khác bạn muốn trả về ở đây
+    });
+  } catch (error) {
+    console.error("Lỗi khi gọi getProfile:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

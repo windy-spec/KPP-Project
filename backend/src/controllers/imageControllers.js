@@ -3,7 +3,6 @@ import path from "path";
 import ImageProduct from "../models/ImageProduct.js";
 import Product from "../models/Product.js";
 
-// 🟢 [POST] /api/images/:productId
 export const createImages = async (req, res) => {
   try {
     const { productId } = req.params;

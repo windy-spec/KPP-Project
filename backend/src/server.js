@@ -7,6 +7,7 @@ import userRoute from "./routes/userRoute.js";
 import cors from "cors";
 import categoryRoute from "./routes/categoryRoute.js";
 import productRoute from "./routes/productRoute.js";
+import cartRoute from "./routes/cartRoute.js";
 import path from "path";
 import discountRoute from "./routes/discountRoute.js";
 import SaleProgram from "./routes/saleProgramRoute.js"; // call env port
@@ -36,7 +37,7 @@ app.use("/api/discount", discountRoute);
 app.use("/api/product", productRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
-
+app.use("/api/cart", cartRoute);
 connectDB().then(() => {
   //
   app.listen(PORT, () => {
