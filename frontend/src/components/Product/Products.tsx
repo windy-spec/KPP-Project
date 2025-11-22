@@ -66,6 +66,7 @@ const Products: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  
 
   const productRef = useRef<HTMLDivElement | null>(null);
 
@@ -174,7 +175,6 @@ const Products: React.FC = () => {
     setSortingType("null");
     setCurrentPage(1);
   };
-
   const startItem = (currentPage - 1) * limit + 1;
   const endItem = Math.min(currentPage * limit, totalItems);
 
@@ -193,134 +193,179 @@ const Products: React.FC = () => {
 
   return (
     <div className="px-4 py-8 mx-auto md:px-8 lg:px-16 md:py-12 max-w-7xl">
-      <div className="flex items-center justify-center gap-6 mb-10">
-        <h2 className="text-3xl font-extrabold tracking-tight text-gray-800 md:text-3xl">
-          Khám Phá Sản Phẩm Của Chúng Tôi
-        </h2>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* === SIDEBAR === */}
-        <aside className="lg:col-span-1">
-          <div className="bg-white p-6 shadow-lg border-0.9">
-            {/* Lọc theo giá */}
-            <div className="mb-8">
-              <h3 className="text-mid-night font-semibold text-xl mb-4">
-                Lọc theo giá
-              </h3>
+    <div className="flex items-center justify-center gap-6 mb-10">
+      <h2 className="text-3xl font-extrabold tracking-tight text-gray-800 md:text-3xl">
+        Khám Phá Sản Phẩm Của Chúng Tôi
+      </h2>
+    </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Giá (tối đa)</label>   
-                  <span className="text-sm text-gray-600">
-                    {formatVND(tempPrice)}
-                  </span>
-                </div>
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      {/* === SIDEBAR === */}
+      <aside className="lg:col-span-1">
+        <div className="bg-white p-6 shadow-lg border-0.9">
+          
+          {/* === LỌC THEO GIÁ (THÊM INPUT) === */}
+          <div className="mb-8">
+            <h3 className="text-mid-night font-semibold text-xl mb-4">
+              Lọc theo giá
+            </h3>
+
+            <div className="space-y-4">
+
+              {/* LABEL + INPUT GIÁ */}
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-medium">Giá tối đa</label>
 
                 <input
-                  type="range"
+                  type="number"
+                  value={tempPrice}
                   min={PRICE_MIN}
                   max={PRICE_MAX}
                   step={PRICE_STEP}
-                  value={tempPrice}
                   onChange={(e) => setTempPrice(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                  style={bgStyle}
+                  onKeyDown={(e) => e.key === "Enter" && handleApplyPrice()}
+                  className="w-28 border rounded p-1 text-sm text-right"
                 />
-
-                <div className="pt-2">
-                  <p className="text-xs text-gray-600 mb-3">
-                    {price !== null ? (
-                      <>
-                        Hiển thị sản phẩm dưới
-                        <strong className="px-1">{formatVND(price)}</strong>
-                      </>
-                    ) : (
-                      "Không có bộ lọc giá"
-                    )}
-                  </p>
-
-                  <Button
-                    variant="outline"
-                    onClick={handleApplyPrice}
-                    className="w-full bg-orange-300 hover:bg-white text-white hover:text-orange-300"
-                    disabled={price === tempPrice}
-                  >
-                    Áp Dụng
-                  </Button>
-                </div>
               </div>
-            </div>
-            <hr className="my-5 border-gray-200" />
-            {/* Danh mục */}
-            <div>
-              <h3 className="text-xl text-mid-night font-semibold mb-4">
-                Danh mục
-              </h3>
 
-              <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                {categories.map((cat) => {
-                  const isActive = activeCategory === cat._id;
-                  return (
-                    <li
-                      key={cat._id || cat.id}
-                      onClick={() => {
-                        if (isActive) setActiveCategory(null);
-                        else if (cat._id) setActiveCategory(cat._id);
-                        setCurrentPage(1);
-                      }}
-                      className={`flex items-center justify-between group cursor-pointer transition-colors ${
-                        isActive
-                          ? "text-orange-500 font-medium"
-                          : "hover:text-orange-500"
-                      }`}
-                    >
-                      <p className="truncate">{cat.name}</p>
+              {/* SLIDER */}
+              <input
+                type="range"
+                min={PRICE_MIN}
+                max={PRICE_MAX}
+                step={PRICE_STEP}
+                value={tempPrice}
+                onChange={(e) => setTempPrice(Number(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                style={bgStyle}
+              />
 
-                      <span
-                        className={`text-xs border rounded-md px-2 py-0.5 min-w-[24px] h-5 flex items-center justify-center transition ${
-                          isActive
-                            ? "bg-orange-500 text-white border-orange-500"
-                            : "group-hover:bg-orange-500 group-hover:text-white"
-                        }`}
-                      >
-                        {cat.productCount ?? "-"}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        </aside>
-        {/* === PRODUCT LIST === */}
-        <section className="lg:col-span-3 space-y-8" ref={productRef}>
-          {/* Filter summary */}
-          {price !== null && (
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">
-                    Bộ lọc đang áp dụng:
-                  </span>
-
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    Giá: Dưới {formatVND(price)}
-                  </span>
-                </div>
+              {/* BUTTON ÁP DỤNG */}
+              <div className="pt-2">
+                <p className="text-xs text-gray-600 mb-3">
+                  {price !== null ? (
+                    <>Hiển thị sản phẩm dưới <strong>{formatVND(price)}</strong></>
+                  ) : (
+                    "Không có bộ lọc giá"
+                  )}
+                </p>
 
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={handleClearFilter}
-                  className="text-xs bg-orange-300 hover:bg-white text-white hover:text-orange-300"
+                  onClick={handleApplyPrice}
+                  className="w-full bg-orange-300 hover:bg-white text-white hover:text-orange-300"
+                  disabled={price === tempPrice}
                 >
-                  Xóa Filter
+                  Áp dụng
                 </Button>
               </div>
             </div>
-          )}
-          {/* Product grid/list */}
-          {loading ? (
+          </div>
+
+          <hr className="my-5 border-gray-200" />
+
+          {/* DANH MỤC SIDEBAR */}
+          <div>
+            <h3 className="text-xl text-mid-night font-semibold mb-4">
+              Danh mục
+            </h3>
+
+            <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
+              {categories.map((cat) => {
+                const isActive = activeCategory === cat._id;
+                return (
+                  <li
+                    key={cat._id}
+                    onClick={() => {
+                      if (isActive) setActiveCategory(null);
+                      else setActiveCategory(cat._id!);
+                      setCurrentPage(1);
+                    }}
+                    className={`flex items-center justify-between cursor-pointer ${
+                      isActive
+                        ? "text-orange-500 font-semibold"
+                        : "hover:text-orange-500"
+                    }`}
+                  >
+                    <p>{cat.name}</p>
+                    <span
+                      className={`text-xs border px-2 py-0.5 rounded ${
+                        isActive
+                          ? "bg-orange-500 text-white border-orange-500"
+                          : "group-hover:bg-orange-500 group-hover:text-white"
+                      }`}
+                    >
+                      {cat.productCount ?? "-"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </aside>
+
+      {/* === PRODUCT LIST === */}
+      <section className="lg:col-span-3 space-y-8" ref={productRef}>
+
+        {/* 🔥 DANH MỤC TOP BAR (THÊM MỚI) */}
+        <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 shadow-sm">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-semibold text-gray-700 pr-2">
+              Danh mục:
+            </span>
+
+            {categories.map((cat) => {
+              const isActive = activeCategory === cat._id;
+              return (
+                <button
+                  key={cat._id}
+                  onClick={() => {
+                    if (isActive) setActiveCategory(null);
+                    else setActiveCategory(cat._id!);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-4 py-1.5 rounded-full border text-sm transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                        : "border-gray-300 text-gray-600 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-700"
+                    }
+                  `}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* FILTER SUMMARY */}
+        {price !== null && (
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Bộ lọc:</span>
+
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  Giá: Dưới {formatVND(price)}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilter}
+                className="text-xs bg-orange-300 hover:bg-white text-white hover:text-orange-300"
+              >
+                Xóa Filter
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* PRODUCTS GRID */}
+        {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
               <span className="ml-2">Đang tải sản phẩm...</span>
@@ -380,31 +425,22 @@ const Products: React.FC = () => {
               ))}
             </div>
           )}
-          {/* Pagination */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
-            >
-              Trước
-            </Button>
 
-            <span className="px-3">
-              Trang {currentPage} / {totalPages}
-            </span>
+        {/* PAGINATION */}
+        <div className="flex justify-center gap-2 mt-6">
+          <Button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1}>
+            Trước
+          </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-            >
-              Sau
-            </Button>
-          </div>
-        </section>
-      </div>
+          <span>Trang {currentPage} / {totalPages}</span>
+
+          <Button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}>
+            Sau
+          </Button>
+        </div>
+      </section>
     </div>
+  </div>
   );
 };
 
