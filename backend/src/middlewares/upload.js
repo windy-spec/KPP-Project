@@ -15,4 +15,28 @@ const storage = multer.diskStorage({
   },
 });
 
+export const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ message: "Không có file nào được gửi lên." });
+    }
+    const publicUrl = `/uploads/${req.file.filename}`;
+    return res.status(200).json({
+      message: "Tải ảnh đại diện thành công.",
+      url: publicUrl,
+      filename: req.file.filename,
+    });
+  } catch (error) {
+    console.error("Lỗi khi xử lý upload avatar:", error);
+    if (req.file) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error("Không xóa được file lỗi:", err);
+      });
+    }
+    return res.status(500).json({ message: "Lỗi hệ thống khi tải ảnh lên." });
+  }
+};
+
 export const upload = multer({ storage });
