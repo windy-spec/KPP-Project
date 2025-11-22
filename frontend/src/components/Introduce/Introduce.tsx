@@ -20,7 +20,7 @@ const Introduce: React.FC = () => {
           className="w-full h-[400px] md:h-[480px] object-cover"
           controls
           playsInline
-          autoPlay 
+          autoPlay
           muted
           loop
         />
