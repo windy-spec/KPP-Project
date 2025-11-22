@@ -200,30 +200,21 @@ const ProductDetailPage: React.FC = () => {
               <div className="flex items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 relative h-[450px]">
                 <img
                   ref={imgRef}
-                  src={
-                    currentImage ||
-                    "https://placehold.co/600x400/CCCCCC/333333?text=Không+có+hình+ảnh"
-                  }
+                  src={currentImage || "https://placehold.co/600x400"}
+                  srcSet={`${currentImage} 1x, ${currentImage} 2x`}
                   alt={product.name}
                   loading="eager"
                   decoding="async"
-                  className="max-w-full max-h-[400px] object-contain rounded-lg transition-opacity duration-300"
+                  className="w-full h-full object-cover rounded-lg transition duration-300"
                   onLoad={(e) => {
-                    const naturalWidth = e.currentTarget.naturalWidth || 0;
-                    const clientWidth = e.currentTarget.clientWidth || 0;
-                    if (
-                      naturalWidth &&
-                      clientWidth &&
-                      naturalWidth < clientWidth &&
-                      !triedHighRes
-                    ) {
+                    const naturalWidth = e.currentTarget.naturalWidth;
+                    const renderedWidth = e.currentTarget.clientWidth;
+                    if (naturalWidth < renderedWidth && !triedHighRes) {
                       attemptHighRes(currentImage || "");
                     }
                   }}
                   onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src =
-                      "https://placehold.co/600x400/CCCCCC/333333?text=Không+có+hình+ảnh";
+                    e.currentTarget.src = "https://placehold.co/600x400?text=No+Image";
                   }}
                 />
                 {/* Favorite & Share */}
