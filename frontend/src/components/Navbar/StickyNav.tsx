@@ -1,12 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../utils/api-user";
 // Đảm bảo các đường dẫn icon này là đúng trong project của bạn
-// Vui lòng kiểm tra lại đường dẫn file trong thư mục assets của bạn
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
 
-// Dữ liệu cấu trúc cho Dropdown
+// 🚨 BASE URL CỦA SERVER BACKEND
+const SERVER_BASE_URL = "http://localhost:5001";
+
+// Dữ liệu cấu trúc cho Dropdown (giữ nguyên)
 const dropdownItems = {
   "Sản Phẩm": [
     { label: "Dụng cụ sơn", path: "/san-pham/dung-cu" },
@@ -30,7 +32,7 @@ interface User {
 const items = ["Trang Chủ", "Giới Thiệu", "Sản Phẩm", "Chiết Khấu", "Liên Hệ"];
 const isDropdown = (label: string) => dropdownItems.hasOwnProperty(label);
 
-// Helper để tạo path (slug)
+// Helper để tạo path (slug) (giữ nguyên)
 const toPath = (label: string) => {
   const slug = label
     .toLowerCase()
@@ -51,9 +53,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  // State quản lý dropdown nào đang mở
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  // categories fetched from backend for product dropdown
   const [categories, setCategories] = useState<Array<any>>([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState<string | null>(null);
@@ -66,17 +66,17 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     }
   };
 
-  // Toggle Menu
+  // Toggle Menu (giữ nguyên)
   const toggleUserMenu = () => {
     setShowUserMenu((prev) => !prev);
   };
 
-  // Logout
+  // Logout (Đã thêm SERVER_BASE_URL)
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem("accessToken");
       if (token) {
-        await fetch("http://localhost:5001/api/auth/signOut", {
+        await fetch(`${SERVER_BASE_URL}/api/auth/signOut`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -92,17 +92,15 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       window.location.href = "/signIn";
     } catch (error) {
       console.error("Lỗi khi đăng xuất:", error);
-      // Vẫn xóa token dù API lỗi
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       window.location.href = "/signin";
     }
   };
 
-  // useEffect close menu logout
+  // useEffect close menu logout (giữ nguyên)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Kiểm tra xem click có nằm ngoài cả nút và menu dropdown người dùng không
       if (
         buttonRef.current &&
         !buttonRef.current.contains(event.target as Node) &&
@@ -122,7 +120,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     };
   }, [showUserMenu]);
 
-  // useEffect get info user
+  // useEffect get info user (Đã thêm SERVER_BASE_URL)
   useEffect(() => {
     const getUserInfo = async () => {
       setIsLoading(true);
@@ -132,7 +130,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
           setUser(null);
           return;
         }
-        const response = await fetch("http://localhost:5001/api/users/me", {
+        const response = await fetch(`${SERVER_BASE_URL}/api/users/me`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -155,7 +153,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     getUserInfo();
   }, []);
 
-  // Logic hiển thị/ẩn thanh nav khi cuộn
+  // Logic hiển thị/ẩn thanh nav khi cuộn (giữ nguyên)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -173,15 +171,12 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    // kiểm tra vị trí ban đầu
     setVisible(window.scrollY > threshold);
 
     return () => window.removeEventListener("scroll", onScroll);
   }, [threshold]);
 
-  // Dropdown mở bằng hover, không cần nút toggle
-
-  // Fetch categories for product dropdown
+  // Fetch categories for product dropdown (giữ nguyên)
   useEffect(() => {
     let mounted = true;
     const fetchCategories = async () => {
@@ -204,7 +199,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     };
   }, []);
 
-  // Hàm đóng dropdown khi người dùng nhấp ra ngoài (Cải thiện UX)
+  // Hàm đóng dropdown khi người dùng nhấp ra ngoài (giữ nguyên)
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       const dropdownContainer = document.getElementById("sticky-nav-menu");
@@ -223,6 +218,15 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     };
   }, []);
 
+  // --------------------------------------------------------------------------------
+  // JSX Render
+  // --------------------------------------------------------------------------------
+
+  // 🚨 LOGIC HIỂN THỊ AVATAR ĐÃ SỬA LỖI URL
+  const avatarSource = user?.avatarUrl
+    ? `${SERVER_BASE_URL}${user.avatarUrl}` // GẮN BASE URL CHO ẢNH
+    : "https://placehold.co/40x40/f7931e/ffffff?text=U"; // Placeholder
+
   return (
     /* Desktop sticky nav */
     <div
@@ -231,15 +235,12 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       }`}
       aria-hidden={!visible}
     >
-      {/* FIX LỖI 1: Đặt background trên div ngoài cùng, để nó chiếm toàn bộ chiều ngang */}
       <div className="pointer-events-auto bg-gray-50">
-        {/* FIX LỖI 1: Container giới hạn độ rộng nội dung và căn giữa */}
-  <div className="w-full lg:w-4/5 lg:max-w-7xl mx-auto px-4 md:px-6"> 
+        <div className="w-full lg:w-4/5 lg:max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between h-16">
             {/* left: logo */}
             <div className="flex items-center gap-2 md:gap-3">
               <a href="/" className="flex items-center text-xl text-gray-800">
-                {/* Tối ưu kích thước logo trên md */}
                 <img
                   src="/logo22.svg"
                   alt="logo"
@@ -249,15 +250,12 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               </a>
             </div>
 
-            {/* center: rounded orange nav - FIX LỖI 2: Menu Phình ra */}
+            {/* center: rounded orange nav */}
             <div
-              // Bỏ flex-1. Dùng grow-0 shrink-0 để khối menu chỉ chiếm đúng kích thước nội dung.
               className="flex justify-center grow-0 shrink-0"
               id="sticky-nav-menu"
             >
-              {/* Giảm nhẹ padding ngang trên tablet và tăng trên desktop */}
               <div className="bg-orange-200 rounded-sm px-4 md:px-4 lg:px-8 py-2 shadow-md">
-                {/* Tối ưu khoảng cách và font trên tablet */}
                 <nav className="flex gap-3 md:gap-4 lg:gap-6 items-center text-gray-800 text-xs md:text-sm">
                   {items.map((label) => {
                     const hasDropdown = isDropdown(label);
@@ -266,7 +264,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
 
                     if (hasDropdown) {
                       return (
-                        // Hiển thị dropdown khi hover và bỏ mũi tên
                         <div
                           key={label}
                           className="relative"
@@ -276,7 +273,10 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                           }}
                           onMouseLeave={() => {
                             clearCloseTimer();
-                            closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
+                            closeTimer.current = window.setTimeout(
+                              () => setOpenDropdown(null),
+                              260
+                            );
                           }}
                         >
                           {/* Label điều hướng trực tiếp */}
@@ -301,19 +301,28 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                             }}
                             onMouseLeave={() => {
                               clearCloseTimer();
-                              closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 260);
+                              closeTimer.current = window.setTimeout(
+                                () => setOpenDropdown(null),
+                                260
+                              );
                             }}
                           >
                             {label === "Sản Phẩm" ? (
                               catLoading ? (
-                                <div className="px-3 py-2 text-sm text-gray-500">Đang tải...</div>
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                  Đang tải...
+                                </div>
                               ) : catError ? (
-                                <div className="px-3 py-2 text-sm text-red-500">{catError}</div>
+                                <div className="px-3 py-2 text-sm text-red-500">
+                                  {catError}
+                                </div>
                               ) : categories.length ? (
                                 categories.map((cat) => (
                                   <Link
                                     key={cat._id || cat.id || cat.name}
-                                    to={`/san-pham?categories=${encodeURIComponent(cat._id || cat.id || cat.name)}`}
+                                    to={`/san-pham?categories=${encodeURIComponent(
+                                      cat._id || cat.id || cat.name
+                                    )}`}
                                     onClick={() => setOpenDropdown(null)}
                                     className="block px-3 md:px-4 py-2 text-gray-800 text-xs hover:bg-orange-100 transition-colors duration-150"
                                   >
@@ -321,7 +330,9 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                                   </Link>
                                 ))
                               ) : (
-                                <div className="px-3 py-2 text-sm text-gray-500">Không có danh mục</div>
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                  Không có danh mục
+                                </div>
                               )
                             ) : (
                               dropdownItems[
@@ -347,7 +358,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                       <a
                         key={label}
                         href={path}
-                        // SỬA LỖI LỆCH HÀNG: Thêm py-1 để căn chỉnh với button dropdown
                         className="hover:text-white transition-colors duration-200 py-1"
                       >
                         {label}
@@ -369,10 +379,8 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                 <input
                   type="search"
                   placeholder="Tìm kiếm sản phẩm."
-                  // Tối ưu chiều rộng trên desktop
                   className="w-48 lg:w-64 text-sm placeholder-gray-400 bg-white border border-gray-200 rounded-lg py-2 px-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
                 />
-                {/* search icon */}
                 <img
                   src={searchIcon}
                   alt="search"
@@ -405,10 +413,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                       aria-haspopup="true"
                     >
                       <img
-                        src={
-                          user.avatarUrl ||
-                          "https://placehold.co/40x40/f7931e/ffffff?text=U"
-                        }
+                        src={avatarSource} // 🚨 SỬ DỤNG SOURCE ĐÚNG
                         alt="Avatar"
                         className="w-8 h-8 rounded-full object-cover"
                       />
@@ -476,10 +481,9 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                     )}
                   </div>
                 ) : (
-                  /* KHỐI 2: HIỂN THỊ KHI CHƯA ĐĂNG NHẬP (user không tồn tại) */
+                  /* KHỐI 2: HIỂN THỊ KHI CHƯA ĐĂNG NHẬP */
                   <a
                     href="/signin"
-                    // Màu cam đậm hơn để nổi bật hơn
                     className="px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-medium text-white bg-orange-200 rounded-lg shadow-lg hover:bg-orange-300 transition-colors duration-200"
                   >
                     Đăng nhập

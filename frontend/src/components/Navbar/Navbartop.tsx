@@ -12,6 +12,9 @@ interface User {
   role?: string;
 }
 
+// 🚨 BASE URL CỦA SERVER BACKEND
+const SERVER_BASE_URL = "http://localhost:5001";
+
 const Navbartop: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -20,18 +23,17 @@ const Navbartop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Toggle Menu
-
   const toggleUserMenu = () => {
     setShowUserMenu((prev) => !prev);
   };
 
   // Logout
-
   const handleLogout = async () => {
+    // ... (logic handleLogout giữ nguyên)
     try {
       const token = localStorage.getItem("accessToken");
       if (token) {
-        await fetch("http://localhost:5001/api/auth/signOut", {
+        await fetch(`${SERVER_BASE_URL}/api/auth/signOut`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -47,30 +49,31 @@ const Navbartop: React.FC = () => {
       window.location.href = "/signIn";
     } catch (error) {
       console.error("Lỗi khi đăng xuất:", error);
-      // Vẫn xóa token dù API lỗi
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       window.location.href = "/signin";
     }
   };
 
-  // useEffect close menu logout
-
+  // 🚨 SỬA LOGIC useEffect đóng menu (chỉ chạy khi mounted và khi showUserMenu thay đổi)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const clickOutsideMenu =
-        menuRef.current && !menuRef.current.contains(event.target as Node);
-      const clickOutsideButton =
-        buttonRef.current && !buttonRef.current.contains(event.target as Node);
-      if (clickOutsideButton && clickOutsideMenu) {
+      // Kiểm tra xem click có nằm ngoài button và menu không
+      const isOutside =
+        !buttonRef.current?.contains(event.target as Node) &&
+        !menuRef.current?.contains(event.target as Node);
+
+      if (isOutside) {
         setShowUserMenu(false);
       }
-      if (showUserMenu) {
-        document.addEventListener("mousedown", handleClickOutside);
-      }
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
+    };
+
+    if (showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showUserMenu]);
 
@@ -85,7 +88,7 @@ const Navbartop: React.FC = () => {
           setIsLoading(false);
           return;
         }
-        const response = await fetch("http://localhost:5001/api/users/me", {
+        const response = await fetch(`${SERVER_BASE_URL}/api/users/me`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -116,6 +119,15 @@ const Navbartop: React.FC = () => {
     getUserInfo();
   }, []);
 
+  // --------------------------------------------------------------------------------
+  // JSX Render
+  // --------------------------------------------------------------------------------
+
+  // Xác định URL Avatar đã được nối BASE URL
+  const avatarSource = user?.avatarUrl
+    ? `${SERVER_BASE_URL}${user.avatarUrl}` // 🚨 GẮN BASE URL CHO ẢNH
+    : "https://placehold.co/40x40/f7931e/ffffff?text=U";
+
   return (
     <header className="bg-gray-50">
       {/* Mobile: compact header */}
@@ -125,12 +137,11 @@ const Navbartop: React.FC = () => {
 
       {/* Desktop: original topbar */}
       <div className="hidden md:block">
-  <div className="w-4/5 max-w-7xl mx-auto px-4">
+        <div className="w-4/5 max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-14">
             {/* left: logo */}
             <div className="flex items-center gap-4">
               <a href="/" className="flex items-center">
-                {/* logo */}
                 <img src="/logo22.svg" alt="logo" className="w-14 h-14" />
                 KPPaint
               </a>
@@ -165,9 +176,6 @@ const Navbartop: React.FC = () => {
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
               </Link>
               {/* User */}
-              {/* <button aria-label="user" className="p-1 rounded hover:bg-gray-100">
-                <img src={userIcon} alt="user" className="w-5 h-5" />
-              </button> */}
               <div>
                 {isLoading ? (
                   // Loading state
@@ -183,10 +191,7 @@ const Navbartop: React.FC = () => {
                       aria-haspopup="true"
                     >
                       <img
-                        src={
-                          user.avatarUrl ||
-                          "https://placehold.co/40x40/f7931e/ffffff?text=U"
-                        }
+                        src={avatarSource} // 🚨 ĐÃ SỬ DỤNG SOURCE ĐÚNG
                         alt="Avatar"
                         className="w-8 h-8 rounded-full object-cover"
                       />
