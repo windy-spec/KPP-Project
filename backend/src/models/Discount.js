@@ -1,4 +1,3 @@
-// backend/src/models/Discount.js
 import mongoose from "mongoose";
 
 const DiscountSchema = new mongoose.Schema(
@@ -15,14 +14,18 @@ const DiscountSchema = new mongoose.Schema(
     },
     target_type: {
       type: String,
-      enum: ["PRODUCT", "CATEGORY", "ORDER_TOTAL"],
+      enum: ["PRODUCT", "CATEGORY", "ORDER_TOTAL", "ALL"],
       required: true,
     },
-    target_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      refPath: "target_type", // Cho phép dynamic ref (Product/Category)
-      default: null,
-    },
+
+    // 🚨 ĐÃ SỬA: Chuyển thành Mảng để lưu nhiều ID
+    target_ids: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        // Không cần ref cố định vì ta sẽ query thủ công trong controller
+      },
+    ],
+
     discount_percent: {
       type: Number,
       min: 0,
@@ -44,16 +47,12 @@ const DiscountSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
-    // 🔥 Quan trọng: thêm reference tới các DiscountTier
     tiers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "DiscountTier",
       },
     ],
-
-    // Nếu bạn có chương trình khuyến mãi tổng (SaleProgram)
     program_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SaleProgram",

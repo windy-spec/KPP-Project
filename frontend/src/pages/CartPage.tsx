@@ -86,6 +86,21 @@ const CartPage: React.FC = () => {
         discount: data.total_discount_amount || 0,
         final: data.final_total_price || 0,
       });
+      // Sao chép giỏ hàng từ backend vào localStorage để thanh điều hướng (đọc localStorage) luôn đồng bộ
+      try {
+        const local = (data.items || []).map((it) => ({
+          productId: it.product?._id || (it.product as any)?.id || JSON.stringify(it.product),
+          name: it.product?.name || "Sản phẩm",
+          price: it.price_discount || it.price_original || it.product?.price || 0,
+          avatar: it.product?.avatar || null,
+          quantity: it.quantity || 1,
+        }));
+        localStorage.setItem("cart", JSON.stringify(local));
+        // Thông báo cho các thành phần khác (navbar) rằng giỏ hàng đã thay đổi
+        window.dispatchEvent(new Event("cartUpdated"));
+      } catch (err) {
+        // bỏ qua lỗi localStorage
+      }
     } catch (error) {
       console.error("Lỗi tải giỏ hàng", error);
     } finally {

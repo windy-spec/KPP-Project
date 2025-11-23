@@ -2,8 +2,10 @@ import mongoose from "mongoose";
 import Discount from "../models/Discount.js";
 import DiscountTier from "../models/DiscountTier.js";
 import SaleProgram from "../models/SaleProgram.js";
+import Product from "../models/Product.js";
+import Category from "../models/Category.js"; // 🚨 QUAN TRỌNG: Thêm import này
 
-// @desc    Tạo mã giảm giá mới (có thể kèm bậc thang)
+// @desc    Tạo mã giảm giá mới
 // @route   POST /api/v1/discounts
 // @access  Admin
 export const createDiscount = async (req, res) => {
@@ -11,27 +13,31 @@ export const createDiscount = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { tiers: tierData, program_id, ...discountData } = req.body;
+    // Lấy target_ids từ body (nếu có)
+    const {
+      tiers: tierData,
+      program_id,
+      target_ids,
+      ...discountData
+    } = req.body;
 
-    // BƯỚC 1: Tạo Discount chính TRƯỚC
-    // (tạm thời với mảng tiers rỗng)
+    // BƯỚC 1: Tạo Discount chính
     const newDiscount = new Discount({
       ...discountData,
-      tiers: [], // Sẽ cập nhật mảng này ở Bước 3
+      target_ids: target_ids || [], // Lưu mảng ID sản phẩm/danh mục
+      tiers: [],
     });
     const savedDiscount = await newDiscount.save({ session });
 
     let savedTiers = [];
 
-    // BƯỚC 2: TẠO Tiers (nếu có)
+    // BƯỚC 2: TẠO Tiers
     if (tierData && tierData.length > 0) {
-      // Gán discount_id (vừa tạo ở Bước 1) cho tất cả các tier con
       const tiersToCreate = tierData.map((tier) => ({
         ...tier,
-        discount_id: savedDiscount._id, // <-- GÁN ID CHA VÀO ĐÂY
+        discount_id: savedDiscount._id,
       }));
 
-      // Bây giờ việc tạo tier sẽ thành công (vì đã có discount_id)
       const createdTiers = await DiscountTier.create(tiersToCreate, {
         session,
         ordered: true,
@@ -39,12 +45,11 @@ export const createDiscount = async (req, res) => {
       savedTiers = createdTiers;
 
       // BƯỚC 3: Cập nhật Discount cha
-      // Gán mảng ID của các tier con vào lại Discount cha
       savedDiscount.tiers = savedTiers.map((t) => t._id);
-      await savedDiscount.save({ session }); // Lưu lại discount cha
+      await savedDiscount.save({ session });
     }
 
-    // BƯỚC 4: Thêm discount này vào SaleProgram (nếu có)
+    // BƯỚC 4: Thêm vào SaleProgram
     if (program_id) {
       await SaleProgram.findByIdAndUpdate(
         program_id,
@@ -53,14 +58,10 @@ export const createDiscount = async (req, res) => {
       );
     }
 
-    // Nếu mọi thứ OK, commit
     await session.commitTransaction();
-
-    // Populate tiers vào kết quả trả về cho đầy đủ
     const finalDiscount = await savedDiscount.populate("tiers");
     res.status(201).json(finalDiscount);
   } catch (error) {
-    // Nếu có lỗi, hủy bỏ mọi thứ
     await session.abortTransaction();
     res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
   } finally {
@@ -68,13 +69,13 @@ export const createDiscount = async (req, res) => {
   }
 };
 
-// @desc    Lấy tất cả discount (đang hoạt động)
+// @desc    Lấy tất cả discount
 // @route   GET /api/v1/discounts
 // @access  Public
 export const getDiscounts = async (req, res) => {
   try {
     const discounts = await Discount.find({})
-      .sort({ createdAt: -1 }) // Sắp xếp cho dễ nhìn
+      .sort({ createdAt: -1 })
       .populate("tiers");
     res.status(200).json(discounts);
   } catch (error) {
@@ -82,28 +83,67 @@ export const getDiscounts = async (req, res) => {
   }
 };
 
-// @desc    Lấy chi tiết 1 discount
+// ============================================================
+// 🚨 HÀM ĐÃ SỬA ĐỂ KHẮC PHỤC LỖI 500
+// @desc    Lấy chi tiết 1 discount (Kèm thông tin SP/Category)
 // @route   GET /api/v1/discounts/:id
 // @access  Public
+// ============================================================
 export const getDiscountById = async (req, res) => {
   try {
-    const discount = await Discount.findById(req.params.id).populate("tiers");
+    const { id } = req.params;
+
+    // 1. Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ" });
+    }
+
+    // 2. Lấy Discount (Dùng .lean() để trả về object thuần, dễ chỉnh sửa)
+    const discount = await Discount.findById(id).populate("tiers").lean();
+
     if (!discount) {
       return res.status(404).json({ message: "Không tìm thấy mã giảm giá." });
     }
+
+    // 3. Xử lý lấy thông tin chi tiết (Sản phẩm hoặc Danh mục)
+    if (discount.target_ids && discount.target_ids.length > 0) {
+      // Lọc các ID hợp lệ
+      const validIds = discount.target_ids.filter((itemId) =>
+        mongoose.Types.ObjectId.isValid(itemId)
+      );
+
+      if (discount.target_type === "PRODUCT") {
+        // Tìm trong bảng Product
+        const products = await Product.find({
+          _id: { $in: validIds },
+        }).select("name price avatar"); // Chỉ lấy tên, giá, ảnh
+
+        discount.target_ids = products;
+      } else if (discount.target_type === "CATEGORY") {
+        // Tìm trong bảng Category
+        const categories = await Category.find({
+          _id: { $in: validIds },
+        }).select("name"); // Chỉ lấy tên danh mục
+
+        discount.target_ids = categories;
+      }
+      // Nếu là ALL hoặc ORDER_TOTAL thì giữ nguyên mảng ID hoặc để rỗng
+    } else {
+      discount.target_ids = [];
+    }
+
     res.status(200).json(discount);
   } catch (error) {
+    console.error("Get Discount Detail Error:", error);
     res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
   }
 };
 
+// @desc    Update discount
 export const updateDiscountWithTiers = async (req, res) => {
-  const { id } = req.params; // Lấy ID của discount cần sửa
+  const { id } = req.params;
+  const { tiers, target_ids, ...discountData } = req.body; // Lấy target_ids
 
-  // Tách 'tiers' (dữ liệu thô) ra khỏi phần còn lại
-  const { tiers, ...discountData } = req.body;
-
-  // Kiểm tra xem ID có hợp lệ không
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(404).json({ message: "Discount không tìm thấy" });
   }
@@ -112,15 +152,13 @@ export const updateDiscountWithTiers = async (req, res) => {
   try {
     session.startTransaction();
 
-    // === BƯỚC 1: Tìm Discount cha ===
     const discountToUpdate = await Discount.findById(id).session(session);
     if (!discountToUpdate) {
       await session.abortTransaction();
       return res.status(404).json({ message: "Discount không tìm thấy" });
     }
 
-    // === BƯỚC 2: Xóa TẤT CẢ các tier con CŨ ===
-    // Dùng mảng 'tiers' cũ (mảng ObjectId) đang lưu trong discount
+    // Xóa tiers cũ
     if (discountToUpdate.tiers && discountToUpdate.tiers.length > 0) {
       await DiscountTier.deleteMany(
         { _id: { $in: discountToUpdate.tiers } },
@@ -128,13 +166,12 @@ export const updateDiscountWithTiers = async (req, res) => {
       );
     }
 
-    // === BƯỚC 3: Tạo các tier MỚI (giống hệt hàm create) ===
+    // Tạo tiers mới
     let newTierIds = [];
     if (tiers && tiers.length > 0) {
-      // 'tiers' lúc này là [{ min_quantity, discount_percent }] từ frontend
       const tiersToCreate = tiers.map((tier) => ({
         ...tier,
-        discount_id: discountToUpdate._id, // Liên kết với cha
+        discount_id: discountToUpdate._id,
       }));
 
       const newTiers = await DiscountTier.insertMany(tiersToCreate, {
@@ -143,17 +180,19 @@ export const updateDiscountWithTiers = async (req, res) => {
       newTierIds = newTiers.map((t) => t._id);
     }
 
-    // === BƯỚC 4: Cập nhật Discount cha (cha) ===
-    // Cập nhật các trường (name, type, v.v...) VÀ mảng 'tiers' mới
-    Object.assign(discountToUpdate, discountData); // Cập nhật các trường như name, type...
-    discountToUpdate.tiers = newTierIds; // Gán mảng ID tier mới
+    // Cập nhật data
+    Object.assign(discountToUpdate, discountData);
+
+    // Cập nhật target_ids nếu có gửi lên
+    if (target_ids) {
+      discountToUpdate.target_ids = target_ids;
+    }
+
+    discountToUpdate.tiers = newTierIds;
 
     await discountToUpdate.save({ session });
-
-    // === KẾT THÚC ===
     await session.commitTransaction();
 
-    // Trả về data mới nhất
     const result = await Discount.findById(id).populate("tiers");
     res.status(200).json(result);
   } catch (error) {
@@ -168,9 +207,7 @@ export const updateDiscountWithTiers = async (req, res) => {
   }
 };
 
-// @desc    Xóa (vô hiệu hóa) discount
-// @route   DELETE /api/v1/discounts/:id
-// @access  Admin
+// @desc    Soft Delete
 export const deleteDiscount = async (req, res) => {
   try {
     const disabledDiscount = await Discount.findByIdAndUpdate(
@@ -189,9 +226,7 @@ export const deleteDiscount = async (req, res) => {
   }
 };
 
-// @desc    Xóa CỨNG discount và các tier liên quan
-// @route   DELETE /api/v1/discounts/hard-delete/:id
-// @access  Admin
+// @desc    Hard Delete
 export const hardDeleteDiscount = async (req, res) => {
   const { id } = req.params;
 
@@ -203,14 +238,12 @@ export const hardDeleteDiscount = async (req, res) => {
   try {
     session.startTransaction();
 
-    // 1. Tìm Discount cha để lấy thông tin
     const discount = await Discount.findById(id).session(session);
     if (!discount) {
       await session.abortTransaction();
       return res.status(404).json({ message: "Discount không tìm thấy" });
     }
 
-    // 2. Xóa tất cả DiscountTier (Con)
     if (discount.tiers && discount.tiers.length > 0) {
       await DiscountTier.deleteMany(
         { _id: { $in: discount.tiers } },
@@ -218,18 +251,15 @@ export const hardDeleteDiscount = async (req, res) => {
       );
     }
 
-    // 3. Gỡ Discount này ra khỏi SaleProgram (nếu có)
     if (discount.program_id) {
       await SaleProgram.findByIdAndUpdate(
         discount.program_id,
-        { $pull: { discounts: discount._id } }, // $pull: gỡ ID khỏi mảng
+        { $pull: { discounts: discount._id } },
         { session }
       );
     }
 
-    // 4. Xóa chính Discount (Cha)
     await Discount.findByIdAndDelete(id, { session });
-
     await session.commitTransaction();
 
     res.status(200).json({ message: "Đã xóa vĩnh viễn discount" });
@@ -244,28 +274,21 @@ export const hardDeleteDiscount = async (req, res) => {
   }
 };
 
-// -----------------------------------------------------------------
-// @desc    ÁP DỤNG MÃ GIẢM GIÁ (Logic bảo mật)
-// @route   POST /api/v1/discounts/apply
-// @access  User, Agency (Đã đăng nhập)
-// -----------------------------------------------------------------
+// @desc    Apply Discount (Check logic)
 export const applyDiscount = async (req, res) => {
   try {
     const { discountId } = req.body;
-    // 1. Lấy user từ req.user (do 'protectedRoute' cung cấp)
     const user = req.user;
 
     if (!discountId) {
       return res.status(400).json({ message: "Vui lòng cung cấp discountId." });
     }
 
-    // 2. Tìm mã giảm giá
     const discount = await Discount.findById(discountId).populate("tiers");
     if (!discount) {
       return res.status(404).json({ message: "Mã giảm giá không tồn tại." });
     }
 
-    // 3. Kiểm tra các điều kiện (isActive, ngày hết hạn...)
     const now = new Date();
     if (!discount.isActive) {
       return res
@@ -281,19 +304,12 @@ export const applyDiscount = async (req, res) => {
       return res.status(400).json({ message: "Mã giảm giá đã hết hạn." });
     }
 
-    // 4. 🔥 LOGIC BẢO MẬT CỐT LÕI 🔥
-    // Kiểm tra quyền dựa trên DỮ LIỆU
-    const allowedRoles = ["AGENCY", "admin"]; // <-- Admin được thêm vào đây
-
-    // Kiểm tra quyền dựa trên DỮ LIỆU
+    const allowedRoles = ["AGENCY", "admin"];
     if (discount.type === "AGENCY" && !allowedRoles.includes(user.role)) {
       return res.status(403).json({
         message: `Bạn không đủ quyền (Role: ${user.role}) để sử dụng mã này.`,
       });
     }
-
-    // 5. Logic tính toán (Bạn sẽ bổ sung logic nghiệp vụ ở đây)
-    // ...
 
     return res.status(200).json({
       message: "Áp dụng mã giảm giá thành công.",

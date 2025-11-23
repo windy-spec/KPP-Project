@@ -14,6 +14,8 @@ const getActiveDiscountsCached = async () => {
   }
 
   const current = new Date();
+
+  // 1. Tìm các chương trình đang chạy
   const programs = await SaleProgram.find({
     isActive: true,
     start_date: { $lte: current },
@@ -24,18 +26,20 @@ const getActiveDiscountsCached = async () => {
       match: {
         isActive: true,
         start_sale: { $lte: current },
-        end_sale: { $gte: current }, // <-- Đã sửa
+        // Logic OR: end_sale lớn hơn hiện tại HOẶC không có end_sale (vĩnh viễn)
+        $or: [{ end_sale: { $gte: current } }, { end_sale: null }],
       },
       populate: { path: "tiers" },
     })
     .lean();
 
-  // Gán program_name vào mỗi discount
+  // 2. Làm phẳng danh sách discount
   const finalDiscounts = [];
   for (const p of programs) {
     if (!p.discounts) continue;
     for (const d of p.discounts) {
-      finalDiscounts.push({ ...d, program_name: p.name || p.program_name });
+      // Gắn thêm tên chương trình vào discount để hiển thị ở FE
+      finalDiscounts.push({ ...d, program_name: p.name });
     }
   }
 
@@ -44,20 +48,20 @@ const getActiveDiscountsCached = async () => {
 };
 
 // =============================
-// HELPER: TÍNH TỔNG GIỎ HÀNG
+// HELPER: TÍNH TỔNG GIỎ HÀNG (LOGIC QUAN TRỌNG)
 // =============================
 export const calculateCartTotals = async (cartOrId) => {
   let cart = cartOrId;
 
-  // 1. Đảm bảo cart được populate
+  // 1. Đảm bảo cart được populate đầy đủ (Product + Category + Ảnh)
   if (typeof cartOrId === "string" || !cartOrId._id) {
     cart = await Cart.findById(cartOrId).populate({
       path: "items.product",
-      select: "price category name stock avatar images",
+      select: "price category name stock avatar images", // Lấy cả avatar/images
       populate: { path: "category", select: "_id name" },
     });
   } else {
-    // Kiểm tra nếu 'product' chưa được populate
+    // Kiểm tra nếu chưa populate sâu
     if (cart.items.length > 0 && !cart.items[0].product?.price) {
       cart = await Cart.findById(cart._id).populate({
         path: "items.product",
@@ -69,14 +73,14 @@ export const calculateCartTotals = async (cartOrId) => {
 
   if (!cart) return null;
 
-  // 2. Lấy danh sách discount
+  // 2. Lấy danh sách discount đang active
   const discounts = await getActiveDiscountsCached();
 
   let totalOriginal = 0;
   let totalFinal = 0;
   let totalQty = 0;
 
-  // 3. Tính toán cho từng item
+  // 3. Duyệt từng sản phẩm trong giỏ
   for (const item of cart.items) {
     if (!item.product) continue;
 
@@ -84,60 +88,71 @@ export const calculateCartTotals = async (cartOrId) => {
     const qty = item.quantity;
     const price = product.price || 0;
 
-    // Set giá trị cơ bản
+    // Giá trị cơ bản
     item.price_original = price;
     item.Total_price = price * qty;
     totalOriginal += price * qty;
     totalQty += qty;
 
-    // 4. Tìm discount
-    let chosenDiscount = item.manual_discount
-      ? discounts.find(
-          (d) => d._id.toString() === item.manual_discount.toString()
-        )
-      : null;
+    // 4. Tìm Discount phù hợp nhất
+    // Ưu tiên discount thủ công (nếu có và hợp lệ)
+    let chosenDiscount = null;
 
-    // Tự động tìm best discount nếu không có manual
+    if (item.manual_discount) {
+      chosenDiscount = discounts.find(
+        (d) => d._id.toString() === item.manual_discount.toString()
+      );
+    }
+
+    // Nếu không có manual, tự động tìm discount tốt nhất
     if (!chosenDiscount) {
       let bestPercent = 0;
+
       for (const d of discounts) {
-        const matchProduct =
-          d.target_type === "PRODUCT" &&
-          d.target_id?.toString() === product._id.toString();
+        let isMatch = false;
 
-        const matchCategory =
-          d.target_type === "CATEGORY" &&
-          product.category &&
-          d.target_id?.toString() === product.category._id.toString();
+        // 🚨 [SỬA QUAN TRỌNG]: Kiểm tra target_ids (Mảng) thay vì target_id
+        const targetIds = d.target_ids?.map((id) => id.toString()) || [];
 
-        if (!matchProduct && !matchCategory) continue;
+        // A. Check theo PRODUCT
+        if (d.target_type === "PRODUCT") {
+          if (targetIds.includes(product._id.toString())) {
+            isMatch = true;
+          }
+        }
+        // B. Check theo CATEGORY
+        else if (d.target_type === "CATEGORY" && product.category) {
+          if (targetIds.includes(product.category._id.toString())) {
+            isMatch = true;
+          }
+        }
+        // C. Check ALL (Toàn sàn)
+        else if (d.target_type === "ALL") {
+          isMatch = true;
+        }
 
-        // ======================================================
-        // [FIX TỐI ƯU] SỬA LOGIC LẤY % GIẢM GIÁ
-        // ======================================================
+        if (!isMatch) continue;
+
+        // --- Logic tính % giảm (bao gồm Tier) ---
         let percent = 0;
 
-        // 1. Lấy % giảm giá CƠ BẢN trước (nếu đủ SL)
-        // Đây là 10% của bạn
-        if (qty >= (d.min_quantity ?? 0)) {
+        // Mức cơ bản
+        if (qty >= (d.min_quantity ?? 1)) {
           percent = d.discount_percent ?? 0;
         }
 
-        // 2. Sau đó, kiểm tra Tiers xem có % nào TỐT HƠN không
+        // Mức bậc thang (Tiers)
         if (d.tiers?.length) {
           const eligibleTiers = d.tiers
             .filter((t) => qty >= (t.min_quantity ?? 0))
             .sort((a, b) => b.discount_percent - a.discount_percent);
 
           if (eligibleTiers.length > 0) {
-            // 3. Luôn lấy % cao nhất (cơ bản vs tier)
             percent = Math.max(percent, eligibleTiers[0].discount_percent);
           }
         }
-        // ======================================================
-        // KẾT THÚC FIX
-        // ======================================================
 
+        // So sánh để lấy discount tốt nhất
         if (percent > bestPercent) {
           bestPercent = percent;
           chosenDiscount = { ...d, _applied_percent: bestPercent };
@@ -145,7 +160,7 @@ export const calculateCartTotals = async (cartOrId) => {
       }
     }
 
-    // 5. Áp dụng discount nếu tìm thấy
+    // 5. Áp dụng discount vào item
     if (chosenDiscount) {
       const pct =
         chosenDiscount._applied_percent ?? chosenDiscount.discount_percent ?? 0;
@@ -154,7 +169,7 @@ export const calculateCartTotals = async (cartOrId) => {
 
       item.applied_discount = {
         discount_id: chosenDiscount._id,
-        program_name: chosenDiscount.program_name,
+        program_name: chosenDiscount.program_name, // Tên chương trình
         discount_percent: pct,
         saved_amount: saved,
       };
@@ -183,7 +198,6 @@ export const calculateCartTotals = async (cartOrId) => {
 // CONTROLLERS
 // =============================
 
-/** Lấy giỏ hàng (cho cả user và guest) */
 export const getCart = async (req, res) => {
   try {
     const cartQuery = req.cartQuery;
@@ -199,6 +213,7 @@ export const getCart = async (req, res) => {
       });
     }
 
+    // Tính toán lại mỗi khi get để đảm bảo giá/khuyến mãi luôn mới nhất
     const updated = await calculateCartTotals(cart);
     res.status(200).json(updated);
   } catch (error) {
@@ -207,7 +222,6 @@ export const getCart = async (req, res) => {
   }
 };
 
-/** Thêm sản phẩm (cho cả user và guest) */
 export const addToCart = async (req, res) => {
   try {
     const cartQuery = req.cartQuery;
@@ -238,8 +252,7 @@ export const addToCart = async (req, res) => {
       cart.items.push({ product: productId, quantity: qty });
     }
 
-    await cart.save(); // <-- Đã sửa (lưu trước khi tính)
-
+    await cart.save();
     const finalCart = await calculateCartTotals(cart);
     res.status(200).json(finalCart);
   } catch (error) {
@@ -248,7 +261,6 @@ export const addToCart = async (req, res) => {
   }
 };
 
-/** Cập nhật số lượng (cho cả user và guest) */
 export const updateCartItem = async (req, res) => {
   try {
     const cartQuery = req.cartQuery;
@@ -280,8 +292,7 @@ export const updateCartItem = async (req, res) => {
       cart.items.splice(idx, 1);
     }
 
-    await cart.save(); // <-- Đã sửa (lưu trước khi tính)
-
+    await cart.save();
     const finalCart = await calculateCartTotals(cart);
     res.status(200).json(finalCart);
   } catch (error) {
@@ -290,7 +301,6 @@ export const updateCartItem = async (req, res) => {
   }
 };
 
-/** Xóa sản phẩm (cho cả user và guest) */
 export const removeCartItem = async (req, res) => {
   try {
     const cartQuery = req.cartQuery;
@@ -304,8 +314,7 @@ export const removeCartItem = async (req, res) => {
       (item) => item.product.toString() !== productId
     );
 
-    await cart.save(); // <-- Đã sửa (lưu trước khi tính)
-
+    await cart.save();
     const finalCart = await calculateCartTotals(cart);
     res.status(200).json(finalCart);
   } catch (error) {
@@ -314,7 +323,6 @@ export const removeCartItem = async (req, res) => {
   }
 };
 
-/** Checkout (CHỈ CHO USER ĐÃ ĐĂNG NHẬP) */
 export const proceedToCheckout = async (req, res) => {
   try {
     const userId = req.user._id;
