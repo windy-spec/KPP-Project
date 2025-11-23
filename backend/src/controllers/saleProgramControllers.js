@@ -57,7 +57,7 @@ export const getAllSaleProgram = async (req, res) => {
     const programs = await SaleProgram.find({}) // Gỡ bộ lọc
       .populate({
         path: "discounts",
-        select: "name", // Lấy tên discount
+        select: "name discount_percent", // Lấy tên discount
       })
       .sort({ createdAt: -1 });
 
