@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
 import { z } from "zod";
 import { Eye, EyeOff } from "lucide-react";
-import Swal from "sweetalert2"; // 🚨 Import SweetAlert2
+import Swal from "sweetalert2";
 
 // 🚨 BASE URL SERVER
 const SERVER_BASE_URL = "http://localhost:5001";
@@ -46,20 +46,24 @@ const maskEmail = (email: string) => {
 const UserPage: React.FC = () => {
   // === State user info ===
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true); // Loading ban đầu của trang
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading của nút submit form
   const [editMode, setEditMode] = useState(false);
+
+  // Form info states
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Tab state
   const [activeTab, setActiveTab] = useState<"info" | "orders" | "password">(
     "info"
   );
 
-  // === Password management ===
+  // === Password management states ===
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -67,7 +71,6 @@ const UserPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [strength, setStrength] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [confirmStrength, setConfirmStrength] = useState(0);
 
   // === Load user info ===
@@ -134,9 +137,9 @@ const UserPage: React.FC = () => {
         };
       case 3:
         return {
-          label: "Khá",
-          color: "bg-blue-500",
-          textColor: "text-blue-500",
+          label: "Khá mạnh",
+          color: "bg-orange-500",
+          textColor: "text-orange-500",
         };
       case 4:
         return {
@@ -147,8 +150,8 @@ const UserPage: React.FC = () => {
       case 5:
         return {
           label: "Rất mạnh",
-          color: "bg-green-600",
-          textColor: "text-green-600",
+          color: "bg-blue-500",
+          textColor: "text-blue-500",
         };
       default:
         return { label: "", color: "bg-gray-200", textColor: "text-gray-500" };
@@ -158,6 +161,7 @@ const UserPage: React.FC = () => {
   useEffect(() => {
     setStrength(calculateStrength(newPassword));
   }, [newPassword]);
+
   useEffect(() => {
     setConfirmStrength(calculateStrength(confirmPassword));
   }, [confirmPassword]);
@@ -221,14 +225,11 @@ const UserPage: React.FC = () => {
     }
   };
 
-  // 🚨 HÀM LOGOUT (Dùng khi đổi mật khẩu thành công)
+  // 🚨 HÀM LOGOUT
   const performLogout = () => {
-    // Xóa token và các dữ liệu liên quan
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("resetEmail");
-
-    // Chuyển hướng về trang đăng nhập (Full reload để clear state)
     window.location.href = "/signin";
   };
 
@@ -262,6 +263,7 @@ const UserPage: React.FC = () => {
     );
 
   const strengthInfo = getStrengthLabel(strength);
+  const confirmStrengthInfo = getStrengthLabel(confirmStrength);
 
   return (
     <div>
@@ -473,7 +475,23 @@ const UserPage: React.FC = () => {
                   onSubmit={async (e) => {
                     e.preventDefault();
 
-                    // --- 1. VALIDATION CLIENT (Giữ nguyên) ---
+                    // 1. Khóa nút và hiện Loading ngay lập tức
+                    setIsSubmitting(true);
+
+                    Swal.fire({
+                      title: "Đang xử lý...",
+                      text: "Vui lòng chờ trong giây lát",
+                      allowOutsideClick: false,
+                      allowEscapeKey: false,
+                      didOpen: () => {
+                        Swal.showLoading();
+                      },
+                    });
+
+                    // 2. GIẢ LẬP CHỜ 2 GIÂY (Để tạo hiệu ứng đang kiểm tra)
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+                    // 3. BÂY GIỜ MỚI KIỂM TRA LỖI (VALIDATION)
                     if (!oldPassword) {
                       Swal.fire({
                         icon: "error",
@@ -481,6 +499,7 @@ const UserPage: React.FC = () => {
                         text: "Vui lòng nhập mật khẩu cũ",
                         confirmButtonColor: "#ea580c",
                       });
+                      setIsSubmitting(false);
                       return;
                     }
                     if (newPassword.length < 6) {
@@ -490,6 +509,7 @@ const UserPage: React.FC = () => {
                         text: "Mật khẩu mới phải có ít nhất 6 ký tự",
                         confirmButtonColor: "#ea580c",
                       });
+                      setIsSubmitting(false);
                       return;
                     }
                     if (newPassword !== confirmPassword) {
@@ -499,6 +519,7 @@ const UserPage: React.FC = () => {
                         text: "Mật khẩu xác nhận không khớp!",
                         confirmButtonColor: "#ea580c",
                       });
+                      setIsSubmitting(false);
                       return;
                     }
                     if (oldPassword === newPassword) {
@@ -508,33 +529,19 @@ const UserPage: React.FC = () => {
                         text: "Mật khẩu mới không được trùng với mật khẩu cũ",
                         confirmButtonColor: "#ea580c",
                       });
+                      setIsSubmitting(false);
                       return;
                     }
 
                     const token = localStorage.getItem("accessToken");
                     if (!token) {
                       toast.error("Vui lòng đăng nhập lại");
+                      setIsSubmitting(false);
                       return;
                     }
 
+                    // 4. NẾU MỌI THỨ OK -> GỌI API
                     try {
-                      setIsSubmitting(true);
-
-                      // 🚨 HIỂN THỊ SWAL LOADING (Giả lập chờ 2s)
-                      Swal.fire({
-                        title: "Đang xử lý...",
-                        text: "Vui lòng chờ trong giây lát",
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                          Swal.showLoading();
-                        },
-                      });
-
-                      // 🚨 Delay 2 giây (2000ms) để tránh nhảy trang quá nhanh
-                      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-                      // --- 2. GỌI API ---
                       const res = await fetch(
                         `${SERVER_BASE_URL}/api/users/change-password`,
                         {
@@ -553,9 +560,8 @@ const UserPage: React.FC = () => {
 
                       const data = await res.json();
 
-                      // --- 3. XỬ LÝ KẾT QUẢ ---
+                      // 5. XỬ LÝ KẾT QUẢ API
                       if (!res.ok) {
-                        // Nếu thất bại (Mật khẩu cũ sai hoặc lỗi khác)
                         Swal.fire({
                           icon: "error",
                           title: "Thất bại",
@@ -563,7 +569,6 @@ const UserPage: React.FC = () => {
                           confirmButtonColor: "#d33",
                         });
                       } else {
-                        // 🚨 THÀNH CÔNG: Cho người dùng chọn
                         Swal.fire({
                           title: "Đổi mật khẩu thành công!",
                           text: "Bạn muốn đăng xuất để đăng nhập lại hay tiếp tục sử dụng?",
@@ -571,20 +576,17 @@ const UserPage: React.FC = () => {
                           showCancelButton: true,
                           confirmButtonText: "Đăng xuất ngay",
                           cancelButtonText: "Ở lại trang này",
-                          confirmButtonColor: "#ea580c", // Màu cam
-                          cancelButtonColor: "#6b7280", // Màu xám
-                          reverseButtons: true, // Đảo vị trí nút cho thuận tay
+                          confirmButtonColor: "#ea580c",
+                          cancelButtonColor: "#6b7280",
+                          reverseButtons: true,
                           allowOutsideClick: false,
                         }).then((result) => {
                           if (result.isConfirmed) {
-                            // Tùy chọn 1: Đăng xuất
                             performLogout();
                           } else {
-                            // Tùy chọn 2: Ở lại -> Reset form
                             setOldPassword("");
                             setNewPassword("");
                             setConfirmPassword("");
-                            // Có thể toast nhẹ thông báo
                             toast.success("Bạn có thể tiếp tục sử dụng!");
                           }
                         });
@@ -603,86 +605,125 @@ const UserPage: React.FC = () => {
                   }}
                   className="flex flex-col gap-4"
                 >
-                  {/* ... (Phần input UI giữ nguyên không đổi) ... */}
-                  <div className="flex flex-col gap-1 relative">
-                    <Input
-                      type={showOld ? "text" : "password"}
-                      placeholder="Mật khẩu cũ"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowOld((s) => !s)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showOld ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-1 relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Mật khẩu mới"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-                    {/* Thanh độ mạnh */}
-                    <div className="mt-2">
-                      <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-300 ease-out ${strengthInfo.color}`}
-                          style={{ width: `${(strength / 5) * 100}%` }}
-                        />
-                      </div>
-                      {newPassword && (
-                        <p
-                          className={`text-xs mt-1 font-medium text-right ${strengthInfo.textColor}`}
-                        >
-                          Độ mạnh: {strengthInfo.label}
-                        </p>
-                      )}
+                  {/* 🔹 Mật khẩu cũ */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Mật khẩu cũ
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showOld ? "text" : "password"}
+                        placeholder="Nhập mật khẩu cũ"
+                        className="pr-12"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOld((s) => !s)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        {showOld ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-1 relative">
-                    <Input
-                      type={showConfirm ? "text" : "password"}
-                      placeholder="Xác nhận mật khẩu mới"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm((s) => !s)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showConfirm ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
+                  {/* 🔹 Mật khẩu mới */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Mật khẩu mới
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Nhập mật khẩu mới"
+                        className="pr-12"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Thanh độ mạnh Mật khẩu mới */}
+                    {newPassword && (
+                      <div className="mt-2">
+                        <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${strengthInfo.color}`}
+                            style={{ width: `${(strength / 5) * 100}%` }}
+                          />
+                        </div>
+                        <p
+                          className={`text-xs mt-1 font-medium ${strengthInfo.textColor}`}
+                        >
+                          Độ mạnh: {strengthInfo.label}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
+                  {/* 🔹 Xác nhận mật khẩu */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Xác nhận mật khẩu
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showConfirm ? "text" : "password"}
+                        placeholder="Nhập lại mật khẩu"
+                        className="pr-12"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm((s) => !s)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        {showConfirm ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Thanh độ mạnh Xác nhận mật khẩu */}
+                    {confirmPassword && (
+                      <div className="mt-2">
+                        <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${confirmStrengthInfo.color}`}
+                            style={{ width: `${(confirmStrength / 5) * 100}%` }}
+                          />
+                        </div>
+                        <p
+                          className={`text-xs mt-1 font-medium ${confirmStrengthInfo.textColor}`}
+                        >
+                          Độ mạnh: {confirmStrengthInfo.label}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🔘 Button */}
                   <Button
                     type="submit"
-                    className="bg-orange-600 hover:bg-orange-700 text-white w-full"
+                    className="bg-orange-600 hover:bg-orange-700 text-white w-full py-3 rounded-lg text-base font-semibold"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? "Đang xử lý..." : "Đổi mật khẩu"}

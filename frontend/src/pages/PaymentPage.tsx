@@ -5,35 +5,43 @@ import React, {
   useContext,
   createContext,
   useCallback,
-  ReactNode, // Import ReactNode
+  ReactNode,
 } from "react";
 // Import icons
 import {
-  Facebook,
-  Instagram,
-  Linkedin,
-  Mail,
   MapPin,
-  X,
-  ShoppingCart,
-  Trash2,
   Plus,
   Minus,
   CheckCircle,
   LogIn,
-  LogOut,
   User,
   Lock,
-} from "https://cdn.skypack.dev/lucide-react@0.303.0";
+  TicketPercent, // Import icon khuyến mãi
+} from "lucide-react";
 
 // --- Cấu hình API ---
 const API_BASE_URL = "http://localhost:5001/api";
+const SERVER_ROOT = "http://localhost:5001";
+
 const formatVND = (v: number): string =>
   new Intl.NumberFormat("vi-VN").format(Math.max(0, Math.round(v))) + " đ";
 
+// Hàm xử lý ảnh: Nếu path tương đối -> nối thêm domain server
+const getProductImage = (product: ProductInCart) => {
+  // 1. Lấy avatar hoặc ảnh đầu tiên
+  const path =
+    product.avatar ||
+    (product.images && product.images.length > 0 ? product.images[0] : null);
+
+  // 2. Nếu không có ảnh nào -> Trả về ảnh placeholder
+  if (!path) return "https://placehold.co/100x100/F1F1F1/333?text=No+Image";
+
+  // 3. Nếu có ảnh -> Kiểm tra xem có cần nối domain không
+  return path.startsWith("http") ? path : `${SERVER_ROOT}${path}`;
+};
+
 // --- Định nghĩa Types (TypeScript) ---
 
-// Thông tin User (từ /auth/profile)
 interface UserProfile {
   _id: string;
   username: string;
@@ -44,19 +52,18 @@ interface UserProfile {
   avatarUrl?: string;
 }
 
-// Sản phẩm (trong giỏ hàng)
 interface ProductInCart {
   _id: string;
   name: string;
   price: number;
-  image?: string;
+  avatar?: string;
+  images?: string[];
   category: {
     _id: string;
     name: string;
   };
 }
 
-// Item trong giỏ hàng
 interface CartItem {
   applied_discount: {
     discount_id: string;
@@ -73,7 +80,6 @@ interface CartItem {
   _id: string;
 }
 
-// Toàn bộ giỏ hàng (từ /api/cart)
 interface Cart {
   _id: string;
   user: string | null;
@@ -85,7 +91,6 @@ interface Cart {
   final_total_price: number;
 }
 
-// Dữ liệu để tạo Đơn hàng
 interface ShippingInfo {
   name: string;
   email: string;
@@ -95,6 +100,7 @@ interface ShippingInfo {
   district: string;
   note: string;
 }
+
 interface OrderData {
   shippingInfo: ShippingInfo;
   paymentMethod: string;
@@ -121,7 +127,6 @@ interface CartContextType {
   createOrder: (orderData: OrderData) => Promise<any>;
 }
 
-// Props cho Provider
 interface ChildrenProps {
   children: ReactNode;
 }
@@ -159,7 +164,7 @@ const apiFetch = async (
   return response;
 };
 
-// --- Auth Context (Quản lý Đăng nhập) ---
+// --- Auth Context ---
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const AuthProvider = ({ children }: ChildrenProps) => {
@@ -225,37 +230,28 @@ const AuthProvider = ({ children }: ChildrenProps) => {
   }, []);
 
   const value = useMemo(
-    () => ({
-      user,
-      token,
-      loading,
-      login,
-      logout,
-      fetchProfile,
-    }),
+    () => ({ user, token, loading, login, logout, fetchProfile }),
     [user, token, loading, login, logout, fetchProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Hook (với kiểm tra)
 const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (!context)
     throw new Error("useAuth phải được dùng bên trong AuthProvider");
-  }
   return context;
 };
 
-// --- Cart Context (Quản lý Giỏ hàng) ---
+// --- Cart Context ---
 const CartContext = createContext<CartContextType | null>(null);
 
 const CartProvider = ({ children }: ChildrenProps) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { token, fetchProfile } = useAuth(); // Lấy token để biết khi nào user thay đổi
+  const { token, fetchProfile } = useAuth();
 
   const fetchCart = useCallback(async () => {
     setLoading(true);
@@ -355,24 +351,22 @@ const CartProvider = ({ children }: ChildrenProps) => {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
-// Hook (với kiểm tra)
 const useCart = (): CartContextType => {
   const context = useContext(CartContext);
-  if (!context) {
+  if (!context)
     throw new Error("useCart phải được dùng bên trong CartProvider");
-  }
   return context;
 };
 
-// --- MOCK COMPONENTS (Navbar & Footer) ---
+// --- MOCK COMPONENTS ---
 const Navbartop: React.FC = () => (
   <div className="bg-gray-100 py-2 text-center text-sm text-gray-700">
-    Đây là Navbartop (ví dụ: thông báo khuyến mãi)
+    Thông báo khuyến mãi
   </div>
 );
 const Navbarbot: React.FC = () => (
   <div className="bg-white border-b border-gray-200 shadow-sm p-4">
-    <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12 md:w-10/12 lg:w-4/5 flex justify-between items-center">
+    <div className="w-full max-w-7xl mx-auto px-4 flex justify-between items-center">
       <div className="text-xl font-bold text-blue-600">KPPaint Store</div>
       <div className="space-x-4">
         <a href="/" className="text-gray-600 hover:text-blue-600">
@@ -388,9 +382,7 @@ const Navbarbot: React.FC = () => (
     </div>
   </div>
 );
-const StickyNav: React.FC = () => {
-  return null;
-};
+const StickyNav: React.FC = () => null;
 const Navbar: React.FC = () => (
   <div className="relative z-50">
     <Navbartop />
@@ -399,19 +391,12 @@ const Navbar: React.FC = () => (
   </div>
 );
 const Footer: React.FC = () => (
-  <footer className="bg-gray-50 text-gray-700 mt-12">
-    <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12 md:w-10/12 lg:w-4/5 py-12">
-      <div className="mt-8">
-        <div className="h-px bg-gray-200" />
-        <div className="mt-6 text-center text-sm text-gray-500">
-          © 2025 KPPaint. All rights reserved.
-        </div>
-      </div>
-    </div>
+  <footer className="bg-gray-50 text-gray-700 mt-12 py-12 text-center border-t">
+    © 2025 KPPaint. All rights reserved.
   </footer>
 );
 
-// --- COMPONENT TRANG THANH TOÁN ---
+// --- COMPONENT TRANG THANH TOÁN (FULL LOGIC & UI) ---
 const PaymentPage: React.FC = () => {
   const {
     cart,
@@ -422,7 +407,6 @@ const PaymentPage: React.FC = () => {
   } = useCart();
   const { user } = useAuth();
 
-  // State của Form
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -449,31 +433,24 @@ const PaymentPage: React.FC = () => {
 
   const increase = (productId: string) => {
     const item = items.find((i) => i.product._id === productId);
-    if (item && !cartLoading) {
-      updateItem(productId, item.quantity + 1);
-    }
+    if (item && !cartLoading) updateItem(productId, item.quantity + 1);
   };
   const decrease = (productId: string) => {
     const item = items.find((i) => i.product._id === productId);
-    if (item && !cartLoading) {
-      updateItem(productId, item.quantity - 1);
-    }
+    if (item && !cartLoading) updateItem(productId, item.quantity - 1);
   };
 
   const placeOrder = async () => {
     setOrderError(null);
-
     if (!name || !phone || !address || !province || !district) {
       setOrderError("Vui lòng điền đầy đủ thông tin giao hàng.");
       return;
     }
-
     const orderData: OrderData = {
       shippingInfo: { name, email, phone, address, province, district, note },
       paymentMethod: payMethod,
       shippingMethod: shipMethod,
     };
-
     try {
       await createOrder(orderData);
       setOrderSuccess(true);
@@ -482,7 +459,6 @@ const PaymentPage: React.FC = () => {
     }
   };
 
-  // Provinces & dependent districts (Giữ nguyên)
   const PROVINCES = [
     { code: "HCM", name: "TP. Hồ Chí Minh" },
     { code: "HN", name: "Hà Nội" },
@@ -491,15 +467,6 @@ const PaymentPage: React.FC = () => {
     HCM: [
       { value: "q1", label: "Quận 1" },
       { value: "q3", label: "Quận 3" },
-      { value: "q4", label: "Quận 4" },
-      { value: "q5", label: "Quận 5" },
-      { value: "q6", label: "Quận 6" },
-      { value: "q7", label: "Quận 7" },
-      { value: "q8", label: "Quận 8" },
-      { value: "q10", label: "Quận 10" },
-      { value: "q11", label: "Quận 11" },
-      { value: "q12", label: "Quận 12" },
-      { value: "binh-tan", label: "Quận Bình Tân" },
       { value: "binh-thanh", label: "Quận Bình Thạnh" },
       { value: "go-vap", label: "Quận Gò Vấp" },
       { value: "phu-nhuan", label: "Quận Phú Nhuận" },
@@ -508,16 +475,7 @@ const PaymentPage: React.FC = () => {
     HN: [
       { value: "ba-dinh", label: "Ba Đình" },
       { value: "hoan-kiem", label: "Hoàn Kiếm" },
-      { value: "hai-ba-trung", label: "Hai Bà Trưng" },
-      { value: "dong-da", label: "Đống Đa" },
-      { value: "tay-ho", label: "Tây Hồ" },
       { value: "cau-giay", label: "Cầu Giấy" },
-      { value: "thanh-xuan", label: "Thanh Xuân" },
-      { value: "hoang-mai", label: "Hoàng Mai" },
-      { value: "long-bien", label: "Long Biên" },
-      { value: "ha-dong", label: "Hà Đông" },
-      { value: "bac-tu-liem", label: "Bắc Từ Liêm" },
-      { value: "nam-tu-liem", label: "Nam Từ Liêm" },
     ],
   };
   const districtOptions = useMemo(() => DISTRICTS[province] || [], [province]);
@@ -537,8 +495,7 @@ const PaymentPage: React.FC = () => {
               Đặt hàng thành công!
             </h2>
             <p className="text-gray-600 mb-6">
-              Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ với bạn để xác nhận
-              đơn hàng trong thời gian sớm nhất.
+              Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.
             </p>
             <a
               href="/"
@@ -559,25 +516,22 @@ const PaymentPage: React.FC = () => {
       <div className="bg-gray-50 min-h-screen py-4 md:py-6">
         <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12 md:w-10/12 lg:w-4/5">
           <div className="bg-white border-0.9 shadow-lg mb-4 rounded-md">
-            <div className="text-3xl text-center">
-              <div className="flex items-center justify-center gap-2 px-4 py-3">
-                <span className="font-medium">Thanh Toán</span>
-              </div>
+            <div className="text-3xl text-center py-3 font-medium">
+              Thanh Toán
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* CỘT TRÁI */}
             <div className="lg:col-span-9 space-y-4">
+              {/* Danh sách sản phẩm */}
               <div className={`${boxStyle} overflow-hidden p-0`}>
-                <div className="grid grid-cols-12 px-4 py-3 text-gray-600 text-sm bg-gray-50 border-b">
-                  <div className="col-span-12 md:col-span-4">Tên sản phẩm</div>
+                <div className="grid grid-cols-12 px-4 py-3 text-gray-600 text-sm bg-gray-50 border-b font-semibold">
+                  <div className="col-span-12 md:col-span-5">Sản phẩm</div>
                   <div className="col-span-2 text-center hidden md:block">
                     Đơn giá
                   </div>
-                  <div className="col-span-2 text-center hidden md:block">
-                    Giảm giá
-                  </div>
-                  <div className="col-span-2 text-center hidden md:block">
+                  <div className="col-span-3 text-center hidden md:block">
                     Số lượng
                   </div>
                   <div className="col-span-2 text-right hidden md:block">
@@ -608,65 +562,102 @@ const PaymentPage: React.FC = () => {
                     {items.map((it) => (
                       <div
                         key={it.product._id}
-                        className="p-4 bg-white shadow-sm border rounded-md"
+                        className="p-4 bg-white shadow-sm border rounded-md hover:shadow-md transition-shadow"
                       >
-                        <div className="grid grid-cols-12 items-center gap-3">
-                          <div className="col-span-12 md:col-span-4 flex items-center gap-3">
-                            <div className="w-16 h-16 border-0.9 overflow-hidden bg-white rounded-md flex-shrink-0">
+                        <div className="grid grid-cols-12 items-center gap-4">
+                          {/* Info + Ảnh + Badge KM */}
+                          <div className="col-span-12 md:col-span-5 flex items-start gap-3">
+                            <div className="w-20 h-20 border rounded-md overflow-hidden flex-shrink-0 bg-gray-100">
                               <img
-                                src={
-                                  it.product.image ||
-                                  "https://placehold.co/100x100/F1F1F1/333?text=IMG"
-                                }
+                                // 🚨 SỬA LẠI: Truyền nguyên object it.product vào hàm
+                                src={getProductImage(it.product)}
                                 alt={it.product.name}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "https://placehold.co/100x100/F1F1F1/333?text=No+Image";
+                                }}
                               />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="font-medium text-gray-800 line-clamp-2">
                                 {it.product.name}
                               </div>
-                              <div className="md:hidden text-sm text-gray-600 mt-1">
-                                {formatVND(it.price_discount)} x {it.quantity} ={" "}
+                              {it.applied_discount && (
+                                <div className="mt-1 inline-flex items-center gap-1 px-2 py-1 bg-red-50 border border-red-100 rounded text-xs text-red-600">
+                                  <TicketPercent size={12} />
+                                  <span className="font-semibold truncate max-w-[180px]">
+                                    {it.applied_discount.program_name} (-
+                                    {it.applied_discount.discount_percent}%)
+                                  </span>
+                                </div>
+                              )}
+                              <div className="md:hidden text-sm text-gray-600 mt-2 flex justify-between">
+                                <span>
+                                  {formatVND(it.price_discount)} x {it.quantity}
+                                </span>
                                 <span className="font-semibold text-red-600">
                                   {formatVND(it.Total_price)}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          <div className="col-span-2 text-sm text-center hidden md:block">
-                            {formatVND(it.price_original)}
+
+                          {/* Giá */}
+                          <div className="col-span-2 text-center hidden md:block text-sm">
+                            {it.applied_discount ? (
+                              <div className="flex flex-col items-center">
+                                <span className="text-gray-400 line-through text-xs">
+                                  {formatVND(it.price_original)}
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {formatVND(it.price_discount)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="font-medium text-gray-900">
+                                {formatVND(it.price_original)}
+                              </span>
+                            )}
                           </div>
-                          <div className="col-span-2 text-sm text-center hidden md:block text-red-500">
-                            - {formatVND(it.price_original - it.price_discount)}
-                          </div>
-                          <div className="col-span-12 md:col-span-2 flex justify-center">
-                            <div className="inline-flex items-center border rounded mx-auto">
+
+                          {/* Số lượng */}
+                          <div className="col-span-12 md:col-span-3 flex justify-center">
+                            <div className="inline-flex items-center border rounded-md shadow-sm bg-white">
                               <button
                                 onClick={() => decrease(it.product._id)}
-                                className="px-2 py-1 hover:bg-gray-100 rounded-l-md"
-                                aria-label="Giảm"
+                                className="px-3 py-1 hover:bg-gray-100 text-gray-600 disabled:opacity-50"
                                 disabled={cartLoading}
                               >
-                                −
+                                <Minus size={14} />
                               </button>
                               <input
                                 readOnly
                                 value={it.quantity}
-                                className="w-10 text-center py-1 border-l border-r"
+                                className="w-10 text-center py-1 text-sm border-l border-r outline-none font-medium"
                               />
                               <button
                                 onClick={() => increase(it.product._id)}
-                                className="px-2 py-1 hover:bg-gray-100 rounded-r-md"
-                                aria-label="Tăng"
+                                className="px-3 py-1 hover:bg-gray-100 text-gray-600 disabled:opacity-50"
                                 disabled={cartLoading}
                               >
-                                +
+                                <Plus size={14} />
                               </button>
                             </div>
                           </div>
-                          <div className="col-span-2 text-right text-red-600 font-semibold hidden md:block">
-                            {formatVND(it.Total_price)}
+
+                          {/* Thành tiền */}
+                          <div className="col-span-2 text-right hidden md:block">
+                            <div className="text-red-600 font-bold text-base">
+                              {formatVND(it.Total_price)}
+                            </div>
+                            {it.applied_discount &&
+                              it.applied_discount.saved_amount > 0 && (
+                                <div className="text-xs text-green-600 mt-1 italic">
+                                  Tiết kiệm:{" "}
+                                  {formatVND(it.applied_discount.saved_amount)}
+                                </div>
+                              )}
                           </div>
                         </div>
                       </div>
@@ -675,11 +666,13 @@ const PaymentPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Form Thông Tin */}
               <div className={boxStyle}>
-                <h3 className="text-lg font-semibold mb-3">
-                  Thông tin giao hàng
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-600" /> Thông tin giao
+                  hàng
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     className={inputStyle}
                     placeholder="Họ và tên"
@@ -688,7 +681,7 @@ const PaymentPage: React.FC = () => {
                   />
                   <input
                     className={inputStyle}
-                    placeholder="Email (Không bắt buộc)"
+                    placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -700,7 +693,7 @@ const PaymentPage: React.FC = () => {
                   />
                   <input
                     className={inputStyle}
-                    placeholder="Địa chỉ (Số nhà, đường...)"
+                    placeholder="Địa chỉ"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                   />
@@ -720,11 +713,7 @@ const PaymentPage: React.FC = () => {
                     ))}
                   </select>
                   <select
-                    className={`${inputStyle} ${
-                      !province
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : ""
-                    }`}
+                    className={inputStyle}
                     value={district}
                     onChange={(e) => setDistrict(e.target.value)}
                     disabled={!province}
@@ -738,92 +727,91 @@ const PaymentPage: React.FC = () => {
                   </select>
                   <textarea
                     className={`${inputStyle} md:col-span-2 min-h-[80px]`}
-                    placeholder="Ghi chú (Không bắt buộc)"
+                    placeholder="Ghi chú (Nếu có)"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className={boxStyle}>
-                <div className="font-medium mb-2">Phương thức giao hàng</div>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <label className="flex items-center gap-2 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+              {/* Phương thức Giao hàng & Thanh toán */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className={boxStyle}>
+                  <div className="font-medium mb-3">Vận chuyển</div>
+                  <label className="flex items-center gap-3 p-3 border rounded mb-2 cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
                       name="ship"
                       value="fast"
                       checked={shipMethod === "fast"}
                       onChange={() => setShipMethod("fast")}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    Giao hàng nhanh
+                    />{" "}
+                    Nhanh
                   </label>
-                  <label className="flex items-center gap-2 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+                  <label className="flex items-center gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
                       name="ship"
                       value="economy"
                       checked={shipMethod === "economy"}
                       onChange={() => setShipMethod("economy")}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    Giao hàng tiết kiệm
+                    />{" "}
+                    Tiết kiệm
                   </label>
                 </div>
-              </div>
-
-              <div className={boxStyle}>
-                <div className="font-medium mb-2">Phương thức thanh toán</div>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <label className="flex items-center gap-2 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+                <div className={boxStyle}>
+                  <div className="font-medium mb-3">Thanh toán</div>
+                  <label className="flex items-center gap-3 p-3 border rounded mb-2 cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
                       name="pay"
                       value="bank"
                       checked={payMethod === "bank"}
                       onChange={() => setPayMethod("bank")}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    Thanh toán qua tài khoản ngân hàng
+                    />{" "}
+                    Chuyển khoản
                   </label>
-                  <label className="flex items-center gap-2 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+                  <label className="flex items-center gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
                       name="pay"
                       value="cod"
                       checked={payMethod === "cod"}
                       onChange={() => setPayMethod("cod")}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    Thanh toán khi nhận hàng (COD)
+                    />{" "}
+                    COD
                   </label>
                 </div>
               </div>
             </div>
 
+            {/* CỘT PHẢI: TỔNG KẾT */}
             <aside className="lg:col-span-3 lg:sticky lg:top-24 h-fit">
-              <div className={`${boxStyle} p-3`}>
-                <div className="flex items-center justify-between py-2 border-b text-sm">
-                  <span>Tạm tính</span>
+              <div className={`${boxStyle} p-4`}>
+                <h3 className="font-semibold mb-4 border-b pb-2">Đơn hàng</h3>
+                <div className="flex justify-between py-2 text-sm">
+                  <span>Tổng tiền hàng</span>
                   <span>{formatVND(cart?.total_original_price || 0)}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b text-sm text-red-600">
-                  <span>Giảm giá</span>
-                  <span>- {formatVND(cart?.total_discount_amount || 0)}</span>
+                {(cart?.total_discount_amount || 0) > 0 && (
+                  <div className="flex justify-between py-2 text-sm text-green-600">
+                    <span>Tiết kiệm</span>
+                    <span>- {formatVND(cart?.total_discount_amount || 0)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 text-sm border-b border-dashed mb-4">
+                  <span>Vận chuyển</span>
+                  <span>Liên hệ</span>
                 </div>
-                <div className="flex items-center justify-between py-3 text-lg">
-                  <span className="font-medium">Thành tiền</span>
-                  <span className="text-red-600 font-semibold">
+                <div className="flex justify-between mb-6">
+                  <span className="font-bold">Tổng cộng</span>
+                  <span className="text-xl text-red-600 font-bold">
                     {formatVND(subTotal)}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500 mb-3 text-right">
-                  (Đã bao gồm VAT nếu có)
-                </div>
 
                 {orderError && (
-                  <div className="text-center text-sm text-red-500 mb-3">
+                  <div className="text-red-500 text-sm text-center mb-4 bg-red-50 p-2 rounded">
                     {orderError}
                   </div>
                 )}
@@ -831,9 +819,9 @@ const PaymentPage: React.FC = () => {
                 <button
                   onClick={placeOrder}
                   disabled={items.length === 0 || cartLoading}
-                  className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-medium transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-orange-500 text-white rounded font-bold hover:bg-orange-600 disabled:opacity-50"
                 >
-                  {cartLoading ? "Đang tải..." : "THANH TOÁN"}
+                  {cartLoading ? "Đang xử lý..." : "ĐẶT HÀNG NGAY"}
                 </button>
               </div>
             </aside>
@@ -845,7 +833,7 @@ const PaymentPage: React.FC = () => {
   );
 };
 
-// --- Form Đăng nhập ---
+// --- LOGIN FORM ---
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("user");
   const [password, setPassword] = useState("123456");
@@ -860,7 +848,7 @@ const LoginForm: React.FC = () => {
     try {
       await login(username, password);
     } catch (err) {
-      setError((err as Error).message || "Sai username hoặc password.");
+      setError((err as Error).message || "Đăng nhập thất bại.");
     } finally {
       setIsLoggingIn(false);
     }
@@ -870,11 +858,8 @@ const LoginForm: React.FC = () => {
     <>
       <Navbar />
       <div className="flex items-center justify-center min-h-screen bg-gray-50 -mt-20">
-        <div className="w-full max-w-sm p-8 space-y-6 bg-white shadow-lg rounded-md">
-          <h2 className="text-2xl font-bold text-center">Đăng nhập</h2>
-          <p className="text-center text-sm text-gray-600">
-            Bạn cần đăng nhập để xem trang thanh toán.
-          </p>
+        <div className="w-full max-w-sm p-8 bg-white shadow-lg rounded-md">
+          <h2 className="text-2xl font-bold text-center mb-6">Đăng nhập</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="text-red-500 text-sm text-center">{error}</div>
@@ -886,7 +871,7 @@ const LoginForm: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Username"
-                className="w-full border rounded-md py-2 px-10"
+                className="w-full border rounded pl-10 py-2"
               />
             </div>
             <div className="relative">
@@ -896,16 +881,16 @@ const LoginForm: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full border rounded-md py-2 px-10"
+                className="w-full border rounded pl-10 py-2"
               />
             </div>
             <button
               type="submit"
               disabled={isLoggingIn || loading}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-green-700 transition disabled:opacity-50"
+              className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 disabled:opacity-50"
             >
-              <LogIn className="inline-block mr-2 h-5 w-5" />
-              {isLoggingIn ? "Đang đăng nhập..." : "Đăng nhập"}
+              <LogIn className="inline-block mr-2 h-4 w-4" />{" "}
+              {isLoggingIn ? "Đang vào..." : "Đăng nhập"}
             </button>
           </form>
         </div>
@@ -915,34 +900,24 @@ const LoginForm: React.FC = () => {
   );
 };
 
-// --- COMPONENT APP CHÍNH (Logic điều hướng) ---
+// --- APP ---
 const App: React.FC = () => {
   const { user, loading } = useAuth();
-
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl font-medium">Đang tải...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        Đang tải...
       </div>
     );
-  }
-
-  if (user) {
-    return <PaymentPage />;
-  }
-
-  return <LoginForm />;
+  return user ? <PaymentPage /> : <LoginForm />;
 };
 
-// --- Provider Wrapper (Bọc App trong các Context) ---
-const AppWrapper: React.FC = () => {
-  return (
-    <AuthProvider>
-      <CartProvider>
-        <App />
-      </CartProvider>
-    </AuthProvider>
-  );
-};
+const AppWrapper: React.FC = () => (
+  <AuthProvider>
+    <CartProvider>
+      <App />
+    </CartProvider>
+  </AuthProvider>
+);
 
 export default AppWrapper;

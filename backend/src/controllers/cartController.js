@@ -53,7 +53,7 @@ export const calculateCartTotals = async (cartOrId) => {
   if (typeof cartOrId === "string" || !cartOrId._id) {
     cart = await Cart.findById(cartOrId).populate({
       path: "items.product",
-      select: "price category name stock",
+      select: "price category name stock avatar images",
       populate: { path: "category", select: "_id name" },
     });
   } else {
@@ -61,7 +61,7 @@ export const calculateCartTotals = async (cartOrId) => {
     if (cart.items.length > 0 && !cart.items[0].product?.price) {
       cart = await Cart.findById(cart._id).populate({
         path: "items.product",
-        select: "price category name stock",
+        select: "price category name stock avatar images",
         populate: { path: "category", select: "_id name" },
       });
     }
