@@ -47,6 +47,7 @@ const UserPage: React.FC = () => {
   // === State user info ===
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -470,9 +471,9 @@ const UserPage: React.FC = () => {
                 </h2>
                 <form
                   onSubmit={async (e) => {
-                    e.preventDefault(); // 🚨 Ngăn reload trang
+                    e.preventDefault();
 
-                    // 1. Validation Client
+                    // --- 1. VALIDATION CLIENT (Giữ nguyên) ---
                     if (!oldPassword) {
                       Swal.fire({
                         icon: "error",
@@ -517,8 +518,23 @@ const UserPage: React.FC = () => {
                     }
 
                     try {
-                      setLoading(true);
+                      setIsSubmitting(true);
 
+                      // 🚨 HIỂN THỊ SWAL LOADING (Giả lập chờ 2s)
+                      Swal.fire({
+                        title: "Đang xử lý...",
+                        text: "Vui lòng chờ trong giây lát",
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                          Swal.showLoading();
+                        },
+                      });
+
+                      // 🚨 Delay 2 giây (2000ms) để tránh nhảy trang quá nhanh
+                      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+                      // --- 2. GỌI API ---
                       const res = await fetch(
                         `${SERVER_BASE_URL}/api/users/change-password`,
                         {
@@ -537,35 +553,42 @@ const UserPage: React.FC = () => {
 
                       const data = await res.json();
 
+                      // --- 3. XỬ LÝ KẾT QUẢ ---
                       if (!res.ok) {
-                        // 🚨 XỬ LÝ LỖI TỪ BACKEND BẰNG SWAL
+                        // Nếu thất bại (Mật khẩu cũ sai hoặc lỗi khác)
                         Swal.fire({
                           icon: "error",
                           title: "Thất bại",
                           text: data.message || "Đổi mật khẩu thất bại",
-                          confirmButtonColor: "#ea580c",
+                          confirmButtonColor: "#d33",
                         });
-                        return;
+                      } else {
+                        // 🚨 THÀNH CÔNG: Cho người dùng chọn
+                        Swal.fire({
+                          title: "Đổi mật khẩu thành công!",
+                          text: "Bạn muốn đăng xuất để đăng nhập lại hay tiếp tục sử dụng?",
+                          icon: "success",
+                          showCancelButton: true,
+                          confirmButtonText: "Đăng xuất ngay",
+                          cancelButtonText: "Ở lại trang này",
+                          confirmButtonColor: "#ea580c", // Màu cam
+                          cancelButtonColor: "#6b7280", // Màu xám
+                          reverseButtons: true, // Đảo vị trí nút cho thuận tay
+                          allowOutsideClick: false,
+                        }).then((result) => {
+                          if (result.isConfirmed) {
+                            // Tùy chọn 1: Đăng xuất
+                            performLogout();
+                          } else {
+                            // Tùy chọn 2: Ở lại -> Reset form
+                            setOldPassword("");
+                            setNewPassword("");
+                            setConfirmPassword("");
+                            // Có thể toast nhẹ thông báo
+                            toast.success("Bạn có thể tiếp tục sử dụng!");
+                          }
+                        });
                       }
-
-                      // 🚨 THÀNH CÔNG: HIỆN SWAL -> LOGOUT
-                      Swal.fire({
-                        title: "Đổi mật khẩu thành công!",
-                        text: "Vui lòng đăng nhập lại bằng mật khẩu mới.",
-                        icon: "success",
-                        confirmButtonText: "Đăng nhập lại",
-                        allowOutsideClick: false,
-                        confirmButtonColor: "#ea580c",
-                      }).then((result) => {
-                        if (result.isConfirmed) {
-                          performLogout(); // Gọi hàm logout
-                        }
-                      });
-
-                      // Clear form (dù sẽ reload trang nhưng clear cho chắc)
-                      setOldPassword("");
-                      setNewPassword("");
-                      setConfirmPassword("");
                     } catch (error) {
                       console.error("Change pass error:", error);
                       Swal.fire({
@@ -575,12 +598,12 @@ const UserPage: React.FC = () => {
                         confirmButtonColor: "#ea580c",
                       });
                     } finally {
-                      setLoading(false);
+                      setIsSubmitting(false);
                     }
                   }}
                   className="flex flex-col gap-4"
                 >
-                  {/* Input Mật khẩu cũ */}
+                  {/* ... (Phần input UI giữ nguyên không đổi) ... */}
                   <div className="flex flex-col gap-1 relative">
                     <Input
                       type={showOld ? "text" : "password"}
@@ -601,7 +624,6 @@ const UserPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Input Mật khẩu mới */}
                   <div className="flex flex-col gap-1 relative">
                     <Input
                       type={showPassword ? "text" : "password"}
@@ -620,7 +642,6 @@ const UserPage: React.FC = () => {
                         <Eye className="w-5 h-5" />
                       )}
                     </button>
-
                     {/* Thanh độ mạnh */}
                     <div className="mt-2">
                       <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
@@ -639,7 +660,6 @@ const UserPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Input Xác nhận mật khẩu mới */}
                   <div className="flex flex-col gap-1 relative">
                     <Input
                       type={showConfirm ? "text" : "password"}
@@ -663,9 +683,9 @@ const UserPage: React.FC = () => {
                   <Button
                     type="submit"
                     className="bg-orange-600 hover:bg-orange-700 text-white w-full"
-                    disabled={loading}
+                    disabled={isSubmitting}
                   >
-                    {loading ? "Đang xử lý..." : "Đổi mật khẩu"}
+                    {isSubmitting ? "Đang xử lý..." : "Đổi mật khẩu"}
                   </Button>
                 </form>
               </div>
