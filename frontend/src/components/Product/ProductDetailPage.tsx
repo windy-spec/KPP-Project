@@ -6,6 +6,7 @@ import Navbar from "../Navbar/Navbar";
 import Footer from "../Footer/Footer";
 import { Heart, Share2, Minus, Plus, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast"; // 🚨 Cần cài đặt: npm install react-hot-toast
+import MiniCart from "../Cart/MiniCart";
 
 // --- CONFIG SERVER ---
 const SERVER_BASE_URL = "http://localhost:5001";
@@ -42,6 +43,8 @@ const ProductDetailPage: React.FC = () => {
   // State cho logic thêm giỏ hàng
   const [quantity, setQuantity] = useState<number>(1);
   const [isAdding, setIsAdding] = useState(false); // Loading khi đang thêm
+  const [showMiniCart, setShowMiniCart] = useState(false);
+  const [miniCartItems, setMiniCartItems] = useState<any[]>([]);
 
   // UI States
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
@@ -141,7 +144,31 @@ const ProductDetailPage: React.FC = () => {
 
       toast.success("Đã thêm vào giỏ hàng thành công!");
 
-      // Mẹo: Bắn sự kiện để Navbar (nếu có listener) biết mà cập nhật
+      // Update localStorage cart (guest quick UX) so navbars that read localStorage update immediately
+      try {
+        const raw = localStorage.getItem("cart");
+        const cart = raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+        const existingIndex = cart.findIndex((it: any) => it.productId === product._id);
+        if (existingIndex >= 0) {
+          cart[existingIndex].quantity = (cart[existingIndex].quantity || 0) + quantity;
+        } else {
+          cart.push({
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            avatar: product.avatar || product.images?.[0] || null,
+            quantity,
+          });
+        }
+        localStorage.setItem("cart", JSON.stringify(cart));
+        setMiniCartItems(cart.slice(-5).reverse());
+        setShowMiniCart(true);
+        setTimeout(() => setShowMiniCart(false), 6000);
+      } catch (e) {
+        // ignore localStorage errors
+      }
+
+      // Notify any navbar listeners to update immediately
       window.dispatchEvent(new Event("cartUpdated"));
     } catch (err: any) {
       console.error(err);
@@ -203,7 +230,12 @@ const ProductDetailPage: React.FC = () => {
                   src={currentImage || "https://placehold.co/600x400"}
                   className="w-full h-full object-cover rounded-lg"
                   onLoad={(e) => {
-                    /* Logic attemptHighRes cũ của bạn */
+                    try {
+                      const src = (e.target as HTMLImageElement).src;
+                      attemptHighRes(src);
+                    } catch (err) {
+                      // ignore
+                    }
                   }}
                 />
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
@@ -335,7 +367,8 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </main>
+      </main>  
+      <MiniCart/>
       <Footer />
     </div>
   );

@@ -13,12 +13,36 @@ const MobileHeader: React.FC = () => {
   const [categories, setCategories] = useState<Array<any>>([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState<string | null>(null);
+  const [cartCount, setCartCount] = useState<number>(0);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 0);
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Cart count (listen for cartUpdated)
+  useEffect(() => {
+    const readCart = () => {
+      try {
+        const raw = localStorage.getItem('cart');
+        if (!raw) return setCartCount(0);
+        const arr = JSON.parse(raw);
+        // Count distinct products (unique productId) so badge shows number of product types, not total quantity
+        const total = Array.isArray(arr)
+          ? new Set(arr.map((it: any) => it.productId ?? it.id ?? JSON.stringify(it))).size
+          : 0;
+        setCartCount(total);
+      } catch (e) {
+        setCartCount(0);
+      }
+    };
+
+    readCart();
+    const onUpdate = () => readCart();
+    window.addEventListener('cartUpdated', onUpdate);
+    return () => window.removeEventListener('cartUpdated', onUpdate);
   }, []);
 
   // Try to load user info from API if accessToken exists
@@ -93,6 +117,9 @@ const MobileHeader: React.FC = () => {
       localStorage.removeItem('refreshToken');
       setUser(null);
       setOpen(false);
+      // clear local cart and notify navbars so badge resets immediately
+      try { localStorage.removeItem('cart'); } catch (e) {}
+      window.dispatchEvent(new Event('cartUpdated'));
       // redirect to signin page
       window.location.href = '/signin';
     }
@@ -113,8 +140,13 @@ const MobileHeader: React.FC = () => {
             </Link>
 
             <div className="flex items-center gap-2">
-              <Link to="/gio-hang" aria-label="cart" className="p-2 rounded hover:bg-gray-100">
+              <Link to="/gio-hang" aria-label="cart" className="relative p-2 rounded hover:bg-gray-100">
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white bg-red-600 rounded-full">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
 
               <button

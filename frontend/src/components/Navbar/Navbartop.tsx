@@ -46,11 +46,22 @@ const Navbartop: React.FC = () => {
       localStorage.removeItem("resetEmail");
       setUser(null);
       setShowUserMenu(false);
+      // Also clear local cart and notify navbars so badge resets immediately on logout
+      try {
+        localStorage.removeItem("cart");
+      } catch (e) {
+        // ignore
+      }
+      window.dispatchEvent(new Event("cartUpdated"));
       window.location.href = "/signIn";
     } catch (error) {
       console.error("Lỗi khi đăng xuất:", error);
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      try {
+        localStorage.removeItem("cart");
+      } catch (e) {}
+      window.dispatchEvent(new Event("cartUpdated"));
       window.location.href = "/signin";
     }
   };
@@ -119,6 +130,31 @@ const Navbartop: React.FC = () => {
     getUserInfo();
   }, []);
 
+  // Cart count from localStorage (for guest or in-memory cart)
+  const [cartCount, setCartCount] = useState<number>(0);
+
+  useEffect(() => {
+    const readCart = () => {
+      try {
+        const raw = localStorage.getItem("cart");
+        if (!raw) return setCartCount(0);
+        const arr = JSON.parse(raw);
+        // Count distinct products (unique productId) so badge shows number of product types, not total quantity
+        const total = Array.isArray(arr)
+          ? new Set(arr.map((it: any) => it.productId ?? it.id ?? JSON.stringify(it))).size
+          : 0;
+        setCartCount(total);
+      } catch (e) {
+        setCartCount(0);
+      }
+    };
+
+    readCart();
+    const onUpdate = () => readCart();
+    window.addEventListener("cartUpdated", onUpdate);
+    return () => window.removeEventListener("cartUpdated", onUpdate);
+  }, []);
+
   // --------------------------------------------------------------------------------
   // JSX Render
   // --------------------------------------------------------------------------------
@@ -171,9 +207,14 @@ const Navbartop: React.FC = () => {
               <Link
                 to="/gio-hang"
                 aria-label="cart"
-                className="p-1 rounded hover:bg-gray-100"
+                className="relative p-1 rounded hover:bg-gray-100"
               >
                 <img src={cartIcon} alt="cart" className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
               {/* User */}
               <div>
