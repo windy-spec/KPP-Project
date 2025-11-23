@@ -19,6 +19,8 @@ import {
   TicketPercent, // Import icon khuyến mãi
 } from "lucide-react";
 
+import Navbar from "@/components/Navbar/Navbar";
+import Footer from "@/components/Footer/Footer";
 // --- Cấu hình API ---
 const API_BASE_URL = "http://localhost:5001/api";
 const SERVER_ROOT = "http://localhost:5001";
@@ -358,43 +360,7 @@ const useCart = (): CartContextType => {
   return context;
 };
 
-// --- MOCK COMPONENTS ---
-const Navbartop: React.FC = () => (
-  <div className="bg-gray-100 py-2 text-center text-sm text-gray-700">
-    Thông báo khuyến mãi
-  </div>
-);
-const Navbarbot: React.FC = () => (
-  <div className="bg-white border-b border-gray-200 shadow-sm p-4">
-    <div className="w-full max-w-7xl mx-auto px-4 flex justify-between items-center">
-      <div className="text-xl font-bold text-blue-600">KPPaint Store</div>
-      <div className="space-x-4">
-        <a href="/" className="text-gray-600 hover:text-blue-600">
-          Trang chủ
-        </a>
-        <a href="/" className="text-gray-600 hover:text-blue-600">
-          Sản phẩm
-        </a>
-        <a href="#" className="font-bold text-blue-600">
-          Thanh toán
-        </a>
-      </div>
-    </div>
-  </div>
-);
-const StickyNav: React.FC = () => null;
-const Navbar: React.FC = () => (
-  <div className="relative z-50">
-    <Navbartop />
-    <Navbarbot />
-    <StickyNav />
-  </div>
-);
-const Footer: React.FC = () => (
-  <footer className="bg-gray-50 text-gray-700 mt-12 py-12 text-center border-t">
-    © 2025 KPPaint. All rights reserved.
-  </footer>
-);
+// Use shared `Navbar` and `Footer` components from `components/`
 
 // --- COMPONENT TRANG THANH TOÁN (FULL LOGIC & UI) ---
 const PaymentPage: React.FC = () => {
@@ -430,6 +396,20 @@ const PaymentPage: React.FC = () => {
 
   const items = useMemo(() => cart?.items || [], [cart]);
   const subTotal = useMemo(() => cart?.final_total_price || 0, [cart]);
+
+  const shippingCost = useMemo(() => {
+    return shipMethod === "fast" ? 30000 : 15000;
+  }, [shipMethod]);
+
+  const shippingLabel = useMemo(() => {
+    return shipMethod === "fast" ? "Nhanh" : "Tiết kiệm";
+  }, [shipMethod]);
+
+  const paymentLabel = useMemo(() => {
+    return payMethod === "bank" ? "Chuyển khoản" : "COD";
+  }, [payMethod]);
+
+  const totalWithShipping = useMemo(() => subTotal + shippingCost, [subTotal, shippingCost]);
 
   const increase = (productId: string) => {
     const item = items.find((i) => i.product._id === productId);
@@ -514,7 +494,7 @@ const PaymentPage: React.FC = () => {
     <>
       <Navbar />
       <div className="bg-gray-50 min-h-screen py-4 md:py-6">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12 md:w-10/12 lg:w-4/5">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12 md:w-11/12 lg:w-[90%]">
           <div className="bg-white border-0.9 shadow-lg mb-4 rounded-md">
             <div className="text-3xl text-center py-3 font-medium">
               Thanh Toán
@@ -523,7 +503,7 @@ const PaymentPage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* CỘT TRÁI */}
-            <div className="lg:col-span-9 space-y-4">
+            <div className="lg:col-span-8 space-y-4">
               {/* Danh sách sản phẩm */}
               <div className={`${boxStyle} overflow-hidden p-0`}>
                 <div className="grid grid-cols-12 px-4 py-3 text-gray-600 text-sm bg-gray-50 border-b font-semibold">
@@ -786,8 +766,8 @@ const PaymentPage: React.FC = () => {
             </div>
 
             {/* CỘT PHẢI: TỔNG KẾT */}
-            <aside className="lg:col-span-3 lg:sticky lg:top-24 h-fit">
-              <div className={`${boxStyle} p-4`}>
+            <aside className="lg:col-span-4 lg:sticky lg:top-24 h-fit">
+              <div className={`${boxStyle} p-3`}>
                 <h3 className="font-semibold mb-4 border-b pb-2">Đơn hàng</h3>
                 <div className="flex justify-between py-2 text-sm">
                   <span>Tổng tiền hàng</span>
@@ -799,14 +779,18 @@ const PaymentPage: React.FC = () => {
                     <span>- {formatVND(cart?.total_discount_amount || 0)}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-2 text-sm border-b border-dashed mb-4">
+                <div className="flex justify-between py-2 text-sm">
                   <span>Vận chuyển</span>
-                  <span>Liên hệ</span>
+                  <span>{shippingLabel} + {formatVND(shippingCost)}</span>
+                </div>
+                <div className="flex justify-between py-2 text-sm border-b border-dashed mb-4">
+                  <span>Phương thức thanh toán</span>
+                  <span>{paymentLabel}</span>
                 </div>
                 <div className="flex justify-between mb-6">
                   <span className="font-bold">Tổng cộng</span>
                   <span className="text-xl text-red-600 font-bold">
-                    {formatVND(subTotal)}
+                    {formatVND(totalWithShipping)}
                   </span>
                 </div>
 

@@ -202,7 +202,7 @@ const CartPage: React.FC = () => {
     <>
       <Navbar />
       <div className="bg-gray-50 min-h-screen py-6">
-        <div className="w-11/12 max-w-7xl mx-auto px-2 md:px-4">
+        <div className="w-full max-w-7xl mx-auto px-2 md:px-4 sm:w-11/12 md:w-11/12 lg:w-[90%]">
           <div className="bg-white border-0.9 shadow-sm mb-4 rounded-lg">
             <div className="text-2xl md:text-3xl text-center py-4 font-bold text-gray-800">
               Giỏ Hàng
@@ -211,7 +211,7 @@ const CartPage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* --- DANH SÁCH SẢN PHẨM --- */}
-            <div className="lg:col-span-9">
+            <div className="lg:col-span-8">
               <div className="bg-white shadow-sm rounded-lg overflow-hidden">
                 {/* Header Table */}
                 <div className="hidden md:grid grid-cols-12 px-6 py-4 text-gray-500 font-semibold text-sm bg-gray-50 border-b">
@@ -409,8 +409,8 @@ const CartPage: React.FC = () => {
             </div>
 
             {/* --- SUMMARY SIDEBAR --- */}
-            <aside className="lg:col-span-3">
-              <div className="bg-white shadow-sm rounded-lg p-5 sticky top-24 border border-gray-100">
+            <aside className="lg:col-span-4">
+              <div className="bg-white shadow-sm rounded-lg p-4 sticky top-24 border border-gray-100">
                 <h3 className="font-bold text-gray-800 mb-4 text-lg border-b pb-2">
                   Thanh toán
                 </h3>
