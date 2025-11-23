@@ -248,7 +248,7 @@ const CartPage: React.FC = () => {
                           </div>
                           <div className="flex-1 min-w-0 flex flex-col gap-1">
                             <Link
-                              to={`/product/${it.product._id}`}
+                              to={`/san-pham/${it.product._id}`}
                               className="text-sm md:text-base font-medium text-gray-800 line-clamp-2 hover:text-orange-500 transition"
                             >
                               {it.product.name}
