@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AlignJustify, LayoutGrid, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const SERVER_BASE_URL = "http://localhost:5001";
 
 type Category = {
   _id?: string;
-  id?: string;
   name: string;
   productCount?: number;
 };
@@ -16,22 +16,28 @@ type Product = {
   id?: string;
   name: string;
   price?: number;
-  avatar?: string; // 🚨 ĐÃ THAY THẾ image_url BẰNG avatar
+  avatar?: string;
   quantity?: number;
   is_Active?: boolean;
   category?: { _id?: string; name?: string };
+
+  // 🚨 Dữ liệu mới từ Backend
+  final_price?: number;
+  discount_info?: {
+    percent: number;
+    code: string;
+  } | null;
 };
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-// Hàm Helper để chuẩn hóa URL ảnh (giống logic trong ProductDetailPage.tsx)
 const normalizeImageUrl = (path?: string): string => {
   const defaultImage =
     "https://placehold.co/200x200/CCCCCC/333333?text=No+Image";
   if (!path) return defaultImage;
-  return path.startsWith("http") ? path : `http://localhost:5001${path}`;
+  return path.startsWith("http") ? path : `${SERVER_BASE_URL}${path}`;
 };
 
 const Products: React.FC = () => {
@@ -66,7 +72,6 @@ const Products: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  
 
   const productRef = useRef<HTMLDivElement | null>(null);
 
@@ -78,58 +83,48 @@ const Products: React.FC = () => {
     if (sortingType && sortingType !== "null") params.set("sort", sortingType);
     if (activeCategory) params.set("categories", activeCategory);
     return "/api/product?" + params.toString();
-  }; // 🟢 Lấy danh mục
+  };
 
+  // Lấy danh mục
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await axios.get("/api/category?limit=20&page=1");
         const data = res.data;
-        const list: Category[] = Array.isArray(data)
-          ? data
-          : data?.data || data?.categories || [];
-        setCategories(list);
-      } catch {
-        /* ignore silently */
-      }
+        setCategories(Array.isArray(data) ? data : data?.data || []);
+      } catch {}
     };
     fetchCategories();
-  }, []); // 🟢 Lấy sản phẩm
+  }, []);
 
-  // Sync activeCategory with URL query when location.search changes (so external navigation updates filter)
+  // Sync URL param
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const catFromUrl = params.get("categories");
-    if (catFromUrl !== activeCategory) {
-      setActiveCategory(catFromUrl);
+    if (params.get("categories") !== activeCategory) {
+      setActiveCategory(params.get("categories"));
       setCurrentPage(1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
+  // Lấy sản phẩm (Backend đã tính sẵn giá)
   useEffect(() => {
     let mounted = true;
     const fetchProducts = async () => {
       setLoading(true);
       setError(null);
       try {
-        const url = buildUrl();
-        const res = await axios.get(url);
+        const res = await axios.get(buildUrl());
         if (!mounted) return;
         const data = res.data;
-        const list = Array.isArray(data)
-          ? data
-          : data?.data || data?.products || [];
-        const meta = data?.meta || data?.pagination || {};
+        const list = Array.isArray(data) ? data : data?.products || []; // Backend trả về object { products: [], ... }
+        const meta = data?.meta || data?.pagination || {}; // Hoặc lấy total từ root object
+
         setProducts(list);
-        setTotalItems(meta?.total || list.length || 0);
-        setTotalPages(
-          meta?.totalPages ||
-            meta?.pages ||
-            Math.max(1, Math.ceil((meta?.total || list.length) / limit))
-        );
+        // Cập nhật phân trang dựa trên response mới của Backend
+        setTotalItems(data.totalProducts || list.length || 0);
+        setTotalPages(data.totalPages || 1);
       } catch (err: any) {
-        setError(err?.message || "Không tải được sản phẩm");
+        setError(err?.message || "Lỗi tải sản phẩm");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -138,14 +133,15 @@ const Products: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [currentPage, price, sortingType, activeCategory]); // 🟢 Cập nhật URL khi thay đổi filter
+  }, [currentPage, price, sortingType, activeCategory]);
 
+  // Update URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     params.set("page", String(currentPage));
     if (price !== null) params.set("price", String(price));
     else params.delete("price");
-    if (sortingType && sortingType !== "null") params.set("sort", sortingType);
+    if (sortingType !== "null") params.set("sort", sortingType);
     else params.delete("sort");
     if (activeCategory) params.set("categories", activeCategory);
     else params.delete("categories");
@@ -175,8 +171,6 @@ const Products: React.FC = () => {
     setSortingType("null");
     setCurrentPage(1);
   };
-  const startItem = (currentPage - 1) * limit + 1;
-  const endItem = Math.min(currentPage * limit, totalItems);
 
   useEffect(() => {
     productRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -190,182 +184,161 @@ const Products: React.FC = () => {
     });
   }, [tempPrice]);
 
-
   return (
     <div className="px-4 py-8 mx-auto md:px-8 lg:px-16 md:py-12 max-w-7xl">
-    <div className="flex items-center justify-center gap-6 mb-10">
-      <h2 className="text-3xl font-extrabold tracking-tight text-gray-800 md:text-3xl">
-        Khám Phá Sản Phẩm Của Chúng Tôi
-      </h2>
-    </div>
+      <div className="flex items-center justify-center gap-6 mb-10">
+        <h2 className="text-3xl font-extrabold tracking-tight text-gray-800 md:text-3xl">
+          Khám Phá Sản Phẩm
+        </h2>
+      </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      {/* === SIDEBAR === */}
-      <aside className="lg:col-span-1">
-        <div className="bg-white p-6 shadow-lg border-0.9">
-          
-          {/* === LỌC THEO GIÁ (THÊM INPUT) === */}
-          <div className="mb-8">
-            <h3 className="text-mid-night font-semibold text-xl mb-4">
-              Lọc theo giá
-            </h3>
-
-            <div className="space-y-4">
-
-              {/* LABEL + INPUT GIÁ */}
-              <div className="flex items-center justify-between gap-3">
-                <label className="text-sm font-medium">Giá tối đa</label>
-
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* SIDEBAR */}
+        <aside className="lg:col-span-1">
+          <div className="bg-white p-6 shadow-lg border-0.9">
+            <div className="mb-8">
+              <h3 className="text-mid-night font-semibold text-xl mb-4">
+                Lọc theo giá
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-sm font-medium">Giá tối đa</label>
+                  <input
+                    type="number"
+                    value={tempPrice}
+                    min={PRICE_MIN}
+                    max={PRICE_MAX}
+                    step={PRICE_STEP}
+                    onChange={(e) => setTempPrice(Number(e.target.value))}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyPrice()}
+                    className="w-28 border rounded p-1 text-sm text-right"
+                  />
+                </div>
                 <input
-                  type="number"
-                  value={tempPrice}
+                  type="range"
                   min={PRICE_MIN}
                   max={PRICE_MAX}
                   step={PRICE_STEP}
+                  value={tempPrice}
                   onChange={(e) => setTempPrice(Number(e.target.value))}
-                  onKeyDown={(e) => e.key === "Enter" && handleApplyPrice()}
-                  className="w-28 border rounded p-1 text-sm text-right"
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  style={bgStyle}
                 />
-              </div>
-
-              {/* SLIDER */}
-              <input
-                type="range"
-                min={PRICE_MIN}
-                max={PRICE_MAX}
-                step={PRICE_STEP}
-                value={tempPrice}
-                onChange={(e) => setTempPrice(Number(e.target.value))}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                style={bgStyle}
-              />
-
-              {/* BUTTON ÁP DỤNG */}
-              <div className="pt-2">
-                <p className="text-xs text-gray-600 mb-3">
-                  {price !== null ? (
-                    <>Hiển thị sản phẩm dưới <strong>{formatVND(price)}</strong></>
-                  ) : (
-                    "Không có bộ lọc giá"
-                  )}
-                </p>
-
-                <Button
-                  variant="outline"
-                  onClick={handleApplyPrice}
-                  className="w-full bg-orange-300 hover:bg-white text-white hover:text-orange-300"
-                  disabled={price === tempPrice}
-                >
-                  Áp dụng
-                </Button>
+                <div className="pt-2">
+                  <p className="text-xs text-gray-600 mb-3">
+                    {price !== null ? (
+                      <>
+                        Dưới <strong>{formatVND(price)}</strong>
+                      </>
+                    ) : (
+                      "Không có bộ lọc"
+                    )}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={handleApplyPrice}
+                    className="w-full bg-orange-300 hover:bg-white text-white hover:text-orange-300"
+                    disabled={price === tempPrice}
+                  >
+                    Áp dụng
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <hr className="my-5 border-gray-200" />
+            <hr className="my-5 border-gray-200" />
 
-          {/* DANH MỤC SIDEBAR */}
-          <div>
-            <h3 className="text-xl text-mid-night font-semibold mb-4">
-              Danh mục
-            </h3>
-
-            <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
-              {categories.map((cat) => {
-                const isActive = activeCategory === cat._id;
-                return (
-                  <li
-                    key={cat._id}
-                    onClick={() => {
-                      if (isActive) setActiveCategory(null);
-                      else setActiveCategory(cat._id!);
-                      setCurrentPage(1);
-                    }}
-                    className={`flex items-center justify-between cursor-pointer ${
-                      isActive
-                        ? "text-orange-500 font-semibold"
-                        : "hover:text-orange-500"
-                    }`}
-                  >
-                    <p>{cat.name}</p>
-                    <span
-                      className={`text-xs border px-2 py-0.5 rounded ${
+            <div>
+              <h3 className="text-xl text-mid-night font-semibold mb-4">
+                Danh mục
+              </h3>
+              <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat._id;
+                  return (
+                    <li
+                      key={cat._id}
+                      onClick={() => {
+                        if (isActive) setActiveCategory(null);
+                        else setActiveCategory(cat._id!);
+                        setCurrentPage(1);
+                      }}
+                      className={`flex items-center justify-between cursor-pointer ${
                         isActive
-                          ? "bg-orange-500 text-white border-orange-500"
-                          : "group-hover:bg-orange-500 group-hover:text-white"
+                          ? "text-orange-500 font-semibold"
+                          : "hover:text-orange-500"
                       }`}
                     >
-                      {cat.productCount ?? "-"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                      <p>{cat.name}</p>
+                      <span
+                        className={`text-xs border px-2 py-0.5 rounded ${
+                          isActive
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "group-hover:bg-orange-500 group-hover:text-white"
+                        }`}
+                      >
+                        {cat.productCount ?? "-"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* === PRODUCT LIST === */}
-      <section className="lg:col-span-3 space-y-8" ref={productRef}>
-
-        {/* 🔥 DANH MỤC TOP BAR (THÊM MỚI) */}
-        <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 shadow-sm">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm font-semibold text-gray-700 pr-2">
-              Danh mục:
-            </span>
-
-            {categories.map((cat) => {
-              const isActive = activeCategory === cat._id;
-              return (
+        {/* PRODUCT LIST */}
+        <section className="lg:col-span-3 space-y-8" ref={productRef}>
+          {/* Categories Topbar */}
+          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 shadow-sm">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-semibold text-gray-700 pr-2">
+                Danh mục:
+              </span>
+              {categories.map((cat) => (
                 <button
                   key={cat._id}
                   onClick={() => {
-                    if (isActive) setActiveCategory(null);
+                    if (activeCategory === cat._id) setActiveCategory(null);
                     else setActiveCategory(cat._id!);
                     setCurrentPage(1);
                   }}
-                  className={`px-4 py-1.5 rounded-full border text-sm transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                        : "border-gray-300 text-gray-600 hover:bg-orange-100 hover:border-orange-300 hover:text-orange-700"
-                    }
-                  `}
+                  className={`px-4 py-1.5 rounded-full border text-sm transition-all duration-200 ${
+                    activeCategory === cat._id
+                      ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                      : "border-gray-300 text-gray-600 hover:bg-orange-100"
+                  }`}
                 >
                   {cat.name}
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* FILTER SUMMARY */}
-        {price !== null && (
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Bộ lọc:</span>
-
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                  Giá: Dưới {formatVND(price)}
-                </span>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearFilter}
-                className="text-xs bg-orange-300 hover:bg-white text-white hover:text-orange-300"
-              >
-                Xóa Filter
-              </Button>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* PRODUCTS GRID */}
-        {loading ? (
+          {/* Active Filter Summary */}
+          {price !== null && (
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Bộ lọc:</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    Giá: Dưới {formatVND(price)}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearFilter}
+                  className="text-xs bg-orange-300 hover:bg-white text-white hover:text-orange-300"
+                >
+                  Xóa Filter
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* LOADING / ERROR / GRID */}
+          {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
               <span className="ml-2">Đang tải sản phẩm...</span>
@@ -382,20 +355,27 @@ const Products: React.FC = () => {
                   : "space-y-4"
               }
             >
-              {products.length === 0 && <div>Không có sản phẩm</div>}
+              {products.length === 0 && <div>Không có sản phẩm nào.</div>}
+
               {products.map((p) => (
                 <div
                   key={p._id || p.id || p.name}
-                  className="bg-white rounded-lg shadow-sm overflow-hidden"
+                  className="bg-white rounded-lg shadow-sm overflow-hidden relative group border border-gray-100"
                 >
+                  {/* 🚨 BADGE KHUYẾN MÃI (Dùng discount_info từ BE) */}
+                  {p.discount_info && (
+                    <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded z-10 shadow-md animate-pulse">
+                      -{p.discount_info.percent}%
+                    </div>
+                  )}
+
                   <Link to={`/san-pham/${p._id || p.id}`} className="block">
                     <div className="h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                       <img
-                        src={normalizeImageUrl(p.avatar)} // 🚨 ĐÃ CẬP NHẬT DÙNG p.avatar
+                        src={normalizeImageUrl(p.avatar)}
                         alt={p.name}
-                        className="object-contain h-full w-full"
+                        className="object-contain h-full w-full p-2 group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
-                          e.currentTarget.onerror = null;
                           e.currentTarget.src =
                             "https://placehold.co/200x200/CCCCCC/333333?text=No+Image";
                         }}
@@ -409,16 +389,36 @@ const Products: React.FC = () => {
                   </Link>
 
                   <div className="p-4">
-                    <h3 className="text-sm font-semibold text-slate-800 truncate">
+                    <h3 className="text-sm font-semibold text-slate-800 truncate hover:text-orange-500 transition-colors">
                       {p.name}
                     </h3>
 
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="text-lg font-bold text-primary">
-                        {typeof p.price === "number"
-                          ? formatVND(p.price)
-                          : "Liên hệ"}
-                      </div>
+                    <div className="mt-2">
+                      {p.discount_info ? (
+                        // 🚨 SỬA: Dùng justify-between để đẩy giá KM sang phải
+                        <div className="flex items-end justify-between w-full">
+                          {/* Bên trái: Giá khuyến mãi */}
+                          <span className="text-lg font-extrabold text-red-600">
+                            {formatVND(p.final_price || 0)}
+                          </span>
+                          {/* Bên phải: Giá gốc + % giảm */}
+                          <div className="flex flex-col items-start">
+                            <span className="text-xs text-gray-400 line-through">
+                              {formatVND(p.price || 0)}
+                            </span>
+                            <span className="text-[10px] bg-red-100 text-red-600 px-1.5 rounded font-bold mt-0.5">
+                              -{p.discount_info.percent}%
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        // Trường hợp không giảm giá
+                        <div className="text-lg font-bold text-orange-500 mt-2">
+                          {typeof p.price === "number"
+                            ? formatVND(p.price)
+                            : "Liên hệ"}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -426,21 +426,27 @@ const Products: React.FC = () => {
             </div>
           )}
 
-        {/* PAGINATION */}
-        <div className="flex justify-center gap-2 mt-6">
-          <Button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1}>
-            Trước
-          </Button>
-
-          <span>Trang {currentPage} / {totalPages}</span>
-
-          <Button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}>
-            Sau
-          </Button>
-        </div>
-      </section>
+          {/* PAGINATION */}
+          <div className="flex justify-center gap-2 mt-6">
+            <Button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+            >
+              Trước
+            </Button>
+            <span className="py-2 px-3 bg-gray-100 rounded">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <Button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Sau
+            </Button>
+          </div>
+        </section>
+      </div>
     </div>
-  </div>
   );
 };
 

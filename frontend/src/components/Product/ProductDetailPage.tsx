@@ -5,19 +5,12 @@ import { Button } from "@/components/ui/button";
 import Navbar from "../Navbar/Navbar";
 import Footer from "../Footer/Footer";
 import { Heart, Share2, Minus, Plus, ShoppingCart } from "lucide-react";
-import toast from "react-hot-toast"; // 🚨 Cần cài đặt: npm install react-hot-toast
+import toast from "react-hot-toast";
 import MiniCart from "../Cart/MiniCart";
 
-// --- CONFIG SERVER ---
 const SERVER_BASE_URL = "http://localhost:5001";
 
-// --- Type Definitions ---
-type Category = {
-  _id: string;
-  name: string;
-  description?: string;
-};
-
+type Category = { _id: string; name: string; description?: string };
 type Product = {
   _id: string;
   name: string;
@@ -25,9 +18,12 @@ type Product = {
   avatar?: string;
   images?: string[];
   description: string;
-  quantity: number; // Tồn kho
+  quantity: number;
   is_Active: boolean;
   category: Category | null;
+  // 🚨 Dữ liệu mới
+  final_price?: number;
+  discount_info?: { percent: number; code: string } | null;
 };
 
 const getFullImageUrl = (path?: string) =>
@@ -35,78 +31,50 @@ const getFullImageUrl = (path?: string) =>
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // State cho logic thêm giỏ hàng
-  const [quantity, setQuantity] = useState<number>(1);
-  const [isAdding, setIsAdding] = useState(false); // Loading khi đang thêm
-  const [showMiniCart, setShowMiniCart] = useState(false);
-  const [miniCartItems, setMiniCartItems] = useState<any[]>([]);
-
-  // UI States
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [quantity, setQuantity] = useState(1);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [triedHighRes, setTriedHighRes] = useState<boolean>(false);
+  const [triedHighRes, setTriedHighRes] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // 1. FETCH PRODUCT
+  // Fetch Product
   useEffect(() => {
     if (!id) {
-      setError("Không tìm thấy ID sản phẩm.");
+      setError("Lỗi ID");
       setLoading(false);
       return;
     }
-
     const fetchProductDetail = async () => {
       try {
         setLoading(true);
+        // API này giờ đã trả về final_price và discount_info
         const res = await axios.get(`${SERVER_BASE_URL}/api/product/${id}`);
-        const rawData = res.data;
-        const normalizedData = {
-          ...rawData,
-          avatar: rawData.avatar,
-          images: rawData.images || [],
-        };
-
-        setProduct(normalizedData as Product);
+        setProduct(res.data);
       } catch (err: any) {
-        console.error("Failed to load product detail", err);
-        if (err.response && err.response.status === 404) {
-          setError("Sản phẩm không tồn tại hoặc đã bị xóa.");
-        } else {
-          setError(`Lỗi khi tải thông tin sản phẩm: ${err.message}`);
-        }
+        setError(
+          err.response?.status === 404
+            ? "Sản phẩm không tồn tại"
+            : "Lỗi tải sản phẩm"
+        );
       } finally {
         setLoading(false);
       }
     };
-
     fetchProductDetail();
   }, [id]);
 
-  // 2. XỬ LÝ ẢNH (Giữ nguyên logic cũ của bạn)
+  // Update Image & Quantity
   useEffect(() => {
-    if (product?.avatar) {
-      setCurrentImage(getFullImageUrl(product.avatar));
-    } else if (product?.images && product.images.length > 0) {
+    if (product?.avatar) setCurrentImage(getFullImageUrl(product.avatar));
+    else if (product?.images && product.images.length > 0)
       setCurrentImage(getFullImageUrl(product.images[0]));
-    } else {
-      setCurrentImage(null);
-    }
     setTriedHighRes(false);
     setQuantity(1);
   }, [product]);
-
-  const attemptHighRes = (url: string) => {
-    // ... (Giữ nguyên logic attemptHighRes cũ của bạn để code gọn hơn) ...
-    // Logic cũ của bạn ở đây
-    if (!url || triedHighRes) return;
-    setTriedHighRes(true);
-    // ...
-  };
 
   const formatVND = (value: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -115,91 +83,36 @@ const ProductDetailPage: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(value);
 
-  // 🚨 3. HÀM THÊM VÀO GIỎ HÀNG (LOGIC MỚI)
   const handleAddToCart = async () => {
     if (!product) return;
-
-    // Check tồn kho sơ bộ phía Client
     if (product.quantity < quantity) {
-      toast.error("Số lượng vượt quá tồn kho hiện tại!");
+      toast.error("Quá số lượng tồn kho!");
       return;
     }
-
     try {
       setIsAdding(true);
       const token = localStorage.getItem("accessToken");
-
-      // Gọi API Backend
       await axios.post(
         `${SERVER_BASE_URL}/api/cart/add`,
+        { productId: product._id, quantity },
         {
-          productId: product._id,
-          quantity: quantity,
-        },
-        {
-          withCredentials: true, // QUAN TRỌNG: Để gửi cookie cho Guest
+          withCredentials: true,
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
       );
-
-      toast.success("Đã thêm vào giỏ hàng thành công!");
-
-      // Update localStorage cart (guest quick UX) so navbars that read localStorage update immediately
-      try {
-        const raw = localStorage.getItem("cart");
-        const cart = raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
-        const existingIndex = cart.findIndex((it: any) => it.productId === product._id);
-        if (existingIndex >= 0) {
-          cart[existingIndex].quantity = (cart[existingIndex].quantity || 0) + quantity;
-        } else {
-          cart.push({
-            productId: product._id,
-            name: product.name,
-            price: product.price,
-            avatar: product.avatar || product.images?.[0] || null,
-            quantity,
-          });
-        }
-        localStorage.setItem("cart", JSON.stringify(cart));
-        setMiniCartItems(cart.slice(-5).reverse());
-        setShowMiniCart(true);
-        setTimeout(() => setShowMiniCart(false), 6000);
-      } catch (e) {
-        // ignore localStorage errors
-      }
-
-      // Notify any navbar listeners to update immediately
-      window.dispatchEvent(new Event("cartUpdated"));
+      toast.success("Đã thêm vào giỏ!");
+      window.dispatchEvent(new Event("cartUpdated")); // Update navbar
     } catch (err: any) {
-      console.error(err);
-      const msg = err.response?.data?.message || "Lỗi khi thêm vào giỏ hàng";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Lỗi thêm giỏ hàng");
     } finally {
       setIsAdding(false);
     }
   };
 
-  // --- Render UI ---
-
   if (loading)
-    return (
-      <div className="text-center py-20 font-medium text-orange-500">
-        Đang tải...
-      </div>
-    );
-
+    return <div className="text-center py-20 text-orange-500">Đang tải...</div>;
   if (error)
-    return (
-      <div className="text-center py-20 text-xl text-red-600 font-medium">
-        {error}
-        <div className="mt-4">
-          <Link to="/">
-            <Button variant="outline">Quay về Trang chủ</Button>
-          </Link>
-        </div>
-      </div>
-    );
-
+    return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!product) return null;
 
   const uniqueImages = Array.from(
@@ -207,55 +120,38 @@ const ProductDetailPage: React.FC = () => {
       ...(product.avatar ? [product.avatar] : []),
       ...(product.images || []),
     ])
-  ).map((p) => getFullImageUrl(p));
+  ).map(getFullImageUrl);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />{" "}
-      {/* Navbar nên tự lắng nghe event "cartUpdated" nếu muốn số nhảy ngay */}
+      <Navbar />
       <main className="px-4 md:px-8 lg:px-16 max-w-6xl mx-auto py-12 flex-1 w-full">
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-10 border border-gray-100">
-          {/* Breadcrumb */}
           <div className="mb-6 text-sm text-gray-500">
             <Link to="/">Trang chủ</Link> /{" "}
             <span className="font-semibold">{product.name}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left: Images */}
+            {/* Left: Images (Giữ nguyên logic cũ của bạn) */}
             <div className="lg:w-1/2">
               <div className="flex items-center justify-center p-4 bg-gray-50 rounded-xl border relative h-[450px]">
                 <img
                   ref={imgRef}
-                  src={currentImage || "https://placehold.co/600x400"}
+                  src={currentImage || ""}
                   className="w-full h-full object-cover rounded-lg"
-                  onLoad={(e) => {
-                    try {
-                      const src = (e.target as HTMLImageElement).src;
-                      attemptHighRes(src);
-                    } catch (err) {
-                      // ignore
-                    }
+                  alt={product.name}
+                  onError={(e) => {
+                    e.currentTarget.src = "https://placehold.co/600x400";
                   }}
                 />
-                <div className="absolute top-4 right-4 flex flex-col gap-2">
-                  <button
-                    onClick={() => setIsFavorite((v) => !v)}
-                    className={`p-2 rounded-full shadow-md ${
-                      isFavorite ? "bg-red-500 text-white" : "bg-white"
-                    }`}
-                  >
-                    <Heart
-                      size={18}
-                      fill={isFavorite ? "currentColor" : "none"}
-                    />
-                  </button>
-                  <button className="p-2 rounded-full bg-white shadow-md">
-                    <Share2 size={18} />
-                  </button>
-                </div>
+                {/* Badge trên ảnh lớn */}
+                {product.discount_info && (
+                  <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
+                    Giảm {product.discount_info.percent}%
+                  </div>
+                )}
               </div>
-              {/* Thumbnails */}
               {uniqueImages.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-4">
                   {uniqueImages.map((imgUrl, index) => (
@@ -286,19 +182,38 @@ const ProductDetailPage: React.FC = () => {
                 </span>
                 <h1 className="text-3xl font-bold mt-4">{product.name}</h1>
               </div>
-              <span className="text-3xl font-bold text-red-500">
-                {formatVND(product.price)}
-              </span>
+
+              {/* 🚨 HIỂN THỊ GIÁ */}
+              <div>
+                {product.discount_info ? (
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl text-gray-400 line-through">
+                        {formatVND(product.price)}
+                      </span>
+                      <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-sm font-bold">
+                        -{product.discount_info.percent}%
+                      </span>
+                    </div>
+                    <span className="text-4xl font-bold text-red-600">
+                      {formatVND(product.final_price || 0)}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-3xl font-bold text-red-500">
+                    {formatVND(product.price)}
+                  </span>
+                )}
+              </div>
+
               <p className="text-gray-700">{product.description}</p>
 
-              {/* Quantity Selector */}
               <div className="space-y-3">
                 <label className="font-medium">Số lượng</label>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center border rounded-lg">
                     <button
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      disabled={quantity <= 1}
                       className="p-3 hover:bg-gray-50"
                     >
                       <Minus size={16} />
@@ -306,9 +221,7 @@ const ProductDetailPage: React.FC = () => {
                     <input
                       type="number"
                       value={quantity}
-                      onChange={(e) =>
-                        setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-                      }
+                      readOnly
                       className="w-16 text-center py-3 outline-none"
                     />
                     <button
@@ -321,13 +234,14 @@ const ProductDetailPage: React.FC = () => {
                   <div className="text-sm text-gray-600">
                     Tổng:{" "}
                     <span className="font-semibold">
-                      {formatVND(product.price * quantity)}
+                      {formatVND(
+                        (product.final_price || product.price) * quantity
+                      )}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button
                   onClick={handleAddToCart}
@@ -350,7 +264,7 @@ const ProductDetailPage: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="border-t pt-6 text-sm text-gray-600 space-y-2">
+              <div className="border-t pt-6 text-sm text-gray-600">
                 <p>
                   Kho hàng:{" "}
                   <span
@@ -367,8 +281,8 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </main>  
-      <MiniCart/>
+      </main>
+      <MiniCart />
       <Footer />
     </div>
   );

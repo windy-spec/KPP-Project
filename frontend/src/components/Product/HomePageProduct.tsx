@@ -3,6 +3,8 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
+const BASE_URL = "http://localhost:5001";
+
 type Product = {
   _id?: string;
   id?: string;
@@ -11,36 +13,22 @@ type Product = {
   image?: string;
   image_url?: string;
   images?: string[];
-  description?: string;
   quantity?: number;
   is_Active?: boolean;
-  category?: string | { _id?: string; name?: string };
-};
 
-type PaginationState = {
-  currentPage: number;
-  totalPages: number;
-  totalProductsCount: number;
+  // Dữ liệu mới từ BE (có thể undefined)
+  final_price?: number;
+  discount_info?: { percent: number; code: string } | null;
 };
-
-// 🧩 Backend base URL (đổi khi deploy)
-const BASE_URL = "http://localhost:5001";
 
 const HomePageProduct: React.FC = () => {
-  const MAX_HOME_ITEMS = 9; // Chỉ hiển thị khoảng 6 sản phẩm trên trang chủ
+  const MAX_HOME_ITEMS = 9;
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const productHeaderRef = useRef<HTMLHeadingElement>(null);
 
-  const [pagination, setPagination] = useState<PaginationState>({
-    currentPage: 1,
-    totalPages: 1,
-    totalProductsCount: 0,
-  });
-
-  // 🌐 Chuẩn hoá đường dẫn ảnh (xử lý cả _temp)
-  // --- Chuẩn hoá đường dẫn ảnh ---
+  // Hàm chuẩn hóa ảnh an toàn hơn
   const normalizeImageUrl = (
     img?: string,
     img_url?: string
@@ -49,116 +37,56 @@ const HomePageProduct: React.FC = () => {
 
     let path = img_url || img || "";
 
-    // 🔸 Nếu có đường dẫn tuyệt đối kiểu C:\Users\...\public\uploads\A968.jpg
-    if (path.includes("public")) {
-      path = path.split("public")[1]; // => /uploads/A968.jpg hoặc /uploads/_temp/A968.jpg
-    }
+    // Nếu là base64 hoặc http thì trả về luôn
+    if (path.startsWith("data:") || path.startsWith("http")) return path;
 
-    // 🔸 Chuyển dấu "\" → "/"
+    // Xử lý đường dẫn tương đối
+    if (path.includes("public")) path = path.split("public")[1];
     path = path.replace(/\\/g, "/");
 
-    // 🔸 Đảm bảo bắt đầu bằng "/public/uploads"
-    if (!path.startsWith("/public/")) {
-      // nếu chỉ có "/uploads/..." thì thêm /public ở đầu
-      if (path.startsWith("/uploads/")) {
-        path = "/public" + path;
-      } else if (!path.startsWith("/public/uploads/")) {
-        path = "/public/uploads/" + path.replace(/^\/+/, "");
-      }
-    }
+    if (!path.startsWith("/")) path = `/${path}`;
 
-    // 🔸 Nếu đã là URL đầy đủ thì giữ nguyên
-    if (/^https?:\/\//.test(path)) return path;
+    // Loại bỏ /uploads thừa nếu có (tùy cấu hình server)
+    // path = path.replace(/^\/uploads\/uploads/, "/uploads");
 
-    // 🔸 Trả về URL đầy đủ
     return `${BASE_URL}${path}`;
   };
 
-  // 🧠 Lấy danh sách sản phẩm
-  const fetchProducts = useCallback(async (page: number) => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`/api/product/partition?page=${page}`);
+      // Gọi API partition
+      const res = await axios.get(
+        `${BASE_URL}/api/product/partition?page=1&limit=${MAX_HOME_ITEMS}`
+      );
       const data = res.data;
       const list: Product[] = data?.products || [];
 
-      console.log("📦 Dữ liệu gốc từ backend:", list);
+      console.log("📦 Data received:", list); // Debug xem dữ liệu về chưa
 
-      // 🔹 Chuẩn hoá ảnh (ưu tiên images[0], image_url, image)
       const normalized = list.map((p) => {
+        // Tìm ảnh đầu tiên có thể dùng được
         const rawImg =
           (Array.isArray(p.images) && p.images.length > 0
             ? p.images[0]
             : undefined) ||
           p.image_url ||
           p.image;
-
-        return {
-          ...p,
-          image: normalizeImageUrl(rawImg),
-        };
+        return { ...p, image: normalizeImageUrl(rawImg) };
       });
-
-      console.log("🖼️ Sau khi normalize:", normalized);
 
       setProducts(normalized);
-      setPagination({
-        currentPage: data?.currentPage || 1,
-        totalPages: data?.totalPages || 1,
-        totalProductsCount: data?.totalProducts || 0,
-      });
     } catch (err: any) {
       console.error("❌ Lỗi load sản phẩm:", err);
-      setError(
-        err?.response?.data?.error || err.message || "Failed to load products"
-      );
+      setError(err.message || "Không thể tải sản phẩm.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchProducts(pagination.currentPage);
-  }, [pagination.currentPage, fetchProducts]);
-
-  const handlePageChange = (page: number) => {
-    if (
-      page >= 1 &&
-      page <= pagination.totalPages &&
-      page !== pagination.currentPage
-    ) {
-      setPagination((prev) => ({ ...prev, currentPage: page }));
-      if (productHeaderRef.current) {
-        const yOffset = -50;
-        const y =
-          productHeaderRef.current.getBoundingClientRect().top +
-          window.scrollY +
-          yOffset;
-        window.scrollTo({ top: y, behavior: "smooth" });
-      }
-    }
-  };
-
-  const renderPaginationButtons = () => {
-    const pages = [];
-    for (let i = 1; i <= pagination.totalPages; i++) {
-      pages.push(
-        <Button
-          key={i}
-          variant={pagination.currentPage === i ? "default" : "outline"}
-          onClick={() => handlePageChange(i)}
-          className={`mx-1 ${
-            pagination.currentPage === i
-              ? "bg-orange-500 hover:bg-orange-600 text-white"
-              : "bg-white hover:bg-gray-100 text-gray-700"
-          }`}
-        >
-          {i}
-        </Button>
-      );
-    }
-    return pages;
-  };
+    fetchProducts();
+  }, [fetchProducts]);
 
   const formatVND = (value: number) =>
     new Intl.NumberFormat("vi-VN", {
@@ -169,25 +97,17 @@ const HomePageProduct: React.FC = () => {
 
   if (loading)
     return (
-      <div className="text-center py-16 text-xl font-medium text-orange-500">
-        Đang tải sản phẩm...
+      <div className="text-center py-16 text-orange-500 font-medium">
+        Đang tải sản phẩm nổi bật...
       </div>
     );
   if (error)
     return (
-      <div className="text-center text-red-600 py-16 text-lg font-medium">
-        Lỗi: {error}
-      </div>
+      <div className="text-center text-red-500 py-16">Lỗi kết nối: {error}</div>
     );
 
-  const visibleProducts = products
-    .filter((p) => p.is_Active !== false)
-    .slice(0, MAX_HOME_ITEMS);
-
-  const SHOW_PAGINATION = false; // Ẩn phân trang trên trang chủ
-
   return (
-  <section className="px-4 md:px-8 lg:px-16 w-4/5 max-w-7xl mx-auto py-12">
+    <section className="px-4 md:px-8 lg:px-16 w-4/5 max-w-7xl mx-auto py-12">
       <h2
         ref={productHeaderRef}
         className="text-2xl font-bold mb-6 text-slate-800"
@@ -198,76 +118,80 @@ const HomePageProduct: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {products.length === 0 && (
           <div className="col-span-full text-center py-10 text-gray-500">
-            Không có sản phẩm nào để hiển thị.
+            Chưa có sản phẩm nào.
           </div>
         )}
 
-        {visibleProducts.map((p) => (
-            <div
-              key={p._id || p.id || p.name}
-              className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100"
-            >
-              <Link to={`/san-pham/${p._id || p.id}`} className="block">
-                <div className="h-40 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                  {p.image ? (
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="object-contain h-full w-full p-2"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = `https://placehold.co/300x200/CCCCCC/333333?text=${p.name.substring(
-                          0,
-                          15
-                        )}`;
-                      }}
-                    />
-                  ) : (
-                    <div className="text-sm text-slate-400">
-                      Không có hình ảnh
+        {products.map((p) => (
+          <div
+            key={p._id || p.id || Math.random()}
+            className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100 relative group"
+          >
+            {/* BADGE KHUYẾN MÃI (Chỉ hiện nếu có discount_info hợp lệ) */}
+            {p.discount_info && p.discount_info.percent > 0 && (
+              <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded z-10 shadow-sm animate-pulse">
+                -{p.discount_info.percent}%
+              </div>
+            )}
+
+            <Link to={`/san-pham/${p._id || p.id}`} className="block">
+              <div className="h-40 sm:h-44 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  className="object-contain h-full w-full p-2 group-hover:scale-105 transition-transform"
+                  onError={(e) => {
+                    e.currentTarget.src =
+                      "https://placehold.co/300x200/CCCCCC/333333?text=No+Image";
+                  }}
+                />
+                {/* Badge Hết Hàng */}
+                {p.quantity !== undefined && p.quantity <= 0 && (
+                  <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                    <span className="bg-black/70 text-white px-3 py-1 rounded font-bold text-sm">
+                      HẾT HÀNG
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Link>
+
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-slate-800 truncate hover:text-orange-500 transition-colors">
+                {p.name}
+              </h3>
+
+              <div className="mt-2">
+                {p.discount_info ? (
+                  // 🚨 SỬA: Giá bán bên trái --- Giá gốc/Badge bên phải
+                  <div className="flex items-end justify-between w-full">
+                    {/* 1. BÊN TRÁI: GIÁ ĐÃ GIẢM (Màu đỏ, to) */}
+                    <span className="text-lg font-extrabold text-red-600">
+                      {formatVND(p.final_price || 0)}
+                    </span>
+                    {/* 2. BÊN PHẢI: GIÁ GỐC + BADGE (Nhỏ hơn, nằm sát lề phải) */}
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold mt-0.5">
+                        -{p.discount_info.percent}%
+                      </span>
+                      <span className="text-xs text-gray-400 line-through">
+                        {formatVND(p.price || 0)}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </Link>
-              <div className="p-3 sm:p-4">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-800 truncate hover:text-orange-500 transition-colors">
-                  {p.name}
-                </h3>
-                <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="text-lg sm:text-xl font-extrabold text-orange-500">
+                  </div>
+                ) : (
+                  // Trường hợp không giảm giá
+                  <div className="text-lg font-bold text-orange-500 mt-2">
                     {typeof p.price === "number"
                       ? formatVND(p.price)
                       : "Liên hệ"}
                   </div>
-                </div>
+                )}
               </div>
             </div>
-          ))}
+          </div>
+        ))}
       </div>
-
-      {SHOW_PAGINATION && pagination.totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-12">
-          <Button
-            onClick={() => handlePageChange(pagination.currentPage - 1)}
-            disabled={pagination.currentPage === 1}
-            variant="outline"
-            className="bg-white hover:bg-gray-100 text-gray-700"
-          >
-            Trước
-          </Button>
-
-          {renderPaginationButtons()}
-
-          <Button
-            onClick={() => handlePageChange(pagination.currentPage + 1)}
-            disabled={pagination.currentPage === pagination.totalPages}
-            variant="outline"
-            className="bg-white hover:bg-gray-100 text-gray-700"
-          >
-            Tiếp
-          </Button>
-        </div>
-      )}
 
       <div className="mt-6 text-center">
         <Link to="/san-pham">
