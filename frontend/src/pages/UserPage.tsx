@@ -133,9 +133,9 @@ const UserPage: React.FC = () => {
         };
       case 3:
         return {
-          label: "Khá",
-          color: "bg-blue-500",
-          textColor: "text-blue-500",
+          label: "Khá mạnh",
+          color: "bg-orange-500",
+          textColor: "text-orange-500",
         };
       case 4:
         return {
@@ -146,8 +146,8 @@ const UserPage: React.FC = () => {
       case 5:
         return {
           label: "Rất mạnh",
-          color: "bg-green-600",
-          textColor: "text-green-600",
+          color: "bg-blue-500",
+          textColor: "text-blue-500",
         };
       default:
         return { label: "", color: "bg-gray-200", textColor: "text-gray-500" };
@@ -261,6 +261,8 @@ const UserPage: React.FC = () => {
     );
 
   const strengthInfo = getStrengthLabel(strength);
+  const confirmStrengthInfo = getStrengthLabel(confirmStrength);
+
 
   return (
     <div>
@@ -580,89 +582,118 @@ const UserPage: React.FC = () => {
                   }}
                   className="flex flex-col gap-4"
                 >
-                  {/* Input Mật khẩu cũ */}
-                  <div className="flex flex-col gap-1 relative">
-                    <Input
-                      type={showOld ? "text" : "password"}
-                      placeholder="Mật khẩu cũ"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowOld((s) => !s)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showOld ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Input Mật khẩu mới */}
-                  <div className="flex flex-col gap-1 relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Mật khẩu mới"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-
-                    {/* Thanh độ mạnh */}
-                    <div className="mt-2">
-                      <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-300 ease-out ${strengthInfo.color}`}
-                          style={{ width: `${(strength / 5) * 100}%` }}
-                        />
-                      </div>
-                      {newPassword && (
-                        <p
-                          className={`text-xs mt-1 font-medium text-right ${strengthInfo.textColor}`}
-                        >
-                          Độ mạnh: {strengthInfo.label}
-                        </p>
-                      )}
+                  {/* 🔹 Mật khẩu cũ */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Mật khẩu cũ
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showOld ? "text" : "password"}
+                        placeholder="Nhập mật khẩu cũ"
+                        className="pr-12"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOld((s) => !s)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        {showOld ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
                     </div>
                   </div>
 
-                  {/* Input Xác nhận mật khẩu mới */}
-                  <div className="flex flex-col gap-1 relative">
-                    <Input
-                      type={showConfirm ? "text" : "password"}
-                      placeholder="Xác nhận mật khẩu mới"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm((s) => !s)}
-                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                    >
-                      {showConfirm ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
+                  {/* 🔹 Mật khẩu mới */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Mật khẩu mới
+                    </label>
+
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Nhập mật khẩu mới"
+                        className="pr-12"
+                        data-password-toggle="true"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+
+                    {/* 🔥 Thanh độ mạnh full width */}
+                    {newPassword && (
+                      <div className="mt-2">
+                        <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${strengthInfo.color}`}
+                            style={{ width: `${(strength / 5) * 100}%` }}
+                          />
+                        </div>
+
+                        <p className={`text-xs mt-1 font-medium ${strengthInfo.textColor}`}>
+                          Độ mạnh: {strengthInfo.label}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
+
+                  {/* 🔹 Xác nhận mật khẩu */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Xác nhận mật khẩu
+                    </label>
+
+                    <div className="relative">
+                      <Input
+                        type={showConfirm ? "text" : "password"}
+                        placeholder="Nhập lại mật khẩu"
+                        className="pr-12"
+                        data-password-toggle="true"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm((s) => !s)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+
+                    {/* 🔥 Thanh đo độ dài full width */}
+                    {confirmPassword && (
+                      <div className="mt-2">
+                        <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${confirmStrengthInfo.color}`}
+                            style={{ width: `${(confirmStrength / 5) * 100}%` }}
+                          />
+                        </div>
+
+                        <p className={`text-xs mt-1 font-medium ${confirmStrengthInfo.textColor}`}>
+                          Độ mạnh: {confirmStrengthInfo.label}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🔘 Button */}
                   <Button
                     type="submit"
-                    className="bg-orange-600 hover:bg-orange-700 text-white w-full"
+                    className="bg-orange-600 hover:bg-orange-700 text-white w-full py-3 rounded-lg text-base font-semibold"
                     disabled={loading}
                   >
                     {loading ? "Đang xử lý..." : "Đổi mật khẩu"}
@@ -670,6 +701,7 @@ const UserPage: React.FC = () => {
                 </form>
               </div>
             )}
+            
           </section>
         </div>
       </div>
