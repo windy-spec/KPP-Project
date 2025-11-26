@@ -1,43 +1,37 @@
 // src/routes/invoiceRoute.js
 import express from "express";
-import Invoice from "../models/Invoice.js";
 import { protectedRoute, verifyAdmin } from "../middlewares/authMiddlewares.js";
-import { getInvoiceById } from "../controllers/invoiceController.js";
+import {
+  createInvoice,
+  getAllInvoices, // Import hàm này
+  getMyInvoices, // Import hàm này
+  getInvoiceById,
+  updateInvoiceStatus, // Import hàm này (nếu có dùng update)
+} from "../controllers/invoiceController.js";
 
 const router = express.Router();
 
 // ===========================
-// LẤY TOÀN BỘ HÓA ĐƠN (ADMIN)
+// 1. TẠO HÓA ĐƠN
 // ===========================
-router.get("/", protectedRoute, verifyAdmin, async (req, res) => {
-  try {
-    const invoices = await Invoice.find()
-      .populate("user", "name email")
-      .populate("items.product_id", "name price");
-    res.json(invoices);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Lỗi khi lấy hóa đơn", detail: error.message });
-  }
-});
+router.post("/", protectedRoute, createInvoice);
 
 // ===========================
-// LẤY HÓA ĐƠN CỦA USER HIỆN TẠI
+// 2. LẤY HÓA ĐƠN CỦA USER HIỆN TẠI (Frontend gọi /api/invoice/me)
 // ===========================
-router.get("/me", protectedRoute, async (req, res) => {
-  try {
-    const invoices = await Invoice.find({ user: req.user._id }).populate(
-      "items.product_id",
-      "name price"
-    );
-    res.json(invoices);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Lỗi khi lấy hóa đơn của bạn", detail: error.message });
-  }
-});
+// Route này trả về danh sách CỦA RIÊNG BẠN
+router.get("/me", protectedRoute, getMyInvoices);
+
+// ===========================
+// 3. LẤY TOÀN BỘ HÓA ĐƠN (CHỈ ADMIN) (Frontend gọi /api/invoice)
+// ===========================
+// Route này trả về TẤT CẢ (Có verifyAdmin bảo vệ)
+router.get("/", protectedRoute, verifyAdmin, getAllInvoices);
+
+// ===========================
+// 4. LẤY CHI TIẾT / CẬP NHẬT
+// ===========================
 router.get("/:id", protectedRoute, getInvoiceById);
+router.put("/:id", protectedRoute, verifyAdmin, updateInvoiceStatus); // Route update trạng thái
 
 export default router;

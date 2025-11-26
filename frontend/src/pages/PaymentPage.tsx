@@ -16,12 +16,9 @@ import {
   LogIn,
   User,
   Lock,
-  TicketPercent,
   CreditCard,
-  QrCode,
   Truck,
   Loader2,
-  X,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar/Navbar";
@@ -90,20 +87,22 @@ interface Cart {
   final_total_price: number;
 }
 
-interface ShippingInfo {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  province: string;
-  district: string;
-  note: string;
-}
-
-interface OrderData {
-  shippingInfo: ShippingInfo;
-  paymentMethod: string;
-  shippingMethod: string;
+// Interface payload chuẩn gửi lên Backend
+interface CreateOrderPayload {
+  recipient_info: {
+    name: string;
+    phone: string;
+    address: string;
+    note: string;
+  };
+  items: {
+    product_id: string;
+    quantity: number;
+    price: number;
+  }[];
+  payment_method: string; // <-- Quan trọng: phải có gạch dưới
+  shipping_fee: number;
+  total_amount: number;
 }
 
 interface AuthContextType {
@@ -122,7 +121,7 @@ interface CartContextType {
   fetchCart: () => Promise<void>;
   updateItem: (productId: string, quantity: number) => Promise<void>;
   removeItem: (productId: string) => Promise<void>;
-  createOrder: (orderData: OrderData) => Promise<any>;
+  createOrder: (payload: CreateOrderPayload) => Promise<any>;
 }
 
 interface ChildrenProps {
@@ -158,7 +157,7 @@ const apiFetch = async (
   return response;
 };
 
-// --- Auth Context (Giữ nguyên) ---
+// --- Auth Context ---
 const AuthContext = createContext<AuthContextType | null>(null);
 const AuthProvider = ({ children }: ChildrenProps) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -226,8 +225,9 @@ const useAuth = () => {
   return c;
 };
 
-// --- Cart Context (Giữ nguyên) ---
+// --- Cart Context ---
 const CartContext = createContext<CartContextType | null>(null);
+
 const CartProvider = ({ children }: ChildrenProps) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
@@ -241,20 +241,21 @@ const CartProvider = ({ children }: ChildrenProps) => {
       const data = await apiFetch("/cart");
       setCart(data);
     } catch {
-      setError("Không thể tải giỏ hàng.");
+      // Không set error ở đây để tránh popup lỗi khi cart trống
+      setCart(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
-  useEffect(() => {
     if (token) {
       fetchProfile();
       fetchCart();
-    } else fetchCart();
+    } else {
+      // Nếu không có token (khách vãng lai), có thể load cart từ localStorage nếu bạn có lưu
+      setCart(null);
+    }
   }, [token, fetchCart, fetchProfile]);
 
   const updateItem = async (pid: string, qty: number) => {
@@ -271,6 +272,7 @@ const CartProvider = ({ children }: ChildrenProps) => {
       setLoading(false);
     }
   };
+
   const removeItem = async (pid: string) => {
     setLoading(true);
     try {
@@ -282,14 +284,34 @@ const CartProvider = ({ children }: ChildrenProps) => {
       setLoading(false);
     }
   };
-  const createOrder = async (data: OrderData) => {
+
+  // 🔥 HÀM NÀY ĐÃ ĐƯỢC CẬP NHẬT ĐỂ XOÁ GIỎ HÀNG 🔥
+  const createOrder = async (payload: CreateOrderPayload) => {
     setLoading(true);
     try {
+      // 1. Gọi API tạo hóa đơn
       const res = await apiFetch("/invoice", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
+
+      // 2. Xóa State giỏ hàng trên giao diện ngay lập tức
       setCart(null);
+
+      // 3. Xóa LocalStorage (Chỉ xóa thông tin giỏ hàng, KHÔNG xóa accessToken)
+      localStorage.removeItem("cart"); // Nếu bạn có lưu biến này
+      localStorage.removeItem("cart_items"); // Nếu bạn có lưu biến này
+      localStorage.removeItem("guestCartId"); // Nếu có cart vãng lai
+
+      // 4. (Tùy chọn) Gọi API xóa sạch giỏ hàng trên Server
+      // (Nếu API /invoice bên Backend chưa tự động xóa giỏ hàng sau khi tạo đơn)
+      /* try {
+          await apiFetch("/cart/clear", { method: "DELETE" });
+      } catch (err) {
+          console.log("Lỗi dọn dẹp giỏ hàng server", err);
+      }
+      */
+
       return res;
     } catch (e: any) {
       setError(e.message);
@@ -321,15 +343,74 @@ const useCart = () => {
   return c;
 };
 
+// --- DỮ LIỆU ĐỊA CHÍNH (FULL HCM & HN) ---
+const PROVINCES = [
+  { code: "HCM", name: "TP. Hồ Chí Minh" },
+  { code: "HN", name: "Hà Nội" },
+];
+
+const DISTRICTS: Record<string, { value: string; label: string }[]> = {
+  HCM: [
+    { value: "quan-1", label: "Quận 1" },
+    { value: "quan-3", label: "Quận 3" },
+    { value: "quan-4", label: "Quận 4" },
+    { value: "quan-5", label: "Quận 5" },
+    { value: "quan-6", label: "Quận 6" },
+    { value: "quan-7", label: "Quận 7" },
+    { value: "quan-8", label: "Quận 8" },
+    { value: "quan-10", label: "Quận 10" },
+    { value: "quan-11", label: "Quận 11" },
+    { value: "quan-12", label: "Quận 12" },
+    { value: "binh-tan", label: "Quận Bình Tân" },
+    { value: "binh-thanh", label: "Quận Bình Thạnh" },
+    { value: "go-vap", label: "Quận Gò Vấp" },
+    { value: "phu-nhuan", label: "Quận Phú Nhuận" },
+    { value: "tan-binh", label: "Quận Tân Bình" },
+    { value: "tan-phu", label: "Quận Tân Phú" },
+    { value: "thu-duc", label: "TP. Thủ Đức" },
+    { value: "binh-chanh", label: "Huyện Bình Chánh" },
+    { value: "can-gio", label: "Huyện Cần Giờ" },
+    { value: "cu-chi", label: "Huyện Củ Chi" },
+    { value: "hoc-mon", label: "Huyện Hóc Môn" },
+    { value: "nha-be", label: "Huyện Nhà Bè" },
+  ],
+  HN: [
+    { value: "ba-dinh", label: "Quận Ba Đình" },
+    { value: "bac-tu-liem", label: "Quận Bắc Từ Liêm" },
+    { value: "cau-giay", label: "Quận Cầu Giấy" },
+    { value: "dong-da", label: "Quận Đống Đa" },
+    { value: "ha-dong", label: "Quận Hà Đông" },
+    { value: "hai-ba-trung", label: "Quận Hai Bà Trưng" },
+    { value: "hoan-kiem", label: "Quận Hoàn Kiếm" },
+    { value: "hoang-mai", label: "Quận Hoàng Mai" },
+    { value: "long-bien", label: "Quận Long Biên" },
+    { value: "nam-tu-liem", label: "Quận Nam Từ Liêm" },
+    { value: "tay-ho", label: "Quận Tây Hồ" },
+    { value: "thanh-xuan", label: "Quận Thanh Xuân" },
+    { value: "son-tay", label: "Thị xã Sơn Tây" },
+    { value: "ba-vi", label: "Huyện Ba Vì" },
+    { value: "chuong-my", label: "Huyện Chương Mỹ" },
+    { value: "dan-phuong", label: "Huyện Đan Phượng" },
+    { value: "dong-anh", label: "Huyện Đông Anh" },
+    { value: "gia-lam", label: "Huyện Gia Lâm" },
+    { value: "hoai-duc", label: "Huyện Hoài Đức" },
+    { value: "me-linh", label: "Huyện Mê Linh" },
+    { value: "my-duc", label: "Huyện Mỹ Đức" },
+    { value: "phu-xuyen", label: "Huyện Phú Xuyên" },
+    { value: "phuc-tho", label: "Huyện Phúc Thọ" },
+    { value: "quoc-oai", label: "Huyện Quốc Oai" },
+    { value: "soc-son", label: "Huyện Sóc Sơn" },
+    { value: "thach-that", label: "Huyện Thạch Thất" },
+    { value: "thanh-oai", label: "Huyện Thanh Oai" },
+    { value: "thanh-tri", label: "Huyện Thanh Trì" },
+    { value: "thuong-tin", label: "Huyện Thường Tín" },
+    { value: "ung-hoa", label: "Huyện Ứng Hòa" },
+  ],
+};
+
 // --- COMPONENT TRANG THANH TOÁN (UPDATED) ---
 const PaymentPage: React.FC = () => {
-  const {
-    cart,
-    loading: cartLoading,
-    error: cartError,
-    updateItem,
-    createOrder,
-  } = useCart();
+  const { cart, loading: cartLoading, updateItem, createOrder } = useCart();
   const { user } = useAuth();
 
   // Form State
@@ -342,21 +423,12 @@ const PaymentPage: React.FC = () => {
   const [note, setNote] = useState("");
   const [shipMethod, setShipMethod] = useState("fast");
 
-  // Payment Method: 'cod' | 'momo' | 'bank'
+  // Payment Method: 'COD' | 'MOMO'
   const [payMethod, setPayMethod] = useState("cod");
 
   // Status State
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
-
-  // QR / Polling State
-  const [qrData, setQrData] = useState<{
-    qrCodeUrl: string;
-    invoiceId: string;
-    amount?: number;
-    type: "bank" | "momo";
-  } | null>(null);
-  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -383,7 +455,6 @@ const PaymentPage: React.FC = () => {
   );
 
   const paymentLabel = useMemo(() => {
-    if (payMethod === "bank") return "Chuyển khoản Ngân hàng";
     if (payMethod === "momo") return "Ví MoMo";
     return "Thanh toán khi nhận hàng (COD)";
   }, [payMethod]);
@@ -398,7 +469,14 @@ const PaymentPage: React.FC = () => {
     if (item && !cartLoading) updateItem(pid, item.quantity - 1);
   };
 
-  // --- LOGIC XỬ LÝ THANH TOÁN CHÍNH ---
+  // Select Options
+  const districtOptions = useMemo(() => DISTRICTS[province] || [], [province]);
+
+  const inputStyle =
+    "border p-2 rounded-md shadow-sm w-full focus:border-blue-500 focus:ring-blue-500 transition-all outline-none";
+  const boxStyle = "bg-white border shadow-sm p-4 rounded-md";
+
+  // --- LOGIC XỬ LÝ THANH TOÁN CHÍNH (Đã sửa lỗi Payload) ---
   const placeOrder = async () => {
     setOrderError(null);
     if (!name || !phone || !address || !province || !district) {
@@ -406,15 +484,43 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    const payload = {
-      recipient_name: name,
-      recipient_phone: phone,
-      recipient_address: `${address}, ${district}, ${province}`,
-      shippingMethod: shipMethod,
-      // Backend sẽ dùng shippingInfo này nếu là COD (createOrder cũ)
-      shippingInfo: { name, email, phone, address, province, district, note },
-      paymentMethod: payMethod,
+    if (!cart || cart.items.length === 0) {
+      setOrderError("Giỏ hàng trống.");
+      return;
+    }
+
+    // Lấy tên Quận/Huyện từ value (để lưu vào DB cho đẹp)
+    const districtObj = districtOptions.find((d) => d.value === district);
+    const districtLabel = districtObj ? districtObj.label : district;
+
+    // Lấy tên Tỉnh/Thành
+    const provinceObj = PROVINCES.find((p) => p.code === province);
+    const provinceLabel = provinceObj ? provinceObj.name : province;
+
+    // Payload chuẩn gửi lên Backend
+    const payload: CreateOrderPayload = {
+      // 1. Thông tin người nhận
+      recipient_info: {
+        name,
+        phone,
+        address: `${address}, ${districtLabel}, ${provinceLabel}`,
+        note,
+      },
+      // 2. Danh sách sản phẩm
+      items: cart.items.map((item) => ({
+        product_id: item.product._id,
+        quantity: item.quantity,
+        price: item.price_discount || item.price_original,
+      })),
+      // 3. Phương thức thanh toán (QUAN TRỌNG: CÓ GẠCH DƯỚI)
+      payment_method: payMethod === "momo" ? "MOMO_QR" : "COD",
+
+      // 4. Các loại phí
+      shipping_fee: shippingCost,
+      total_amount: totalWithShipping,
     };
+
+    console.log("Đang gửi đơn hàng:", payload);
 
     try {
       // 1. THANH TOÁN MOMO
@@ -424,78 +530,21 @@ const PaymentPage: React.FC = () => {
           body: JSON.stringify(payload),
         });
         if (res.payUrl) {
-          // Chuyển hướng sang trang Momo
           window.location.href = res.payUrl;
+        } else {
+          setOrderError("Không nhận được link thanh toán từ MoMo.");
         }
 
-        // 2. THANH TOÁN BANK (VIETQR)
-      } else if (payMethod === "bank") {
-        const res = await apiFetch("/payments/bank", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        // Hiện Popup QR
-        setQrData({
-          qrCodeUrl: res.qrCodeUrl,
-          invoiceId: res.invoiceId,
-          amount: res.amount,
-          type: "bank",
-        });
-
-        // 3. COD (Thanh toán khi nhận)
+        // 2. COD (Thanh toán khi nhận)
       } else {
-        await createOrder(payload as any); // Gọi hàm cũ
+        await createOrder(payload);
         setOrderSuccess(true);
       }
     } catch (error) {
+      console.error(error);
       setOrderError((error as Error).message || "Đã xảy ra lỗi khi đặt hàng.");
     }
   };
-
-  // --- POLLING KIỂM TRA TRẠNG THÁI (CHO BANK) ---
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    // Chỉ check khi đang mở Popup Bank
-    if (qrData && qrData.type === "bank") {
-      setCheckingPayment(true);
-      timer = setInterval(async () => {
-        try {
-          const data = await apiFetch(`/payments/status/${qrData.invoiceId}`);
-          if (data.status === "PAID") {
-            clearInterval(timer);
-            setCheckingPayment(false);
-            setQrData(null);
-            setOrderSuccess(true);
-          }
-        } catch (err) {
-          console.error("Polling error", err);
-        }
-      }, 3000); // Check mỗi 3s
-    }
-    return () => timer && clearInterval(timer);
-  }, [qrData]);
-
-  // Data Select Tỉnh/Thành
-  const PROVINCES = [
-    { code: "HCM", name: "TP. Hồ Chí Minh" },
-    { code: "HN", name: "Hà Nội" },
-  ];
-  const DISTRICTS: Record<string, { value: string; label: string }[]> = {
-    HCM: [
-      { value: "q1", label: "Quận 1" },
-      { value: "binh-thanh", label: "Bình Thạnh" },
-      { value: "thu-duc", label: "Thủ Đức" },
-    ],
-    HN: [
-      { value: "ba-dinh", label: "Ba Đình" },
-      { value: "cau-giay", label: "Cầu Giấy" },
-    ],
-  };
-  const districtOptions = useMemo(() => DISTRICTS[province] || [], [province]);
-
-  const inputStyle =
-    "border p-2 rounded-md shadow-sm w-full focus:border-blue-500 focus:ring-blue-500 transition-all outline-none";
-  const boxStyle = "bg-white border shadow-sm p-4 rounded-md";
 
   // --- GIAO DIỆN THÀNH CÔNG ---
   if (orderSuccess) {
@@ -765,32 +814,6 @@ const PaymentPage: React.FC = () => {
                       </div>
                     </label>
 
-                    {/* BANK */}
-                    <label
-                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
-                        payMethod === "bank"
-                          ? "border-blue-500 bg-blue-50"
-                          : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="pay"
-                        value="bank"
-                        checked={payMethod === "bank"}
-                        onChange={() => setPayMethod("bank")}
-                        className="accent-blue-600"
-                      />
-                      <div>
-                        <div className="font-medium text-sm text-blue-700">
-                          Chuyển khoản Ngân hàng
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Quét mã VietQR (Tự động xác nhận)
-                        </div>
-                      </div>
-                    </label>
-
                     {/* COD */}
                     <label
                       className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
@@ -881,68 +904,6 @@ const PaymentPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* QR MODAL (POPUP HIỆN QR CODE) */}
-      {qrData && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden relative">
-            {/* Header */}
-            <div className="bg-blue-600 p-4 text-white text-center relative">
-              <h3 className="font-bold text-lg">Quét Mã Thanh Toán</h3>
-              <p className="text-blue-100 text-sm">
-                Vui lòng không tắt màn hình
-              </p>
-              <button
-                onClick={() => setQrData(null)}
-                className="absolute top-3 right-3 text-white/80 hover:text-white"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-6 text-center">
-              {/* QR Image */}
-              <div className="bg-white p-2 border-2 border-blue-100 rounded-lg inline-block mb-4 shadow-inner">
-                <img
-                  src={qrData.qrCodeUrl}
-                  alt="QR Code"
-                  className="w-48 h-48 object-contain"
-                />
-              </div>
-
-              {/* Amount */}
-              <div className="mb-2 text-gray-500 text-sm">
-                Số tiền cần thanh toán
-              </div>
-              <div className="text-2xl font-bold text-blue-700 mb-6">
-                {formatVND(qrData.amount || 0)}
-              </div>
-
-              {/* Status */}
-              {checkingPayment && (
-                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-2 animate-pulse">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Đang chờ xác
-                  nhận...
-                </div>
-              )}
-
-              <p className="text-xs text-gray-400 mt-4">
-                Hệ thống sẽ tự động chuyển trang khi nhận được tiền.
-              </p>
-            </div>
-
-            <div className="bg-gray-50 p-3 text-center border-t">
-              <button
-                onClick={() => setQrData(null)}
-                className="text-sm text-gray-500 hover:text-gray-700 underline"
-              >
-                Đóng và chọn cách khác
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Footer />
     </>
   );
