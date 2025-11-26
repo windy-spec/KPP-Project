@@ -1,3 +1,4 @@
+// src/routes/momoRoute.js
 import express from "express";
 import {
   createMomoPayment,
@@ -5,28 +6,36 @@ import {
   createBankPayment,
   checkPaymentStatus,
 } from "../controllers/momoController.js";
-import { protectedRoute as protect } from "../middlewares/authMiddlewares.js";
+import {
+  protectedRoute,
+  checkRole,
+  verifyAdmin,
+} from "../middlewares/authMiddlewares.js";
 
 const router = express.Router();
 
-// ==============================
-// 1. THANH TOÁN MOMO
-// ==============================
+// ===========================
+// THANH TOÁN MOMO
+// ===========================
+// User đăng nhập mới thanh toán được
+router.post("/momo", protectedRoute, checkRole(["user"]), createMomoPayment);
 
-// Tạo yêu cầu thanh toán (Cần đăng nhập)
-router.post("/momo", protect, createMomoPayment);
+// Callback Momo gọi về (không cần auth)
+router.post("/momo/callback", momoCallback);
 
-// Nhận kết quả từ Momo (QUAN TRỌNG: Không được có 'protect' ở đây)
-router.post("/momo-callback", momoCallback);
+// ===========================
+// THANH TOÁN BANK
+// ===========================
+router.post("/bank", protectedRoute, checkRole(["user"]), createBankPayment);
 
-// ==============================
-// 2. THANH TOÁN NGÂN HÀNG (VIETQR)
-// ==============================
-
-// Tạo mã QR (Cần đăng nhập)
-router.post("/bank", protect, createBankPayment);
-
-// Kiểm tra trạng thái đơn hàng (Polling từ Frontend)
-router.get("/status/:id", checkPaymentStatus);
+// ===========================
+// CHECK PAYMENT STATUS
+// ===========================
+router.get(
+  "/status/:id",
+  protectedRoute,
+  checkRole(["user"]),
+  checkPaymentStatus
+);
 
 export default router;
