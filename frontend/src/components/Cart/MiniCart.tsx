@@ -1,96 +1,171 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
+import { ShoppingBag, X, Loader2 } from "lucide-react";
 
 const SERVER_BASE_URL = "http://localhost:5001";
 
 const formatVND = (value: number) =>
   new Intl.NumberFormat("vi-VN").format(value) + " đ";
 
+// Hàm xử lý ảnh an toàn
 const getFullImage = (p?: string) =>
-  p?.startsWith("http") ? p : `${SERVER_BASE_URL}${p}`;
+  p
+    ? p.startsWith("http")
+      ? p
+      : `${SERVER_BASE_URL}${p}`
+    : "https://placehold.co/100x100";
+
+// Định nghĩa kiểu dữ liệu khớp với API trả về
+type CartItem = {
+  product: {
+    _id: string;
+    name: string;
+    price: number;
+    avatar?: string;
+    images?: string[];
+  };
+  quantity: number;
+  _id: string;
+};
 
 const MiniCart: React.FC = () => {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<CartItem[]>([]);
   const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const loadLocalCart = () => {
+  // Hàm gọi API lấy giỏ hàng
+  const fetchCart = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
     try {
-      const raw = localStorage.getItem("cart");
-      const cart = raw ? JSON.parse(raw) : [];
-      setItems(cart.slice(-5).reverse());
-    } catch {}
+      setLoading(true);
+      const res = await axios.get(`${SERVER_BASE_URL}/api/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // API thường trả về { items: [...] } hoặc mảng trực tiếp tùy backend
+      const cartData = res.data.items || res.data || [];
+
+      // Lấy 5 sản phẩm mới nhất để hiển thị
+      setItems(cartData.slice().reverse().slice(0, 5));
+    } catch (error) {
+      console.error("Lỗi tải MiniCart", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    // Load ngay lần đầu
-    loadLocalCart();
-
-    // Lắng nghe sự kiện cartUpdated
+    // 1. Lắng nghe sự kiện cartUpdated từ ProductDetail
     const handler = () => {
-      loadLocalCart();
-      setShow(true);
-      setTimeout(() => setShow(false), 6000);
+      fetchCart(); // Gọi API lấy dữ liệu mới nhất
+      setShow(true); // Hiện popup
+
+      // Reset timer ẩn popup (để nếu bấm liên tục thì nó không bị tắt sớm)
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setShow(false), 5000);
     };
 
     window.addEventListener("cartUpdated", handler);
-    return () => window.removeEventListener("cartUpdated", handler);
+
+    // Load lần đầu (ẩn) để có dữ liệu sẵn nếu cần
+    fetchCart();
+
+    return () => {
+      window.removeEventListener("cartUpdated", handler);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 
   if (!show) return null;
 
+  // Tính tạm tổng tiền của các món đang hiển thị
+  const subTotal = items.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
+
   return (
-    <div className="fixed right-6 bottom-6 w-96 bg-white border rounded-lg shadow-lg z-50 overflow-hidden">
-      <div className="px-4 py-3 border-b flex items-center justify-between">
-        <div className="font-medium">Đã thêm vào giỏ hàng</div>
+    <div className="fixed right-6 bottom-6 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+      {/* Header */}
+      <div className="px-4 py-3 border-b bg-green-50 flex items-center justify-between">
+        <div className="font-bold text-green-700 flex items-center gap-2">
+          <ShoppingBag size={18} /> Đã thêm vào giỏ hàng
+        </div>
         <button
           onClick={() => setShow(false)}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition"
         >
-          ✕
+          <X size={18} />
         </button>
       </div>
 
-      <div className="p-3 max-h-60 overflow-y-auto">
-        {items.length === 0 ? (
-          <div className="text-sm text-gray-500">Giỏ hàng trống</div>
+      {/* Body: Danh sách sản phẩm */}
+      <div className="p-0 max-h-64 overflow-y-auto">
+        {loading ? (
+          <div className="py-6 flex justify-center text-gray-500 gap-2">
+            <Loader2 className="animate-spin" /> Đang cập nhật...
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-8 text-center text-gray-500">Giỏ hàng trống</div>
         ) : (
-          items.map((it, idx) => (
-            <div key={idx} className="flex items-center gap-3 py-2">
-              <img
-                src={getFullImage(it.avatar)}
-                className="w-12 h-12 rounded object-cover"
-              />
-              <div className="flex-1">
-                <div className="text-sm font-medium">{it.name}</div>
-                <div className="text-xs text-gray-500">SL: {it.quantity}</div>
+          <div className="divide-y divide-gray-100">
+            {items.map((it) => (
+              <div
+                key={it._id}
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 transition"
+              >
+                <div className="w-12 h-12 border rounded-md overflow-hidden bg-white shrink-0">
+                  <img
+                    src={getFullImage(
+                      it.product.avatar || it.product.images?.[0]
+                    )}
+                    alt={it.product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-800 truncate">
+                    {it.product.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Số lượng: {it.quantity}
+                  </div>
+                </div>
+                <div className="text-sm font-bold text-orange-600">
+                  {formatVND(it.quantity * it.product.price)}
+                </div>
               </div>
-              <div className="text-sm font-semibold text-gray-700">
-                {formatVND(it.quantity * it.price)}
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
-        <div>
-          <div className="text-xs text-gray-500">Tổng tạm</div>
-          <div className="font-bold">
-            {formatVND(
-              items.reduce((s, it) => s + it.price * it.quantity, 0)
-            )}
-          </div>
+      {/* Footer: Tổng tiền & Nút bấm */}
+      <div className="px-4 py-3 border-t bg-gray-50">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-xs font-medium text-gray-500 uppercase">
+            Tạm tính (các món này)
+          </span>
+          <span className="font-bold text-lg text-gray-900">
+            {formatVND(subTotal)}
+          </span>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <Link
             to="/gio-hang"
-            className="px-3 py-2 border rounded text-sm hover:bg-gray-100"
+            onClick={() => setShow(false)}
+            className="px-3 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 text-center transition"
           >
-            Giỏ hàng
+            Xem giỏ hàng
           </Link>
           <Link
-            to="/thanh-toan"
-            className="px-3 py-2 bg-orange-500 text-white rounded text-sm"
+            to="/thanh-toan" // Đổi thành link thanh toán của bạn (VD: /payment)
+            onClick={() => setShow(false)}
+            className="px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 text-center transition shadow-sm"
           >
             Thanh toán
           </Link>

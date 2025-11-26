@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const invoiceItemSchema = new mongoose.Schema({
   product_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -17,6 +18,10 @@ const invoiceItemSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  total_price: {
+    // Thêm trường này để lưu thành tiền của từng món (SL * Giá)
+    type: Number,
+  },
   applied_discount_amount: {
     type: Number,
     default: 0,
@@ -30,6 +35,14 @@ const invoiceSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // --- [MỚI] Trường quan trọng để đối soát Momo ---
+    momoOrderId: {
+      type: String,
+      unique: true, // Đảm bảo không trùng
+      sparse: true, // Cho phép null (với đơn COD hoặc Bank)
+    },
+    // -----------------------------------------------
+
     recipient_info: {
       name: {
         type: String,
@@ -45,10 +58,19 @@ const invoiceSchema = new mongoose.Schema(
       },
     },
     items: [invoiceItemSchema],
+
     payment_method: {
       type: String,
+      enum: ["COD", "MOMO_QR", "BANK_TRANSFER"], // Định rõ các loại thanh toán
       required: true,
     },
+
+    // --- [MỚI] Thêm phí ship để tính toán chính xác ---
+    shipping_fee: {
+      type: Number,
+      default: 0,
+    },
+
     discount_applied: {
       type: Number,
       default: 0,
@@ -59,15 +81,13 @@ const invoiceSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["PENDING", "PAID", "SHIPPED", "CANCELLED"],
+      enum: ["PENDING", "PAID", "SHIPPED", "CANCELLED", "DELIVERED"],
       default: "PENDING",
     },
-    invoice_date: {
-      type: Date,
-      default: Date.now,
-    },
+    invoice_date: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-const invoice = mongoose.model("invoice", invoiceSchema);
+const Invoice = mongoose.model("Invoice", invoiceSchema);
+export default Invoice;

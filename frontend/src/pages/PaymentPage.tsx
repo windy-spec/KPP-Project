@@ -16,11 +16,17 @@ import {
   LogIn,
   User,
   Lock,
-  TicketPercent, // Import icon khuyến mãi
+  TicketPercent,
+  CreditCard,
+  QrCode,
+  Truck,
+  Loader2,
+  X,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
+
 // --- Cấu hình API ---
 const API_BASE_URL = "http://localhost:5001/api";
 const SERVER_ROOT = "http://localhost:5001";
@@ -28,22 +34,16 @@ const SERVER_ROOT = "http://localhost:5001";
 const formatVND = (v: number): string =>
   new Intl.NumberFormat("vi-VN").format(Math.max(0, Math.round(v))) + " đ";
 
-// Hàm xử lý ảnh: Nếu path tương đối -> nối thêm domain server
+// Hàm xử lý ảnh
 const getProductImage = (product: ProductInCart) => {
-  // 1. Lấy avatar hoặc ảnh đầu tiên
   const path =
     product.avatar ||
     (product.images && product.images.length > 0 ? product.images[0] : null);
-
-  // 2. Nếu không có ảnh nào -> Trả về ảnh placeholder
   if (!path) return "https://placehold.co/100x100/F1F1F1/333?text=No+Image";
-
-  // 3. Nếu có ảnh -> Kiểm tra xem có cần nối domain không
   return path.startsWith("http") ? path : `${SERVER_ROOT}${path}`;
 };
 
-// --- Định nghĩa Types (TypeScript) ---
-
+// --- Định nghĩa Types ---
 interface UserProfile {
   _id: string;
   username: string;
@@ -60,10 +60,7 @@ interface ProductInCart {
   price: number;
   avatar?: string;
   images?: string[];
-  category: {
-    _id: string;
-    name: string;
-  };
+  category: { _id: string; name: string };
 }
 
 interface CartItem {
@@ -109,7 +106,6 @@ interface OrderData {
   shippingMethod: string;
 }
 
-// Context Types
 interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
@@ -143,12 +139,9 @@ const apiFetch = async (
     "Content-Type": "application/json",
     ...options.headers,
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const fullUrl = `${API_BASE_URL}${url.startsWith("/") ? url : "/" + url}`;
-
   const response = await fetch(fullUrl, {
     ...options,
     headers,
@@ -160,15 +153,13 @@ const apiFetch = async (
     throw new Error(errorData.message || `Lỗi API: ${response.statusText}`);
   }
   const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
+  if (contentType && contentType.includes("application/json"))
     return response.json();
-  }
   return response;
 };
 
-// --- Auth Context ---
+// --- Auth Context (Giữ nguyên) ---
 const AuthContext = createContext<AuthContextType | null>(null);
-
 const AuthProvider = ({ children }: ChildrenProps) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(() =>
@@ -188,7 +179,6 @@ const AuthProvider = ({ children }: ChildrenProps) => {
       const data = await apiFetch("/auth/profile");
       setUser(data);
     } catch (error) {
-      console.error("Lỗi fetchProfile:", (error as Error).message);
       setUser(null);
       setToken(null);
       localStorage.removeItem("accessToken");
@@ -201,29 +191,20 @@ const AuthProvider = ({ children }: ChildrenProps) => {
     fetchProfile();
   }, [token, fetchProfile]);
 
-  const login = async (
-    username: string,
-    password: string
-  ): Promise<boolean> => {
-    try {
-      const data = await apiFetch("/auth/signin", {
-        method: "POST",
-        body: JSON.stringify({ username, password }),
-      });
-      localStorage.setItem("accessToken", data.accessToken);
-      setToken(data.accessToken);
-      return true;
-    } catch (error) {
-      console.error("Lỗi đăng nhập:", error);
-      throw error;
-    }
+  const login = async (u: string, p: string) => {
+    const data = await apiFetch("/auth/signin", {
+      method: "POST",
+      body: JSON.stringify({ username: u, password: p }),
+    });
+    localStorage.setItem("accessToken", data.accessToken);
+    setToken(data.accessToken);
+    return true;
   };
 
   const logout = useCallback(async () => {
     try {
       await apiFetch("/auth/signout", { method: "POST" });
-    } catch (error) {
-      console.error("Lỗi đăng xuất (bỏ qua):", error);
+    } catch {
     } finally {
       localStorage.removeItem("accessToken");
       setToken(null);
@@ -231,24 +212,22 @@ const AuthProvider = ({ children }: ChildrenProps) => {
     }
   }, []);
 
-  const value = useMemo(
-    () => ({ user, token, loading, login, logout, fetchProfile }),
-    [user, token, loading, login, logout, fetchProfile]
+  return (
+    <AuthContext.Provider
+      value={{ user, token, loading, login, logout, fetchProfile }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+const useAuth = () => {
+  const c = useContext(AuthContext);
+  if (!c) throw new Error("useAuth error");
+  return c;
 };
 
-const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context)
-    throw new Error("useAuth phải được dùng bên trong AuthProvider");
-  return context;
-};
-
-// --- Cart Context ---
+// --- Cart Context (Giữ nguyên) ---
 const CartContext = createContext<CartContextType | null>(null);
-
 const CartProvider = ({ children }: ChildrenProps) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
@@ -261,8 +240,7 @@ const CartProvider = ({ children }: ChildrenProps) => {
     try {
       const data = await apiFetch("/cart");
       setCart(data);
-    } catch (error) {
-      console.error("Lỗi fetchCart:", (error as Error).message);
+    } catch {
       setError("Không thể tải giỏ hàng.");
     } finally {
       setLoading(false);
@@ -272,97 +250,78 @@ const CartProvider = ({ children }: ChildrenProps) => {
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
-
   useEffect(() => {
     if (token) {
-      const mergeAndFetch = async () => {
-        await fetchProfile();
-        await fetchCart();
-      };
-      mergeAndFetch();
-    } else {
+      fetchProfile();
       fetchCart();
-    }
+    } else fetchCart();
   }, [token, fetchCart, fetchProfile]);
 
-  const updateItem = async (productId: string, quantity: number) => {
+  const updateItem = async (pid: string, qty: number) => {
     setLoading(true);
-    setError(null);
     try {
-      const updatedCart = await apiFetch("/cart/update", {
+      const res = await apiFetch("/cart/update", {
         method: "PUT",
-        body: JSON.stringify({ productId, quantity }),
+        body: JSON.stringify({ productId: pid, quantity: qty }),
       });
-      setCart(updatedCart);
-    } catch (error) {
-      console.error("Lỗi updateItem:", (error as Error).message);
-      setError(`Lỗi cập nhật: ${(error as Error).message}`);
+      setCart(res);
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
-
-  const removeItem = async (productId: string) => {
+  const removeItem = async (pid: string) => {
     setLoading(true);
-    setError(null);
     try {
-      const updatedCart = await apiFetch(`/cart/remove/${productId}`, {
-        method: "DELETE",
-      });
-      setCart(updatedCart);
-    } catch (error) {
-      console.error("Lỗi removeItem:", (error as Error).message);
-      setError(`Lỗi xóa SP: ${(error as Error).message}`);
+      const res = await apiFetch(`/cart/remove/${pid}`, { method: "DELETE" });
+      setCart(res);
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
-
-  const createOrder = async (orderData: OrderData) => {
+  const createOrder = async (data: OrderData) => {
     setLoading(true);
-    setError(null);
     try {
-      const createdOrder = await apiFetch("/orders", {
+      const res = await apiFetch("/invoice", {
         method: "POST",
-        body: JSON.stringify(orderData),
+        body: JSON.stringify(data),
       });
       setCart(null);
-      return createdOrder;
-    } catch (error) {
-      console.error("Lỗi createOrder:", (error as Error).message);
-      setError(`Lỗi đặt hàng: ${(error as Error).message}`);
-      throw error;
+      return res;
+    } catch (e: any) {
+      setError(e.message);
+      throw e;
     } finally {
       setLoading(false);
     }
   };
 
-  const value = useMemo(
-    () => ({
-      cart,
-      loading,
-      error,
-      fetchCart,
-      updateItem,
-      removeItem,
-      createOrder,
-    }),
-    [cart, loading, error, fetchCart, updateItem, removeItem, createOrder]
+  return (
+    <CartContext.Provider
+      value={{
+        cart,
+        loading,
+        error,
+        fetchCart,
+        updateItem,
+        removeItem,
+        createOrder,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
   );
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+};
+const useCart = () => {
+  const c = useContext(CartContext);
+  if (!c) throw new Error("useCart error");
+  return c;
 };
 
-const useCart = (): CartContextType => {
-  const context = useContext(CartContext);
-  if (!context)
-    throw new Error("useCart phải được dùng bên trong CartProvider");
-  return context;
-};
-
-// Use shared `Navbar` and `Footer` components from `components/`
-
-// --- COMPONENT TRANG THANH TOÁN (FULL LOGIC & UI) ---
+// --- COMPONENT TRANG THANH TOÁN (UPDATED) ---
 const PaymentPage: React.FC = () => {
   const {
     cart,
@@ -373,6 +332,7 @@ const PaymentPage: React.FC = () => {
   } = useCart();
   const { user } = useAuth();
 
+  // Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -381,10 +341,22 @@ const PaymentPage: React.FC = () => {
   const [district, setDistrict] = useState("");
   const [note, setNote] = useState("");
   const [shipMethod, setShipMethod] = useState("fast");
+
+  // Payment Method: 'cod' | 'momo' | 'bank'
   const [payMethod, setPayMethod] = useState("cod");
 
+  // Status State
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
+
+  // QR / Polling State
+  const [qrData, setQrData] = useState<{
+    qrCodeUrl: string;
+    invoiceId: string;
+    amount?: number;
+    type: "bank" | "momo";
+  } | null>(null);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -394,51 +366,116 @@ const PaymentPage: React.FC = () => {
     }
   }, [user]);
 
+  // Derived Data
   const items = useMemo(() => cart?.items || [], [cart]);
   const subTotal = useMemo(() => cart?.final_total_price || 0, [cart]);
-
-  const shippingCost = useMemo(() => {
-    return shipMethod === "fast" ? 30000 : 15000;
-  }, [shipMethod]);
-
-  const shippingLabel = useMemo(() => {
-    return shipMethod === "fast" ? "Nhanh" : "Tiết kiệm";
-  }, [shipMethod]);
+  const shippingCost = useMemo(
+    () => (shipMethod === "fast" ? 30000 : 15000),
+    [shipMethod]
+  );
+  const shippingLabel = useMemo(
+    () => (shipMethod === "fast" ? "Nhanh" : "Tiết kiệm"),
+    [shipMethod]
+  );
+  const totalWithShipping = useMemo(
+    () => subTotal + shippingCost,
+    [subTotal, shippingCost]
+  );
 
   const paymentLabel = useMemo(() => {
-    return payMethod === "bank" ? "Chuyển khoản" : "COD";
+    if (payMethod === "bank") return "Chuyển khoản Ngân hàng";
+    if (payMethod === "momo") return "Ví MoMo";
+    return "Thanh toán khi nhận hàng (COD)";
   }, [payMethod]);
 
-  const totalWithShipping = useMemo(() => subTotal + shippingCost, [subTotal, shippingCost]);
-
-  const increase = (productId: string) => {
-    const item = items.find((i) => i.product._id === productId);
-    if (item && !cartLoading) updateItem(productId, item.quantity + 1);
+  // Actions
+  const increase = (pid: string) => {
+    const item = items.find((i) => i.product._id === pid);
+    if (item && !cartLoading) updateItem(pid, item.quantity + 1);
   };
-  const decrease = (productId: string) => {
-    const item = items.find((i) => i.product._id === productId);
-    if (item && !cartLoading) updateItem(productId, item.quantity - 1);
+  const decrease = (pid: string) => {
+    const item = items.find((i) => i.product._id === pid);
+    if (item && !cartLoading) updateItem(pid, item.quantity - 1);
   };
 
+  // --- LOGIC XỬ LÝ THANH TOÁN CHÍNH ---
   const placeOrder = async () => {
     setOrderError(null);
     if (!name || !phone || !address || !province || !district) {
       setOrderError("Vui lòng điền đầy đủ thông tin giao hàng.");
       return;
     }
-    const orderData: OrderData = {
+
+    const payload = {
+      recipient_name: name,
+      recipient_phone: phone,
+      recipient_address: `${address}, ${district}, ${province}`,
+      shippingMethod: shipMethod,
+      // Backend sẽ dùng shippingInfo này nếu là COD (createOrder cũ)
       shippingInfo: { name, email, phone, address, province, district, note },
       paymentMethod: payMethod,
-      shippingMethod: shipMethod,
     };
+
     try {
-      await createOrder(orderData);
-      setOrderSuccess(true);
+      // 1. THANH TOÁN MOMO
+      if (payMethod === "momo") {
+        const res = await apiFetch("/payments/momo", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (res.payUrl) {
+          // Chuyển hướng sang trang Momo
+          window.location.href = res.payUrl;
+        }
+
+        // 2. THANH TOÁN BANK (VIETQR)
+      } else if (payMethod === "bank") {
+        const res = await apiFetch("/payments/bank", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        // Hiện Popup QR
+        setQrData({
+          qrCodeUrl: res.qrCodeUrl,
+          invoiceId: res.invoiceId,
+          amount: res.amount,
+          type: "bank",
+        });
+
+        // 3. COD (Thanh toán khi nhận)
+      } else {
+        await createOrder(payload as any); // Gọi hàm cũ
+        setOrderSuccess(true);
+      }
     } catch (error) {
       setOrderError((error as Error).message || "Đã xảy ra lỗi khi đặt hàng.");
     }
   };
 
+  // --- POLLING KIỂM TRA TRẠNG THÁI (CHO BANK) ---
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    // Chỉ check khi đang mở Popup Bank
+    if (qrData && qrData.type === "bank") {
+      setCheckingPayment(true);
+      timer = setInterval(async () => {
+        try {
+          const data = await apiFetch(`/payments/status/${qrData.invoiceId}`);
+          if (data.status === "PAID") {
+            clearInterval(timer);
+            setCheckingPayment(false);
+            setQrData(null);
+            setOrderSuccess(true);
+          }
+        } catch (err) {
+          console.error("Polling error", err);
+        }
+      }, 3000); // Check mỗi 3s
+    }
+    return () => timer && clearInterval(timer);
+  }, [qrData]);
+
+  // Data Select Tỉnh/Thành
   const PROVINCES = [
     { code: "HCM", name: "TP. Hồ Chí Minh" },
     { code: "HN", name: "Hà Nội" },
@@ -446,40 +483,37 @@ const PaymentPage: React.FC = () => {
   const DISTRICTS: Record<string, { value: string; label: string }[]> = {
     HCM: [
       { value: "q1", label: "Quận 1" },
-      { value: "q3", label: "Quận 3" },
-      { value: "binh-thanh", label: "Quận Bình Thạnh" },
-      { value: "go-vap", label: "Quận Gò Vấp" },
-      { value: "phu-nhuan", label: "Quận Phú Nhuận" },
-      { value: "tan-binh", label: "Quận Tân Bình" },
+      { value: "binh-thanh", label: "Bình Thạnh" },
+      { value: "thu-duc", label: "Thủ Đức" },
     ],
     HN: [
       { value: "ba-dinh", label: "Ba Đình" },
-      { value: "hoan-kiem", label: "Hoàn Kiếm" },
       { value: "cau-giay", label: "Cầu Giấy" },
     ],
   };
   const districtOptions = useMemo(() => DISTRICTS[province] || [], [province]);
 
   const inputStyle =
-    "border p-2 rounded-md shadow-sm w-full focus:border-blue-500 focus:ring-blue-500 transition-all";
-  const boxStyle = "bg-white border-0.9 shadow-lg p-4 rounded-md";
+    "border p-2 rounded-md shadow-sm w-full focus:border-blue-500 focus:ring-blue-500 transition-all outline-none";
+  const boxStyle = "bg-white border shadow-sm p-4 rounded-md";
 
+  // --- GIAO DIỆN THÀNH CÔNG ---
   if (orderSuccess) {
     return (
       <>
         <Navbar />
-        <div className="bg-gray-50 min-h-screen py-4 md:py-6 flex items-center justify-center">
-          <div className={`${boxStyle} text-center max-w-lg mx-auto`}>
-            <CheckCircle className="text-green-500 w-16 h-16 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold mb-3">
+        <div className="bg-gray-50 min-h-screen py-10 flex items-center justify-center">
+          <div className={`${boxStyle} text-center max-w-lg mx-auto p-10`}>
+            <CheckCircle className="text-green-500 w-20 h-20 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-3 text-gray-800">
               Đặt hàng thành công!
             </h2>
             <p className="text-gray-600 mb-6">
-              Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.
+              Đơn hàng của bạn đã được ghi nhận. Cảm ơn bạn đã tin tưởng.
             </p>
             <a
               href="/"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium"
+              className="inline-block w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold transition-colors"
             >
               Tiếp tục mua sắm
             </a>
@@ -490,154 +524,77 @@ const PaymentPage: React.FC = () => {
     );
   }
 
+  // --- GIAO DIỆN CHÍNH ---
   return (
     <>
       <Navbar />
-      <div className="bg-gray-50 min-h-screen py-4 md:py-6">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12 md:w-11/12 lg:w-[90%]">
-          <div className="bg-white border-0.9 shadow-lg mb-4 rounded-md">
-            <div className="text-3xl text-center py-3 font-medium">
-              Thanh Toán
-            </div>
-          </div>
+      <div className="bg-gray-50 min-h-screen py-6">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:w-11/12">
+          <h1 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">
+            <CreditCard className="w-6 h-6" /> Thanh Toán Đơn Hàng
+          </h1>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* CỘT TRÁI */}
-            <div className="lg:col-span-8 space-y-4">
-              {/* Danh sách sản phẩm */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* CỘT TRÁI: FORM & ITEMS */}
+            <div className="lg:col-span-8 space-y-6">
+              {/* 1. Danh sách sản phẩm */}
               <div className={`${boxStyle} overflow-hidden p-0`}>
-                <div className="grid grid-cols-12 px-4 py-3 text-gray-600 text-sm bg-gray-50 border-b font-semibold">
-                  <div className="col-span-12 md:col-span-5">Sản phẩm</div>
-                  <div className="col-span-2 text-center hidden md:block">
-                    Đơn giá
-                  </div>
-                  <div className="col-span-3 text-center hidden md:block">
-                    Số lượng
-                  </div>
-                  <div className="col-span-2 text-right hidden md:block">
-                    Thành tiền
-                  </div>
+                <div className="bg-gray-100 px-4 py-3 border-b font-semibold text-gray-700">
+                  Sản phẩm trong giỏ
                 </div>
-
-                {cartLoading && (
-                  <div className="p-6 text-center text-gray-600">
-                    Đang tải giỏ hàng...
+                {cartLoading ? (
+                  <div className="p-8 text-center text-gray-500">
+                    Đang tải...
                   </div>
-                )}
-                {cartError && (
-                  <div className="p-6 text-center text-red-500">
-                    {cartError}
-                  </div>
-                )}
-
-                {!cartLoading && items.length === 0 ? (
-                  <div className="p-6 text-center text-gray-600">
-                    Chưa có sản phẩm.{" "}
-                    <a href="/" className="text-orange-500 underline">
-                      Quay lại mua sắm
-                    </a>
+                ) : items.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    Giỏ hàng trống.
                   </div>
                 ) : (
-                  <div className="px-4 pb-4 space-y-3 pt-4">
+                  <div className="divide-y">
                     {items.map((it) => (
                       <div
                         key={it.product._id}
-                        className="p-4 bg-white shadow-sm border rounded-md hover:shadow-md transition-shadow"
+                        className="p-4 flex items-center justify-between hover:bg-gray-50 transition"
                       >
-                        <div className="grid grid-cols-12 items-center gap-4">
-                          {/* Info + Ảnh + Badge KM */}
-                          <div className="col-span-12 md:col-span-5 flex items-start gap-3">
-                            <div className="w-20 h-20 border rounded-md overflow-hidden flex-shrink-0 bg-gray-100">
-                              <img
-                                // 🚨 SỬA LẠI: Truyền nguyên object it.product vào hàm
-                                src={getProductImage(it.product)}
-                                alt={it.product.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "https://placehold.co/100x100/F1F1F1/333?text=No+Image";
-                                }}
-                              />
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={getProductImage(it.product)}
+                            alt=""
+                            className="w-16 h-16 object-cover rounded border"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-800">
+                              {it.product.name}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-gray-800 line-clamp-2">
-                                {it.product.name}
-                              </div>
-                              {it.applied_discount && (
-                                <div className="mt-1 inline-flex items-center gap-1 px-2 py-1 bg-red-50 border border-red-100 rounded text-xs text-red-600">
-                                  <TicketPercent size={12} />
-                                  <span className="font-semibold truncate max-w-[180px]">
-                                    {it.applied_discount.program_name} (-
-                                    {it.applied_discount.discount_percent}%)
-                                  </span>
-                                </div>
-                              )}
-                              <div className="md:hidden text-sm text-gray-600 mt-2 flex justify-between">
-                                <span>
-                                  {formatVND(it.price_discount)} x {it.quantity}
-                                </span>
-                                <span className="font-semibold text-red-600">
-                                  {formatVND(it.Total_price)}
-                                </span>
-                              </div>
+                            <div className="text-sm text-gray-500">
+                              {formatVND(it.price_discount)} x {it.quantity}
                             </div>
                           </div>
-
-                          {/* Giá */}
-                          <div className="col-span-2 text-center hidden md:block text-sm">
-                            {it.applied_discount ? (
-                              <div className="flex flex-col items-center">
-                                <span className="text-gray-400 line-through text-xs">
-                                  {formatVND(it.price_original)}
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                  {formatVND(it.price_discount)}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="font-medium text-gray-900">
-                                {formatVND(it.price_original)}
-                              </span>
-                            )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-gray-800">
+                            {formatVND(it.Total_price)}
                           </div>
-
-                          {/* Số lượng */}
-                          <div className="col-span-12 md:col-span-3 flex justify-center">
-                            <div className="inline-flex items-center border rounded-md shadow-sm bg-white">
-                              <button
-                                onClick={() => decrease(it.product._id)}
-                                className="px-3 py-1 hover:bg-gray-100 text-gray-600 disabled:opacity-50"
-                                disabled={cartLoading}
-                              >
-                                <Minus size={14} />
-                              </button>
-                              <input
-                                readOnly
-                                value={it.quantity}
-                                className="w-10 text-center py-1 text-sm border-l border-r outline-none font-medium"
-                              />
-                              <button
-                                onClick={() => increase(it.product._id)}
-                                className="px-3 py-1 hover:bg-gray-100 text-gray-600 disabled:opacity-50"
-                                disabled={cartLoading}
-                              >
-                                <Plus size={14} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Thành tiền */}
-                          <div className="col-span-2 text-right hidden md:block">
-                            <div className="text-red-600 font-bold text-base">
-                              {formatVND(it.Total_price)}
-                            </div>
-                            {it.applied_discount &&
-                              it.applied_discount.saved_amount > 0 && (
-                                <div className="text-xs text-green-600 mt-1 italic">
-                                  Tiết kiệm:{" "}
-                                  {formatVND(it.applied_discount.saved_amount)}
-                                </div>
-                              )}
+                          {/* Nút tăng giảm nhỏ */}
+                          <div className="flex items-center justify-end gap-2 mt-1">
+                            <button
+                              onClick={() => decrease(it.product._id)}
+                              disabled={cartLoading}
+                              className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <span className="text-xs font-medium w-4 text-center">
+                              {it.quantity}
+                            </span>
+                            <button
+                              onClick={() => increase(it.product._id)}
+                              disabled={cartLoading}
+                              className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                            >
+                              <Plus size={12} />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -646,9 +603,9 @@ const PaymentPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Form Thông Tin */}
+              {/* 2. Form Thông Tin */}
               <div className={boxStyle}>
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2">
                   <MapPin className="w-5 h-5 text-blue-600" /> Thông tin giao
                   hàng
                 </h3>
@@ -667,13 +624,13 @@ const PaymentPage: React.FC = () => {
                   />
                   <input
                     className={inputStyle}
-                    placeholder="Điện thoại"
+                    placeholder="Số điện thoại"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
                   <input
                     className={inputStyle}
-                    placeholder="Địa chỉ"
+                    placeholder="Địa chỉ nhà (Số nhà, đường...)"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                   />
@@ -685,7 +642,7 @@ const PaymentPage: React.FC = () => {
                       setDistrict("");
                     }}
                   >
-                    <option value="">Chọn tỉnh thành</option>
+                    <option value="">-- Chọn Tỉnh / Thành --</option>
                     {PROVINCES.map((p) => (
                       <option key={p.code} value={p.code}>
                         {p.name}
@@ -698,7 +655,7 @@ const PaymentPage: React.FC = () => {
                     onChange={(e) => setDistrict(e.target.value)}
                     disabled={!province}
                   >
-                    <option value="">Chọn quận huyện</option>
+                    <option value="">-- Chọn Quận / Huyện --</option>
                     {districtOptions.map((d) => (
                       <option key={d.value} value={d.value}>
                         {d.label}
@@ -707,103 +664,215 @@ const PaymentPage: React.FC = () => {
                   </select>
                   <textarea
                     className={`${inputStyle} md:col-span-2 min-h-[80px]`}
-                    placeholder="Ghi chú (Nếu có)"
+                    placeholder="Ghi chú thêm cho shipper..."
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
                 </div>
               </div>
 
-              {/* Phương thức Giao hàng & Thanh toán */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 3. Vận chuyển & Thanh toán */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* VẬN CHUYỂN */}
                 <div className={boxStyle}>
-                  <div className="font-medium mb-3">Vận chuyển</div>
-                  <label className="flex items-center gap-3 p-3 border rounded mb-2 cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="ship"
-                      value="fast"
-                      checked={shipMethod === "fast"}
-                      onChange={() => setShipMethod("fast")}
-                    />{" "}
-                    Nhanh
-                  </label>
-                  <label className="flex items-center gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="ship"
-                      value="economy"
-                      checked={shipMethod === "economy"}
-                      onChange={() => setShipMethod("economy")}
-                    />{" "}
-                    Tiết kiệm
-                  </label>
+                  <div className="font-semibold mb-3 flex items-center gap-2">
+                    <Truck className="w-4 h-4" /> Vận chuyển
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
+                        shipMethod === "fast"
+                          ? "border-blue-500 bg-blue-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="ship"
+                        value="fast"
+                        checked={shipMethod === "fast"}
+                        onChange={() => setShipMethod("fast")}
+                        className="accent-blue-600"
+                      />
+                      <div>
+                        <div className="font-medium text-sm">
+                          Giao Nhanh (1-2 ngày)
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Phí: 30.000 đ
+                        </div>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
+                        shipMethod === "economy"
+                          ? "border-blue-500 bg-blue-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="ship"
+                        value="economy"
+                        checked={shipMethod === "economy"}
+                        onChange={() => setShipMethod("economy")}
+                        className="accent-blue-600"
+                      />
+                      <div>
+                        <div className="font-medium text-sm">
+                          Tiết Kiệm (3-5 ngày)
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Phí: 15.000 đ
+                        </div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
+
+                {/* THANH TOÁN */}
                 <div className={boxStyle}>
-                  <div className="font-medium mb-3">Thanh toán</div>
-                  <label className="flex items-center gap-3 p-3 border rounded mb-2 cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="pay"
-                      value="bank"
-                      checked={payMethod === "bank"}
-                      onChange={() => setPayMethod("bank")}
-                    />{" "}
-                    Chuyển khoản
-                  </label>
-                  <label className="flex items-center gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="pay"
-                      value="cod"
-                      checked={payMethod === "cod"}
-                      onChange={() => setPayMethod("cod")}
-                    />{" "}
-                    COD
-                  </label>
+                  <div className="font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" /> Thanh toán
+                  </div>
+                  <div className="space-y-2">
+                    {/* MOMO */}
+                    <label
+                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
+                        payMethod === "momo"
+                          ? "border-pink-500 bg-pink-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="pay"
+                        value="momo"
+                        checked={payMethod === "momo"}
+                        onChange={() => setPayMethod("momo")}
+                        className="accent-pink-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-sm text-pink-700 flex justify-between">
+                          Ví MoMo{" "}
+                          <span className="text-[10px] bg-pink-200 text-pink-800 px-1 rounded">
+                            Khuyên dùng
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Quét mã QR qua App Momo
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* BANK */}
+                    <label
+                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
+                        payMethod === "bank"
+                          ? "border-blue-500 bg-blue-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="pay"
+                        value="bank"
+                        checked={payMethod === "bank"}
+                        onChange={() => setPayMethod("bank")}
+                        className="accent-blue-600"
+                      />
+                      <div>
+                        <div className="font-medium text-sm text-blue-700">
+                          Chuyển khoản Ngân hàng
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Quét mã VietQR (Tự động xác nhận)
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* COD */}
+                    <label
+                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
+                        payMethod === "cod"
+                          ? "border-gray-500 bg-gray-50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="pay"
+                        value="cod"
+                        checked={payMethod === "cod"}
+                        onChange={() => setPayMethod("cod")}
+                        className="accent-gray-600"
+                      />
+                      <div>
+                        <div className="font-medium text-sm">
+                          Thanh toán khi nhận hàng (COD)
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Thanh toán tiền mặt cho shipper
+                        </div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* CỘT PHẢI: TỔNG KẾT */}
-            <aside className="lg:col-span-4 lg:sticky lg:top-24 h-fit">
-              <div className={`${boxStyle} p-3`}>
-                <h3 className="font-semibold mb-4 border-b pb-2">Đơn hàng</h3>
-                <div className="flex justify-between py-2 text-sm">
-                  <span>Tổng tiền hàng</span>
-                  <span>{formatVND(cart?.total_original_price || 0)}</span>
-                </div>
-                {(cart?.total_discount_amount || 0) > 0 && (
-                  <div className="flex justify-between py-2 text-sm text-green-600">
-                    <span>Tiết kiệm</span>
-                    <span>- {formatVND(cart?.total_discount_amount || 0)}</span>
+            {/* CỘT PHẢI: TỔNG KẾT & NÚT ĐẶT */}
+            <aside className="lg:col-span-4 lg:sticky lg:top-4 h-fit">
+              <div className={`${boxStyle} p-5 border-t-4 border-t-orange-500`}>
+                <h3 className="font-bold text-lg mb-4 pb-2 border-b">
+                  Chi tiết thanh toán
+                </h3>
+
+                <div className="space-y-3 text-sm text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Tổng tiền hàng</span>
+                    <span className="font-medium">
+                      {formatVND(cart?.total_original_price || 0)}
+                    </span>
                   </div>
-                )}
-                <div className="flex justify-between py-2 text-sm">
-                  <span>Vận chuyển</span>
-                  <span>{shippingLabel} + {formatVND(shippingCost)}</span>
+                  {(cart?.total_discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Đã giảm giá</span>
+                      <span>
+                        - {formatVND(cart?.total_discount_amount || 0)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Phí vận chuyển ({shippingLabel})</span>
+                    <span>+ {formatVND(shippingCost)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between py-2 text-sm border-b border-dashed mb-4">
-                  <span>Phương thức thanh toán</span>
-                  <span>{paymentLabel}</span>
-                </div>
-                <div className="flex justify-between mb-6">
-                  <span className="font-bold">Tổng cộng</span>
-                  <span className="text-xl text-red-600 font-bold">
-                    {formatVND(totalWithShipping)}
-                  </span>
+
+                <div className="mt-4 pt-4 border-t border-dashed">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="font-bold text-gray-800">
+                      Tổng thanh toán
+                    </span>
+                    <span className="text-2xl font-bold text-red-600">
+                      {formatVND(totalWithShipping)}
+                    </span>
+                  </div>
+                  <div className="text-right text-xs text-gray-500 italic">
+                    ({paymentLabel})
+                  </div>
                 </div>
 
                 {orderError && (
-                  <div className="text-red-500 text-sm text-center mb-4 bg-red-50 p-2 rounded">
-                    {orderError}
+                  <div className="mt-4 bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded flex items-start gap-2">
+                    <div className="min-w-[16px] mt-0.5">⚠️</div> {orderError}
                   </div>
                 )}
 
                 <button
                   onClick={placeOrder}
                   disabled={items.length === 0 || cartLoading}
-                  className="w-full py-3 bg-orange-500 text-white rounded font-bold hover:bg-orange-600 disabled:opacity-50"
+                  className="w-full mt-6 py-3.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-bold shadow-md hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {cartLoading ? "Đang xử lý..." : "ĐẶT HÀNG NGAY"}
                 </button>
@@ -812,12 +881,74 @@ const PaymentPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* QR MODAL (POPUP HIỆN QR CODE) */}
+      {qrData && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden relative">
+            {/* Header */}
+            <div className="bg-blue-600 p-4 text-white text-center relative">
+              <h3 className="font-bold text-lg">Quét Mã Thanh Toán</h3>
+              <p className="text-blue-100 text-sm">
+                Vui lòng không tắt màn hình
+              </p>
+              <button
+                onClick={() => setQrData(null)}
+                className="absolute top-3 right-3 text-white/80 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 text-center">
+              {/* QR Image */}
+              <div className="bg-white p-2 border-2 border-blue-100 rounded-lg inline-block mb-4 shadow-inner">
+                <img
+                  src={qrData.qrCodeUrl}
+                  alt="QR Code"
+                  className="w-48 h-48 object-contain"
+                />
+              </div>
+
+              {/* Amount */}
+              <div className="mb-2 text-gray-500 text-sm">
+                Số tiền cần thanh toán
+              </div>
+              <div className="text-2xl font-bold text-blue-700 mb-6">
+                {formatVND(qrData.amount || 0)}
+              </div>
+
+              {/* Status */}
+              {checkingPayment && (
+                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-2 animate-pulse">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Đang chờ xác
+                  nhận...
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400 mt-4">
+                Hệ thống sẽ tự động chuyển trang khi nhận được tiền.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 p-3 text-center border-t">
+              <button
+                onClick={() => setQrData(null)}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Đóng và chọn cách khác
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </>
   );
 };
 
-// --- LOGIN FORM ---
+// --- LOGIN FORM (Giữ nguyên) ---
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("user");
   const [password, setPassword] = useState("123456");
@@ -831,8 +962,8 @@ const LoginForm: React.FC = () => {
     setIsLoggingIn(true);
     try {
       await login(username, password);
-    } catch (err) {
-      setError((err as Error).message || "Đăng nhập thất bại.");
+    } catch (err: any) {
+      setError(err.message || "Lỗi đăng nhập");
     } finally {
       setIsLoggingIn(false);
     }
@@ -841,12 +972,16 @@ const LoginForm: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 -mt-20">
-        <div className="w-full max-w-sm p-8 bg-white shadow-lg rounded-md">
-          <h2 className="text-2xl font-bold text-center mb-6">Đăng nhập</h2>
+      <div className="flex items-center justify-center min-h-[80vh] bg-gray-50">
+        <div className="w-full max-w-sm p-8 bg-white shadow-xl rounded-lg border">
+          <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+            Đăng nhập
+          </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="text-red-500 text-sm text-center">{error}</div>
+              <div className="text-red-500 text-sm bg-red-50 p-2 rounded text-center border border-red-100">
+                {error}
+              </div>
             )}
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -855,7 +990,7 @@ const LoginForm: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Username"
-                className="w-full border rounded pl-10 py-2"
+                className="w-full border rounded pl-10 py-2.5 outline-none focus:border-blue-500 transition"
               />
             </div>
             <div className="relative">
@@ -865,16 +1000,15 @@ const LoginForm: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full border rounded pl-10 py-2"
+                className="w-full border rounded pl-10 py-2.5 outline-none focus:border-blue-500 transition"
               />
             </div>
             <button
               type="submit"
               disabled={isLoggingIn || loading}
-              className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 disabled:opacity-50"
+              className="w-full bg-blue-600 text-white py-2.5 rounded font-bold hover:bg-blue-700 transition disabled:opacity-50 flex justify-center items-center gap-2"
             >
-              <LogIn className="inline-block mr-2 h-4 w-4" />{" "}
-              {isLoggingIn ? "Đang vào..." : "Đăng nhập"}
+              <LogIn size={18} /> {isLoggingIn ? "Đang vào..." : "Đăng nhập"}
             </button>
           </form>
         </div>
@@ -889,8 +1023,8 @@ const App: React.FC = () => {
   const { user, loading } = useAuth();
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Đang tải...
+      <div className="flex items-center justify-center min-h-screen text-gray-500 gap-2">
+        <Loader2 className="animate-spin" /> Đang tải...
       </div>
     );
   return user ? <PaymentPage /> : <LoginForm />;

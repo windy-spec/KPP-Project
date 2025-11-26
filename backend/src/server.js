@@ -8,6 +8,8 @@ import cors from "cors";
 import categoryRoute from "./routes/categoryRoute.js";
 import productRoute from "./routes/productRoute.js";
 import cartRoute from "./routes/cartRoute.js";
+import momoRoute from "./routes/momoRoute.js";
+import invoiceRoute from "./routes/invoiceRoute.js";
 import path from "path";
 import discountRoute from "./routes/discountRoute.js";
 import SaleProgram from "./routes/saleProgramRoute.js"; // call env port
@@ -38,6 +40,8 @@ app.use("/api/product", productRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/cart", cartRoute);
+app.use("/api/payments", momoRoute);
+app.use("/api/invoice", invoiceRoute);
 connectDB().then(() => {
   //
   app.listen(PORT, () => {
