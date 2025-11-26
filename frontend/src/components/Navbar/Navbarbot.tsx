@@ -88,8 +88,8 @@ const Navbarbot: React.FC = () => {
   const isDropdown = (label: string) => dropdownItems.hasOwnProperty(label);
 
   return (
-    <div className="hidden md:block bg-orange-200">
-  <div className="w-4/5 max-w-7xl mx-auto px-4 h-13">
+    <div className="hidden md:block bg-orange-200 shadow-lg">
+    <div className="w-4/5 max-w-7xl mx-auto px-4 h-13">
           <div className="py-3">
             <nav className="flex flex-wrap gap-16 text-lg text-gray-800 justify-center">
               {items.map(({ label, to }) => {

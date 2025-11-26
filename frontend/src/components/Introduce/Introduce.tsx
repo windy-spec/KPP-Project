@@ -47,7 +47,8 @@ const Introduce: React.FC = () => {
 
       {/* STATS */}
       <div className="grid grid-cols-3 gap-4 mb-10">
-        {["Năm Hoạt Động", "Đối Tác", "Khu Vực Hoạt Động"].map((label, i) => (
+
+        {["Năm Hoạt Động", "Đối Tác", ].map((label, i) => (
           <div
             key={i}
             className="group border border-white/30 bg-white/10 backdrop-blur-md rounded-xl p-6 text-center transition-all duration-200 ease-out cursor-pointer hover:-translate-y-2 hover:shadow-xl hover:bg-white/60"
@@ -58,6 +59,14 @@ const Introduce: React.FC = () => {
             <div className="text-sm text-gray-700">{label}</div>
           </div>
         ))}
+        <div
+          className="group border border-white/30 bg-white/10 backdrop-blur-md rounded-xl p-6 text-center transition-all duration-200 ease-out cursor-pointer hover:-translate-y-2 hover:shadow-xl hover:bg-white/60"
+          >
+            <div className="text-3xl font-bold text-gray-900 group-hover:text-orange-400 transition-colors">
+              +1
+            </div>
+          <div className="text-sm text-gray-700">Khu Vực Hoạt Động</div>
+        </div>
       </div>
 
       {/* ACTION BUTTONS */}
