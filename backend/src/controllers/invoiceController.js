@@ -71,39 +71,26 @@ export const updateInvoiceStatus = async (req, res) => {
   }
 };
 export const getInvoiceById = async (req, res) => {
-  const id = req.params.id;
-  console.log("REQ.PARAMS.ID:", id);
-
   try {
-    // Kiểm tra xem ID có hợp lệ ObjectId không
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ message: "ID không hợp lệ" });
-    }
-
-    // Tìm invoice
-    const invoice = await Invoice.findById(id)
+    const invoice = await Invoice.findById(req.params.id)
       .populate("user", "name email")
       .populate("items.product_id", "name price");
 
-    console.log("FIND INVOICE RESULT:", invoice);
+    if (!invoice)
+      return res.status(404).json({ message: "Không tìm thấy hóa đơn" });
 
-    if (!invoice) {
-      return res.status(404).json({ message: "Không tìm thấy hoá đơn" });
-    }
-
-    // Nếu là user thường, chỉ được xem hoá đơn của mình
+    // Nếu user role là 'user', kiểm tra quyền
     if (
       req.user.role !== "admin" &&
       invoice.user._id.toString() !== req.user._id.toString()
     ) {
       return res
         .status(403)
-        .json({ message: "Bạn không có quyền xem hoá đơn này" });
+        .json({ message: "Bạn không có quyền xem hóa đơn này" });
     }
 
     res.json(invoice);
   } catch (error) {
-    console.error("ERROR GET INVOICE:", error);
     res.status(500).json({ message: "Lỗi server", detail: error.message });
   }
 };
