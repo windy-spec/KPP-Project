@@ -1,14 +1,15 @@
+// src/pages/InvoicePage.tsx
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 
 const SERVER_BASE_URL = "http://localhost:5001";
 
 type InvoiceItem = {
-  name: string;
+  product_id: { name?: string; price?: number };
   quantity: number;
-  price: number;
+  price?: number;
   discount?: number; // %
 };
 
@@ -17,7 +18,7 @@ type Invoice = {
   user?: { name?: string; email?: string };
   createdAt?: string;
   items: InvoiceItem[];
-  totalPrice: number;
+  total_amount: number;
 };
 
 const formatVND = (value: number) =>
@@ -29,14 +30,12 @@ const formatVND = (value: number) =>
 
 const InvoicePage: React.FC = () => {
   const { invoiceId } = useParams<{ invoiceId: string }>();
-  const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const token = localStorage.getItem("token");
 
-  // Fetch hóa đơn thực
   useEffect(() => {
     if (!invoiceId || !token) return;
 
@@ -44,11 +43,10 @@ const InvoicePage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
+        // Lấy hóa đơn từ backend
         const res = await axios.get(
           `${SERVER_BASE_URL}/api/invoice/${invoiceId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         setInvoice(res.data);
 
@@ -126,17 +124,19 @@ const InvoicePage: React.FC = () => {
               </thead>
               <tbody>
                 {invoice.items.map((item, idx) => {
+                  const name = item.product_id?.name || "Sản phẩm";
+                  const price = item.price || item.product_id?.price || 0;
                   const finalPrice = item.discount
-                    ? item.price * (1 - item.discount / 100)
-                    : item.price;
+                    ? price * (1 - item.discount / 100)
+                    : price;
                   return (
                     <tr
                       key={idx}
                       className="border-t border-gray-200 hover:bg-gray-50"
                     >
-                      <td className="py-3 px-4">{item.name}</td>
+                      <td className="py-3 px-4">{name}</td>
                       <td className="py-3 px-4">{item.quantity}</td>
-                      <td className="py-3 px-4">{formatVND(item.price)}</td>
+                      <td className="py-3 px-4">{formatVND(price)}</td>
                       <td className="py-3 px-4">
                         {item.discount ? `${item.discount}%` : "-"}
                       </td>
@@ -154,7 +154,7 @@ const InvoicePage: React.FC = () => {
           <div className="mt-6 flex justify-end">
             <div className="text-right">
               <p className="text-gray-700 font-semibold text-lg">
-                Tổng cộng: {formatVND(invoice.totalPrice)}
+                Tổng cộng: {formatVND(invoice.total_amount)}
               </p>
               <Button className="mt-2 bg-orange-500 hover:bg-orange-600 text-white">
                 In hóa đơn
