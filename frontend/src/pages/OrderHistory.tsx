@@ -1,113 +1,233 @@
+// src/pages/OrderHistory.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 
-type Order = {
-  _id: string;
-  user: { name: string; email: string };
-  date: string;
-  total: number;
-  status: string;
-};
-
-type Props = {
-  role: "admin" | "user";
-  userId?: string; // chỉ cần khi role là user
-};
-
 const SERVER_BASE_URL = "http://localhost:5001";
 
-const OrderHistory: React.FC<Props> = ({ role, userId }) => {
-  const [orders, setOrders] = useState<Order[]>([]);
+interface InvoiceItem {
+  product_id: {
+    name: string;
+    price: number;
+  };
+  quantity: number;
+}
+
+interface Invoice {
+  _id: string;
+  user?: {
+    name?: string;
+    email?: string;
+  };
+  totalPrice?: number;
+  status?: string;
+  createdAt?: string;
+  items?: InvoiceItem[];
+}
+
+interface OrderHistoryProps {
+  role: "admin" | "user";
+}
+
+const OrderHistory: React.FC<OrderHistoryProps> = ({ role }) => {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
+  const limit = 9;
+
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchInvoices = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        let url = `${SERVER_BASE_URL}/api/orders`;
-        if (role === "user" && userId) {
-          url += `?userId=${userId}`; // API trả về đơn hàng của user
-        }
-        // admin: không truyền userId → trả tất cả
-        const res = await axios.get(url);
-        setOrders(res.data);
+        const token = localStorage.getItem("accessToken");
+        if (!token) throw new Error("Chưa đăng nhập");
+
+        const url =
+          role === "admin"
+            ? `${SERVER_BASE_URL}/api/invoice`
+            : `${SERVER_BASE_URL}/api/invoice/me`;
+
+        const res = await axios.get(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data?.invoices || [];
+
+        const total = res.data?.totalPages || Math.ceil(data.length / limit);
+
+        setInvoices(data);
+        setTotalPages(total);
       } catch (err: any) {
-        setError(err?.message || "Lỗi khi tải đơn hàng");
+        setError(err.response?.data?.message || err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrders();
-  }, [role, userId]);
+    fetchInvoices();
+  }, [role, currentPage]);
 
-  const formatVND = (value: number) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      maximumFractionDigits: 0,
-    }).format(value);
+  const handleSelectInvoice = async (invoiceId: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("Chưa đăng nhập");
+
+      const res = await axios.get(
+        `${SERVER_BASE_URL}/api/invoice/${invoiceId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setSelectedInvoice(res.data);
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
 
   return (
-    <div className="px-4 py-8 max-w-7xl mx-auto">
-      <h2 className="text-3xl font-extrabold text-gray-800 mb-6">
-        Lịch sử đơn hàng
-      </h2>
+    <div className="min-h-screen bg-gray-50">
+      {/* HEADER */}
+      <header className="bg-orange-500 text-white py-4 shadow-md mb-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <h1 className="text-2xl font-bold">Lịch sử đơn hàng</h1>
+        </div>
+      </header>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          <span className="ml-2">Đang tải đơn hàng...</span>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">Lỗi: {error}</p>
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="text-gray-500">Không có đơn hàng nào.</div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order._id}
-              className="bg-white shadow-sm rounded-lg p-4 border border-gray-100"
-            >
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-gray-700">
-                  Đơn hàng: {order._id}
-                </span>
-                <span
-                  className={`px-2 py-1 text-xs rounded ${
-                    order.status === "completed"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  }`}
+      <main className="max-w-7xl mx-auto px-4">
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            <span className="ml-2 text-gray-700">Đang tải...</span>
+          </div>
+        ) : error ? (
+          <p className="text-red-500">{error}</p>
+        ) : invoices.length === 0 ? (
+          <p>Không có hóa đơn nào.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {invoices.map((inv) => (
+              <div
+                key={inv._id}
+                className="bg-white rounded-lg shadow-sm p-4 border border-gray-100 hover:shadow-md transition cursor-pointer"
+                onClick={() => handleSelectInvoice(inv._id)}
+              >
+                {role === "admin" && (
+                  <p className="text-sm text-gray-500 mb-1">
+                    <strong>Người mua:</strong> {inv.user?.name || "N/A"} (
+                    {inv.user?.email || "N/A"})
+                  </p>
+                )}
+                <p>
+                  <strong>Mã hóa đơn:</strong> {inv._id}
+                </p>
+                <p>
+                  <strong>Tổng tiền:</strong>{" "}
+                  {inv.totalPrice?.toLocaleString() || 0} VND
+                </p>
+                <p>
+                  <strong>Trạng thái:</strong> {inv.status || "Chưa xác định"}
+                </p>
+                <p className="text-sm text-gray-500">
+                  <strong>Ngày tạo:</strong>{" "}
+                  {inv.createdAt
+                    ? new Date(inv.createdAt).toLocaleString()
+                    : "-"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Chi tiết đơn hàng */}
+        {selectedInvoice && (
+          <div className="mt-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h2 className="text-xl font-bold mb-4">Chi tiết đơn hàng</h2>
+            {role === "admin" && selectedInvoice.user && (
+              <p className="text-sm text-gray-500 mb-2">
+                <strong>Người mua:</strong> {selectedInvoice.user.name} (
+                {selectedInvoice.user.email})
+              </p>
+            )}
+            <p className="mb-2">
+              <strong>Mã hóa đơn:</strong> {selectedInvoice._id}
+            </p>
+            <p className="mb-2">
+              <strong>Tổng tiền:</strong>{" "}
+              {selectedInvoice.totalPrice?.toLocaleString() || 0} VND
+            </p>
+            <p className="mb-2">
+              <strong>Trạng thái:</strong> {selectedInvoice.status || "-"}
+            </p>
+            <p className="mb-2">
+              <strong>Ngày tạo:</strong>{" "}
+              {selectedInvoice.createdAt
+                ? new Date(selectedInvoice.createdAt).toLocaleString()
+                : "-"}
+            </p>
+
+            <h3 className="mt-4 font-semibold">Sản phẩm:</h3>
+            <ul className="mt-2 space-y-2">
+              {selectedInvoice.items?.map((item, idx) => (
+                <li
+                  key={idx}
+                  className="flex justify-between bg-gray-50 p-2 rounded"
                 >
-                  {order.status}
-                </span>
-              </div>
-              <div className="text-sm text-gray-600 mb-2">
-                Ngày: {order.date}
-              </div>
-              {role === "admin" && (
-                <div className="text-sm text-gray-600 mb-2">
-                  Khách hàng: {order.user.name} ({order.user.email})
-                </div>
-              )}
-              <div className="text-lg font-bold text-orange-500">
-                Tổng: {formatVND(order.total)}
-              </div>
-              <Button className="mt-2 bg-orange-500 hover:bg-orange-600 text-white">
-                Xem chi tiết
-              </Button>
-            </div>
-          ))}
+                  <span>{item.product_id.name}</span>
+                  <span>
+                    {item.quantity} x {item.product_id.price.toLocaleString()}{" "}
+                    VND
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => setSelectedInvoice(null)}
+            >
+              Đóng
+            </Button>
+          </div>
+        )}
+
+        {/* PAGINATION */}
+        {invoices.length > 0 && (
+          <div className="flex justify-center gap-2 mt-6">
+            <Button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+            >
+              Trước
+            </Button>
+            <span className="py-2 px-3 bg-gray-100 rounded">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <Button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Sau
+            </Button>
+          </div>
+        )}
+      </main>
+
+      {/* FOOTER */}
+      <footer className="bg-gray-200 py-6 mt-12">
+        <div className="max-w-7xl mx-auto px-4 text-center text-gray-700">
+          © 2025 Công ty của bạn. All rights reserved.
         </div>
-      )}
+      </footer>
     </div>
   );
 };

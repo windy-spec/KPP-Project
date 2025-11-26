@@ -6,7 +6,7 @@ import {
   removeCartItem,
   proceedToCheckout,
 } from "../controllers/cartController.js";
-
+import { protectedRoute } from "../middlewares/authMiddlewares.js";
 // Import middleware mới
 import { identifyCart } from "../middlewares/cartMiddleware.js";
 // Import middleware xác thực (giả sử đường dẫn này đúng)
@@ -22,5 +22,14 @@ router.put("/update", identifyCart, updateCartItem);
 router.delete("/remove/:productId", identifyCart, removeCartItem);
 
 router.get("/checkout", protect, proceedToCheckout);
-
+router.post("/clear", protectedRoute, async (req, res) => {
+  try {
+    await Cart.updateOne({ user: req.user._id }, { $set: { items: [] } });
+    res.status(200).json({ message: "Giỏ hàng đã được làm trống" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Lỗi khi xóa giỏ hàng", detail: error.message });
+  }
+});
 export default router;
