@@ -153,7 +153,7 @@ const OrderHistory: React.FC = () => {
         if (resultCode === "0") {
           Swal.fire({
             title: "Đang xác thực thanh toán...",
-            text: "Vui lòng đợi trong giây lát",
+            text: "Vui lòng đợi...",
             allowOutsideClick: false,
             didOpen: () => {
               Swal.showLoading();
@@ -161,8 +161,10 @@ const OrderHistory: React.FC = () => {
           });
 
           try {
-            // Gọi API Backend để check lại trạng thái và tạo đơn
-            const res = await apiClient.post("/momo/check-status", { orderId });
+            // 🔥 SỬA URL Ở ĐÂY: Thêm /payments vào đường dẫn
+            const res = await apiClient.post("/payments/momo/check-status", {
+              orderId,
+            });
 
             if (res.data?.status === "PAID") {
               await Swal.fire({
