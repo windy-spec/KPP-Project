@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import apiClient from "@/utils/api-user";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
-import { Loader2, Printer, Filter, Trash2 } from "lucide-react"; // Đã thêm Trash2
-import Swal from "sweetalert2"; // Import SweetAlert2 để xác nhận xóa
+import { Loader2, Printer, Filter, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
 
 // --- HELPER FORMATS ---
 const formatVND = (value: number) =>
@@ -60,6 +61,10 @@ interface Invoice {
 type FilterType = "all" | "today" | "yesterday" | "week" | "month";
 
 const OrderHistory: React.FC = () => {
+  // Hooks xử lý URL params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
   // --- STATE QUẢN LÝ USER ---
   const [user, setUser] = useState<UserProfile | null>(null);
   const [userLoading, setUserLoading] = useState(true);
@@ -98,44 +103,99 @@ const OrderHistory: React.FC = () => {
     fetchUserProfile();
   }, []);
 
-  // 2️⃣ EFFECT: LẤY DANH SÁCH HÓA ĐƠN
+  // HÀM FETCH INVOICES (Dùng useCallback để tránh render loop)
+  const fetchInvoices = useCallback(async () => {
+    // Nếu chưa có user hoặc đang load user thì dừng
+    if (userLoading || !user) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const url = user.role === "admin" ? "/invoice" : "/invoice/me";
+
+      const res = await apiClient.get(url, {
+        params: { page: currentPage, limit },
+      });
+
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data?.invoices || res.data?.docs || [];
+
+      const total = res.data?.totalPages || Math.ceil(data.length / limit) || 1;
+
+      setInvoices(data);
+      setTotalPages(total);
+    } catch (err: any) {
+      console.error("Lỗi tải hóa đơn:", err);
+      setError(
+        err.response?.data?.message || "Không tải được lịch sử đơn hàng."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [user, userLoading, currentPage]);
+
+  // 2️⃣ EFFECT: GỌI FETCH INVOICES KHI USER/PAGE THAY ĐỔI
   useEffect(() => {
-    const fetchInvoices = async () => {
-      if (userLoading || !user) return;
+    fetchInvoices();
+  }, [fetchInvoices]);
 
-      setLoading(true);
-      setError(null);
-      try {
-        const url = user.role === "admin" ? "/invoice" : "/invoice/me";
+  // 3️⃣ EFFECT: XỬ LÝ CALLBACK TỪ MOMO KHI QUAY VỀ TRANG
+  useEffect(() => {
+    const checkMomoCallback = async () => {
+      const orderId = searchParams.get("orderId");
+      const resultCode = searchParams.get("resultCode");
 
-        // Lưu ý: Nếu backend hỗ trợ lọc theo ngày, hãy truyền params startDate/endDate vào đây
-        const res = await apiClient.get(url, {
-          params: { page: currentPage, limit },
-        });
+      // Chỉ xử lý khi có orderId trên URL
+      if (orderId) {
+        setSearchParams({}); // Xóa URL params để tránh chạy lại
 
-        const data = Array.isArray(res.data)
-          ? res.data
-          : res.data?.invoices || res.data?.docs || [];
+        if (resultCode === "0") {
+          Swal.fire({
+            title: "Đang xác thực thanh toán...",
+            text: "Vui lòng đợi trong giây lát",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+          });
 
-        const total =
-          res.data?.totalPages || Math.ceil(data.length / limit) || 1;
+          try {
+            // Gọi API Backend để check lại trạng thái và tạo đơn
+            const res = await apiClient.post("/momo/check-status", { orderId });
 
-        setInvoices(data);
-        setTotalPages(total);
-      } catch (err: any) {
-        console.error("Lỗi tải hóa đơn:", err);
-        setError(
-          err.response?.data?.message || "Không tải được lịch sử đơn hàng."
-        );
-      } finally {
-        setLoading(false);
+            if (res.data?.status === "PAID") {
+              await Swal.fire({
+                title: "Thanh toán thành công!",
+                text: "Đơn hàng của bạn đã được tạo.",
+                icon: "success",
+                timer: 2000,
+              });
+              // Tải lại danh sách
+              fetchInvoices();
+            }
+          } catch (err: any) {
+            console.error("Lỗi check status MoMo:", err);
+            Swal.fire(
+              "Lỗi",
+              err.response?.data?.message || "Không thể xác thực giao dịch.",
+              "error"
+            );
+          }
+        } else {
+          Swal.fire(
+            "Thanh toán thất bại",
+            "Giao dịch MoMo đã bị hủy hoặc thất bại.",
+            "error"
+          );
+        }
       }
     };
 
-    fetchInvoices();
-  }, [user, userLoading, currentPage]);
+    checkMomoCallback();
+  }, [searchParams, setSearchParams, fetchInvoices]);
 
-  // --- LOGIC LỌC CLIENT-SIDE (Trên trang hiện tại) ---
+  // --- LOGIC LỌC CLIENT-SIDE ---
   const filteredInvoices = useMemo(() => {
     if (filterType === "all") return invoices;
 
@@ -156,7 +216,6 @@ const OrderHistory: React.FC = () => {
 
     return invoices.filter((inv) => {
       const invDate = new Date(inv.createdAt);
-
       switch (filterType) {
         case "today":
           return invDate >= todayStart && invDate <= todayEnd;
@@ -198,7 +257,7 @@ const OrderHistory: React.FC = () => {
     e: React.MouseEvent,
     invoiceId: string
   ) => {
-    e.stopPropagation(); // Ngăn sự kiện click lan ra ngoài (để không mở modal chi tiết)
+    e.stopPropagation();
 
     const result = await Swal.fire({
       title: "Bạn có chắc chắn?",
@@ -214,15 +273,10 @@ const OrderHistory: React.FC = () => {
     if (result.isConfirmed) {
       try {
         await apiClient.delete(`/invoice/${invoiceId}`);
-
-        // Cập nhật lại danh sách local
         setInvoices((prev) => prev.filter((inv) => inv._id !== invoiceId));
-
-        // Nếu đang mở modal của hóa đơn này thì đóng lại
         if (selectedInvoice && selectedInvoice._id === invoiceId) {
           setSelectedInvoice(null);
         }
-
         Swal.fire("Đã xóa!", "Hóa đơn đã được xóa thành công.", "success");
       } catch (err: any) {
         Swal.fire(
@@ -377,7 +431,7 @@ const OrderHistory: React.FC = () => {
                 {/* Status Bar */}
                 <div
                   className={`absolute top-0 left-0 w-1 h-full ${
-                    inv.status === "COMPLETED"
+                    inv.status === "COMPLETED" || inv.status === "PAID"
                       ? "bg-green-500"
                       : inv.status === "CANCELLED"
                       ? "bg-red-500"
@@ -396,8 +450,9 @@ const OrderHistory: React.FC = () => {
                       </div>
                     </div>
                     {/* NÚT XÓA HÓA ĐƠN */}
-                    {/* Hiển thị nếu là Admin HOẶC (User và trạng thái không phải COMPLETED) */}
-                    {(user.role === "admin" || inv.status !== "COMPLETED") && (
+                    {(user.role === "admin" ||
+                      (inv.status !== "COMPLETED" &&
+                        inv.status !== "PAID")) && (
                       <Button
                         size="icon"
                         variant="ghost"
@@ -414,18 +469,20 @@ const OrderHistory: React.FC = () => {
                   <div className="pl-2 mb-2">
                     <span
                       className={`px-3 py-1 text-[10px] rounded-full font-bold uppercase tracking-wide ${
-                        inv.status === "COMPLETED"
+                        inv.status === "COMPLETED" || inv.status === "PAID"
                           ? "bg-green-50 text-green-700 border border-green-100"
                           : inv.status === "CANCELLED"
                           ? "bg-red-50 text-red-700 border border-red-100"
                           : "bg-orange-50 text-orange-600 border border-orange-100"
                       }`}
                     >
-                      {inv.status || "Mới"}
+                      {inv.status === "PAID"
+                        ? "Đã Thanh Toán"
+                        : inv.status || "Mới"}
                     </span>
                   </div>
 
-                  {/* HIỂN THỊ THÔNG TIN KHÁCH HÀNG (YÊU CẦU MỚI) */}
+                  {/* HIỂN THỊ THÔNG TIN KHÁCH HÀNG */}
                   <div className="mb-3 pl-2 pb-3 border-b border-gray-50">
                     <p className="text-xs text-gray-400 uppercase mb-1">
                       Khách hàng
@@ -567,7 +624,8 @@ const OrderHistory: React.FC = () => {
                           {selectedInvoice._id.slice(-6).toUpperCase()}
                         </div>
                         {(user.role === "admin" ||
-                          selectedInvoice.status !== "COMPLETED") && (
+                          (selectedInvoice.status !== "COMPLETED" &&
+                            selectedInvoice.status !== "PAID")) && (
                           <div className="mt-1 print:hidden">
                             <Button
                               size="sm"
