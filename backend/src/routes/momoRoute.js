@@ -37,5 +37,5 @@ router.get(
   checkRole(["user"]),
   checkPaymentStatus
 );
-
+router.post("/momo/check-status", protectedRoute, checkMomoTransactionStatus);
 export default router;

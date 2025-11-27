@@ -3,35 +3,27 @@ import express from "express";
 import { protectedRoute, verifyAdmin } from "../middlewares/authMiddlewares.js";
 import {
   createInvoice,
-  getAllInvoices, // Import hàm này
-  getMyInvoices, // Import hàm này
+  getAllInvoices,
+  getMyInvoices,
   getInvoiceById,
-  updateInvoiceStatus, // Import hàm này (nếu có dùng update)
+  updateInvoiceStatus,
+  deleteInvoice,
 } from "../controllers/invoiceController.js";
 
 const router = express.Router();
 
-// ===========================
-// 1. TẠO HÓA ĐƠN
-// ===========================
+// 1. User tạo hóa đơn
 router.post("/", protectedRoute, createInvoice);
 
-// ===========================
-// 2. LẤY HÓA ĐƠN CỦA USER HIỆN TẠI (Frontend gọi /api/invoice/me)
-// ===========================
-// Route này trả về danh sách CỦA RIÊNG BẠN
+// 2. LẤY HÓA ĐƠN CỦA USER ĐANG LOGIN
 router.get("/me", protectedRoute, getMyInvoices);
 
-// ===========================
-// 3. LẤY TOÀN BỘ HÓA ĐƠN (CHỈ ADMIN) (Frontend gọi /api/invoice)
-// ===========================
-// Route này trả về TẤT CẢ (Có verifyAdmin bảo vệ)
+// 3. ADMIN LẤY TẤT CẢ HÓA ĐƠN
 router.get("/", protectedRoute, verifyAdmin, getAllInvoices);
 
-// ===========================
-// 4. LẤY CHI TIẾT / CẬP NHẬT
-// ===========================
+// 4. XEM CHI TIẾT + ADMIN UPDATE TRẠNG THÁI
 router.get("/:id", protectedRoute, getInvoiceById);
-router.put("/:id", protectedRoute, verifyAdmin, updateInvoiceStatus); // Route update trạng thái
+router.put("/:id", protectedRoute, verifyAdmin, updateInvoiceStatus);
 
+router.delete("/:id", protectedRoute, deleteInvoice);
 export default router;

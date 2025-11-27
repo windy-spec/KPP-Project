@@ -36,28 +36,56 @@ export const createInvoice = async (req, res) => {
 // 2. LẤY DANH SÁCH CỦA TÔI (USER)
 export const getMyInvoices = async (req, res) => {
   try {
-    // 🔥 SỬA LỖI: Dùng req.user._id (do middleware gán), không phải req.userID
-    const invoices = await Invoice.find({ user: req.user._id })
-      .sort({ createdAt: -1 })
-      .populate("items.product_id", "name price avatar"); // Populate thêm avatar nếu cần hiển thị
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    res.status(200).json(invoices);
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi hệ thống", error: error.message });
+    const [invoices, total] = await Promise.all([
+      Invoice.find({ user: req.user._id })
+        .populate("user", "name email")
+        .populate("items.product_id", "name price")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
+      Invoice.countDocuments({ user: req.user._id }),
+    ]);
+
+    res.status(200).json({
+      invoices,
+      totalPages: Math.ceil(total / limit),
+      total,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server khi lấy hóa đơn của bạn" });
   }
 };
 
 // 3. LẤY TẤT CẢ (ADMIN)
 export const getAllInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find()
-      .sort({ createdAt: -1 })
-      .populate("user", "name email phone") // Lấy thông tin người mua để Admin xem
-      .populate("items.product_id", "name price");
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    res.status(200).json(invoices);
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi hệ thống" });
+    const [invoices, total] = await Promise.all([
+      Invoice.find()
+        .populate("user", "name email")
+        .populate("items.product_id", "name price")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
+      Invoice.countDocuments(),
+    ]);
+
+    res.status(200).json({
+      invoices,
+      totalPages: Math.ceil(total / limit),
+      total,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server khi lấy toàn bộ hóa đơn" });
   }
 };
 
@@ -105,5 +133,52 @@ export const getInvoiceById = async (req, res) => {
     res.json(invoice);
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", detail: error.message });
+  }
+};
+
+// 6. API CHUNG: User thấy đơn của họ, Admin thấy toàn bộ
+export const getInvoices = async (req, res) => {
+  try {
+    let invoices;
+
+    if (req.user.role === "admin") {
+      // Admin -> lấy tất cả
+      invoices = await Invoice.find()
+        .sort({ createdAt: -1 })
+        .populate("user", "name email phone")
+        .populate("items.product_id", "name price avatar");
+    } else {
+      // User -> chỉ lấy của bản thân
+      invoices = await Invoice.find({ user: req.user._id })
+        .sort({ createdAt: -1 })
+        .populate("items.product_id", "name price avatar");
+    }
+
+    res.status(200).json(invoices);
+  } catch (error) {
+    res.status(500).json({
+      message: "Lỗi hệ thống",
+      error: error.message,
+    });
+  }
+};
+
+// 7. [NEW] HÀM XÓA HÓA ĐƠN
+export const deleteInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra xem hóa đơn có tồn tại không
+    const invoice = await Invoice.findById(id);
+    if (!invoice) {
+      return res.status(404).json({ message: "Hóa đơn không tồn tại" });
+    }
+
+    await Invoice.findByIdAndDelete(id);
+
+    return res.status(200).json({ message: "Đã xóa hóa đơn thành công" });
+  } catch (error) {
+    console.error("Lỗi xóa hóa đơn:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống khi xóa hóa đơn" });
   }
 };

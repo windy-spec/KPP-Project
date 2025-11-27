@@ -223,11 +223,9 @@ export const forgotPassword = async (req, res) => {
     const htmlContent = `
             <h2>Chào ${user.displayName || user.username},</h2>
             <p>Đây là mã xác nhận để khôi phục mật khẩu của bạn:</p>
-            
             <div style="font-size: 24px; font-weight: bold; color: #0275d8; padding: 15px; border: 1px solid #0275d8; border-radius: 4px; display: inline-block; margin: 15px 0;">
                 ${OTP}
             </div>
-
             <p>Mã này có thể chỉ có hiệu lực trong vài phút. Vui lòng không chia sẻ mã này.</p>
         `;
 
