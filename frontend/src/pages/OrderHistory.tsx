@@ -4,7 +4,7 @@ import apiClient from "@/utils/api-user";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
-import { Loader2, Printer, Filter, Trash2 } from "lucide-react";
+import { Loader2, Printer, Filter, Trash2, Search, X } from "lucide-react";
 import Swal from "sweetalert2";
 
 // --- HELPER FORMATS ---
@@ -79,6 +79,7 @@ const OrderHistory: React.FC = () => {
 
   // --- STATE FILTER ---
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const [productSearch, setProductSearch] = useState<string>("");
 
   const limit = 9;
 
@@ -199,8 +200,6 @@ const OrderHistory: React.FC = () => {
 
   // --- LOGIC LỌC CLIENT-SIDE ---
   const filteredInvoices = useMemo(() => {
-    if (filterType === "all") return invoices;
-
     const now = new Date();
     const todayStart = new Date(
       now.getFullYear(),
@@ -216,33 +215,48 @@ const OrderHistory: React.FC = () => {
       59
     );
 
-    return invoices.filter((inv) => {
-      const invDate = new Date(inv.createdAt);
-      switch (filterType) {
-        case "today":
-          return invDate >= todayStart && invDate <= todayEnd;
-        case "yesterday": {
-          const yestStart = new Date(todayStart);
-          yestStart.setDate(yestStart.getDate() - 1);
-          const yestEnd = new Date(todayEnd);
-          yestEnd.setDate(yestEnd.getDate() - 1);
-          return invDate >= yestStart && invDate <= yestEnd;
-        }
-        case "week": {
-          const weekStart = new Date(todayStart);
-          weekStart.setDate(weekStart.getDate() - 7);
-          return invDate >= weekStart;
-        }
-        case "month": {
-          const monthStart = new Date(todayStart);
-          monthStart.setMonth(monthStart.getMonth() - 1);
-          return invDate >= monthStart;
-        }
-        default:
-          return true;
-      }
+    // first apply date filter
+    const dateFiltered =
+      filterType === "all"
+        ? invoices
+        : invoices.filter((inv) => {
+            const invDate = new Date(inv.createdAt);
+            switch (filterType) {
+              case "today":
+                return invDate >= todayStart && invDate <= todayEnd;
+              case "yesterday": {
+                const yestStart = new Date(todayStart);
+                yestStart.setDate(yestStart.getDate() - 1);
+                const yestEnd = new Date(todayEnd);
+                yestEnd.setDate(yestEnd.getDate() - 1);
+                return invDate >= yestStart && invDate <= yestEnd;
+              }
+              case "week": {
+                const weekStart = new Date(todayStart);
+                weekStart.setDate(weekStart.getDate() - 7);
+                return invDate >= weekStart;
+              }
+              case "month": {
+                const monthStart = new Date(todayStart);
+                monthStart.setMonth(monthStart.getMonth() - 1);
+                return invDate >= monthStart;
+              }
+              default:
+                return true;
+            }
+          });
+
+    // then apply product-name search if present
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return dateFiltered;
+
+    return dateFiltered.filter((inv) => {
+      return (inv.items || []).some((it) => {
+        const name = (it as any)?.product_id?.name || "";
+        return name.toLowerCase().includes(q);
+      });
     });
-  }, [invoices, filterType]);
+  }, [invoices, filterType, productSearch]);
 
   // --- XỬ LÝ CHI TIẾT HÓA ĐƠN ---
   const handleSelectInvoice = async (invoiceId: string) => {
@@ -392,6 +406,25 @@ const OrderHistory: React.FC = () => {
                   : "Tháng này"}
               </Button>
             ))}
+
+            <div className="flex items-center border rounded-md bg-white px-3 py-1 w-full md:w-64 md:ml-auto">
+              <Search className="w-4 h-4 text-gray-400 mr-2" />
+              <input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Tìm sản phẩm trong đơn..."
+                aria-label="Tìm sản phẩm"
+                className="text-sm outline-none w-full pr-2"
+              />
+              {productSearch && (
+                <button
+                  onClick={() => setProductSearch("")}
+                  className="ml-2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
