@@ -87,9 +87,22 @@ const ContactPage: React.FC = () => {
                   />
                 </div>
 
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="bg-white border p-2 w-40 text-sm"
+                      placeholder="Nhập mã bảo mật"
+                    />
+                    <img
+                      src="https://placehold.co/100x34?text=CAPTCHA"
+                      alt="captcha"
+                      className="h-8"
+                    />
+                  </div>
                   <button className="ml-auto bg-orange-500 hover:bg-orange-700 text-white px-5 py-2 rounded text-sm">
                     GỬI THÔNG TIN CHO CHÚNG TÔI
                   </button>
+                </div>
               </div>
             </div>
 
