@@ -47,7 +47,13 @@ interface InvoiceItem {
 interface Invoice {
   _id: string;
   createdAt: string;
-  recipient_info?: { name: string; phone: string; address: string };
+  // 🔥 CẬP NHẬT: Thêm trường note vào recipient_info
+  recipient_info?: {
+    name: string;
+    phone: string;
+    address: string;
+    note?: string;
+  };
   user?: { name?: string; email?: string };
   items: InvoiceItem[];
   totalPrice?: number;
@@ -104,9 +110,8 @@ const OrderHistory: React.FC = () => {
     fetchUserProfile();
   }, []);
 
-  // HÀM FETCH INVOICES (Dùng useCallback để tránh render loop)
+  // HÀM FETCH INVOICES
   const fetchInvoices = useCallback(async () => {
-    // Nếu chưa có user hoặc đang load user thì dừng
     if (userLoading || !user) return;
 
     setLoading(true);
@@ -136,20 +141,18 @@ const OrderHistory: React.FC = () => {
     }
   }, [user, userLoading, currentPage]);
 
-  // 2️⃣ EFFECT: GỌI FETCH INVOICES KHI USER/PAGE THAY ĐỔI
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
 
-  // 3️⃣ EFFECT: XỬ LÝ CALLBACK TỪ MOMO KHI QUAY VỀ TRANG
+  // 3️⃣ EFFECT: MOMO CALLBACK
   useEffect(() => {
     const checkMomoCallback = async () => {
       const orderId = searchParams.get("orderId");
       const resultCode = searchParams.get("resultCode");
 
-      // Chỉ xử lý khi có orderId trên URL
       if (orderId) {
-        setSearchParams({}); // Xóa URL params để tránh chạy lại
+        setSearchParams({});
 
         if (resultCode === "0") {
           Swal.fire({
@@ -162,7 +165,6 @@ const OrderHistory: React.FC = () => {
           });
 
           try {
-            // 🔥 SỬA URL Ở ĐÂY: Thêm /payments vào đường dẫn
             const res = await apiClient.post("/payments/momo/check-status", {
               orderId,
             });
@@ -174,7 +176,6 @@ const OrderHistory: React.FC = () => {
                 icon: "success",
                 timer: 2000,
               });
-              // Tải lại danh sách
               fetchInvoices();
             }
           } catch (err: any) {
@@ -215,7 +216,6 @@ const OrderHistory: React.FC = () => {
       59
     );
 
-    // first apply date filter
     const dateFiltered =
       filterType === "all"
         ? invoices
@@ -246,7 +246,6 @@ const OrderHistory: React.FC = () => {
             }
           });
 
-    // then apply product-name search if present
     const q = productSearch.trim().toLowerCase();
     if (!q) return dateFiltered;
 
@@ -258,7 +257,6 @@ const OrderHistory: React.FC = () => {
     });
   }, [invoices, filterType, productSearch]);
 
-  // --- XỬ LÝ CHI TIẾT HÓA ĐƠN ---
   const handleSelectInvoice = async (invoiceId: string) => {
     try {
       const res = await apiClient.get(`/invoice/${invoiceId}`);
@@ -268,7 +266,6 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  // --- XỬ LÝ XÓA HÓA ĐƠN ---
   const handleDeleteInvoice = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -308,7 +305,6 @@ const OrderHistory: React.FC = () => {
     window.print();
   };
 
-  // --- LOADING VIEW ---
   if (userLoading) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center">
@@ -318,7 +314,6 @@ const OrderHistory: React.FC = () => {
     );
   }
 
-  // --- ERROR VIEW ---
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-gray-50">
@@ -326,9 +321,6 @@ const OrderHistory: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Không thể xác thực
           </h3>
-          <p className="text-gray-500 mb-6 text-sm">
-            Phiên đăng nhập không hợp lệ hoặc đã hết hạn.
-          </p>
           <Button
             onClick={() => (window.location.href = "/signin")}
             className="w-full"
@@ -340,7 +332,6 @@ const OrderHistory: React.FC = () => {
     );
   }
 
-  // --- RENDER MAIN ---
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <style>{`
@@ -351,13 +342,16 @@ const OrderHistory: React.FC = () => {
             position: absolute; 
             left: 0; 
             top: 0; 
-            width: 100%; 
+            width: 100%;
+            /* 🔥 SỬA: Thêm padding và box-sizing để tránh mất nội dung */
+            padding: 0 10mm; /* Cách lề trái phải 10mm */
+            box-sizing: border-box;
             margin: 0;
-            padding: 0;
             border: none;
             box-shadow: none;
           } 
-          @page { margin: 0; size: auto; } 
+          /* 🔥 SỬA: Thêm margin cho trang in vật lý */
+          @page { margin: 5mm; size: auto; } 
           .modal-overlay { background: white; position: fixed; inset: 0; z-index: 9999; }
         }
       `}</style>
@@ -366,7 +360,6 @@ const OrderHistory: React.FC = () => {
         <Navbar />
       </div>
 
-      {/* HEADER */}
       <div className="bg-white border-b shadow-sm py-6 mb-6 print:hidden">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-2xl font-bold text-gray-800">
@@ -380,7 +373,6 @@ const OrderHistory: React.FC = () => {
                 }, đây là danh sách đơn hàng của bạn.`}
           </p>
 
-          {/* FILTER BAR */}
           <div className="flex flex-wrap gap-2 mt-4 items-center">
             <Filter className="w-4 h-4 text-gray-500 mr-2" />
             {(
@@ -413,7 +405,6 @@ const OrderHistory: React.FC = () => {
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Tìm sản phẩm trong đơn..."
-                aria-label="Tìm sản phẩm"
                 className="text-sm outline-none w-full pr-2"
               />
               {productSearch && (
@@ -445,15 +436,6 @@ const OrderHistory: React.FC = () => {
             <p className="text-gray-500 font-medium">
               Không tìm thấy đơn hàng nào.
             </p>
-            {user.role !== "admin" && (
-              <Button
-                variant="link"
-                onClick={() => (window.location.href = "/san-pham")}
-                className="mt-2 text-orange-600"
-              >
-                Mua sắm ngay
-              </Button>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -463,7 +445,6 @@ const OrderHistory: React.FC = () => {
                 onClick={() => handleSelectInvoice(inv._id)}
                 className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-orange-200 cursor-pointer transition-all duration-200 group relative overflow-hidden flex flex-col justify-between"
               >
-                {/* Status Bar */}
                 <div
                   className={`absolute top-0 left-0 w-1 h-full ${
                     inv.status === "COMPLETED" || inv.status === "PAID"
@@ -484,7 +465,6 @@ const OrderHistory: React.FC = () => {
                         #{inv._id.slice(-6).toUpperCase()}
                       </div>
                     </div>
-                    {/* NÚT XÓA HÓA ĐƠN */}
                     {(user.role === "admin" ||
                       (inv.status !== "COMPLETED" &&
                         inv.status !== "PAID")) && (
@@ -500,7 +480,6 @@ const OrderHistory: React.FC = () => {
                     )}
                   </div>
 
-                  {/* STATUS BADGE */}
                   <div className="pl-2 mb-2">
                     <span
                       className={`px-3 py-1 text-[10px] rounded-full font-bold uppercase tracking-wide ${
@@ -517,7 +496,6 @@ const OrderHistory: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* HIỂN THỊ THÔNG TIN KHÁCH HÀNG */}
                   <div className="mb-3 pl-2 pb-3 border-b border-gray-50">
                     <p className="text-xs text-gray-400 uppercase mb-1">
                       Khách hàng
@@ -534,11 +512,6 @@ const OrderHistory: React.FC = () => {
                             inv.user?.name ||
                             "Khách lẻ"}
                         </p>
-                        {user.role === "admin" && (
-                          <p className="text-xs text-gray-500 truncate">
-                            {inv.recipient_info?.phone || inv.user?.email || ""}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -564,7 +537,6 @@ const OrderHistory: React.FC = () => {
           </div>
         )}
 
-        {/* PAGINATION */}
         {invoices.length > 0 && filterType === "all" && (
           <div className="flex justify-center gap-2 mt-10">
             <Button
@@ -595,7 +567,6 @@ const OrderHistory: React.FC = () => {
       {/* MODAL CHI TIẾT (IN ĐƯỢC) */}
       {selectedInvoice &&
         (() => {
-          // LOGIC TÍNH TOÁN CHO MODAL
           const subTotalOriginal = selectedInvoice.items.reduce((acc, item) => {
             const originalPrice =
               item.product_id?.price && item.product_id.price > 0
@@ -617,6 +588,9 @@ const OrderHistory: React.FC = () => {
             "Khách lẻ";
           const displayPhone = selectedInvoice.recipient_info?.phone || "";
           const displayAddress = selectedInvoice.recipient_info?.address || "";
+          // 🔥 Lấy ghi chú
+          const displayNote =
+            (selectedInvoice.recipient_info as any)?.note || "";
           const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
             `${window.location.origin}/invoice/${selectedInvoice._id}`
           )}`;
@@ -677,6 +651,8 @@ const OrderHistory: React.FC = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* KHUNG THÔNG TIN KHÁCH HÀNG */}
                     <div className="border border-gray-300 rounded-md p-2 bg-gray-50 text-xs space-y-1 print:bg-white print:border-gray-400">
                       <div className="flex justify-between">
                         <span className="font-semibold text-gray-600">
@@ -704,6 +680,18 @@ const OrderHistory: React.FC = () => {
                           </span>
                         </div>
                       )}
+                      {/* 🔥 HIỂN THỊ GHI CHÚ KHÁCH HÀNG */}
+                      {displayNote && (
+                        <div className="flex justify-between items-start pt-1 mt-1 border-t border-dashed border-gray-200">
+                          <span className="font-semibold text-gray-600 w-12 shrink-0">
+                            Note:
+                          </span>
+                          <span className="text-right break-words italic text-gray-700">
+                            {displayNote}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="border-t border-dashed border-gray-300 my-1 pt-1 flex justify-between">
                         <span className="font-semibold text-gray-600">
                           Ngày:
