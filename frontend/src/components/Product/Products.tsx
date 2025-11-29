@@ -387,6 +387,26 @@ const Products: React.FC = () => {
                       )}
                     </div>
                   </Link>
+                  {/* ADD TO CART SLIDE UP */}
+                  <div
+                    className="
+                      absolute bottom-0 left-0 right-0 
+                      translate-y-full group-hover:translate-y-0
+                      bg-white/90 backdrop-blur-sm 
+                      flex justify-center py-3 
+                      transition-all duration-300
+                      z-20
+                    "
+                  >
+                    <button
+                      className="
+                        bg-orange-500 text-white text-sm px-4 py-2 rounded-lg 
+                        shadow-md hover:bg-orange-600 transition
+                      "
+                    >
+                      Thêm vào giỏ hàng
+                    </button>
+                  </div>
 
                   <div className="p-4">
                     <h3 className="text-sm font-semibold text-slate-800 truncate hover:text-orange-500 transition-colors">

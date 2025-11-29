@@ -4,6 +4,7 @@ import React from 'react'
 import Banner from '@/components/Banner/Banner'
 import Introduce from '@/components/Introduce/Introduce'
 import HomePageProduct from '@/components/Product/HomePageProduct'
+import Promote from '@/components/Promote/Promote'
 
 const HomePage = () => {
   return (
@@ -16,6 +17,9 @@ const HomePage = () => {
       </div>
       <div>
         <Introduce/>
+      </div>
+      <div>
+        <Promote/>
       </div>
       <div>
         <HomePageProduct/>
