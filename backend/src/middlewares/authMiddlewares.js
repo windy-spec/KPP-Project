@@ -35,7 +35,6 @@ export const protectedRoute = async (req, res, next) => {
 };
 
 // check role
-
 export const checkRole = (roles = []) => {
   // nếu roles là string → convert thành mảng
   if (typeof roles === "string") roles = [roles];

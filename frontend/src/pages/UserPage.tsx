@@ -1,18 +1,45 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
 import { z } from "zod";
-import { Eye, EyeOff } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Printer,
+  Trash2,
+  PackageOpen,
+} from "lucide-react";
 import Swal from "sweetalert2";
 
 // 🚨 BASE URL SERVER
 const SERVER_BASE_URL = "http://localhost:5001";
 
-// --- Type User ---
+// --- HELPER FORMATS ---
+const formatVND = (value: number) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const formatDateSafe = (dateString: string | undefined) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  return isNaN(date.getTime())
+    ? "-"
+    : `${date.getHours()}:${String(date.getMinutes()).padStart(
+        2,
+        "0"
+      )} - ${date.toLocaleDateString("vi-VN")}`;
+};
+
+// --- TYPES ---
 type User = {
+  _id: string;
   username: string;
   email: string;
   displayName: string;
@@ -20,6 +47,28 @@ type User = {
   avatarUrl?: string | null;
   role?: "admin" | "user";
 };
+
+interface InvoiceItem {
+  product_id: { _id?: string; name: string; price: number } | null;
+  quantity: number;
+  price?: number;
+  discount?: number;
+}
+
+interface Invoice {
+  _id: string;
+  createdAt: string;
+  recipient_info?: { name: string; phone: string; address: string };
+  user?: { name?: string; email?: string };
+  items: InvoiceItem[];
+  totalPrice?: number;
+  total_amount?: number;
+  shipping_fee?: number;
+  status?: string;
+  payment_method?: string;
+}
+
+type FilterType = "all" | "today" | "week" | "month";
 
 // --- Validation schemas ---
 const phoneSchema = z
@@ -30,12 +79,9 @@ const phoneSchema = z
       if (!val) return true;
       return /^0\d{9}$/.test(val);
     },
-    {
-      message: "Số điện thoại không hợp lệ (bắt đầu bằng 0 và có 10 chữ số)",
-    }
+    { message: "Số điện thoại không hợp lệ" }
   );
 
-// --- Mask email ---
 const maskEmail = (email: string) => {
   const [local, domain] = email.split("@");
   if (!domain) return email;
@@ -44,13 +90,11 @@ const maskEmail = (email: string) => {
 };
 
 const UserPage: React.FC = () => {
-  // === State user info ===
+  // === 1. USER STATE ===
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Loading ban đầu của trang
-  const [isSubmitting, setIsSubmitting] = useState(false); // Loading của nút submit form
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editMode, setEditMode] = useState(false);
-
-  // Form info states
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -58,12 +102,12 @@ const UserPage: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  // Tab state
+  // === 2. TAB STATE ===
   const [activeTab, setActiveTab] = useState<"info" | "orders" | "password">(
     "info"
   );
 
-  // === Password management states ===
+  // === 3. PASSWORD STATE ===
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -73,7 +117,16 @@ const UserPage: React.FC = () => {
   const [strength, setStrength] = useState(0);
   const [confirmStrength, setConfirmStrength] = useState(0);
 
-  // === Load user info ===
+  // === 4. ORDER HISTORY STATE (Mới thêm) ===
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 6;
+
+  // === INIT DATA ===
   useEffect(() => {
     const load = async () => {
       const token = localStorage.getItem("accessToken");
@@ -102,7 +155,111 @@ const UserPage: React.FC = () => {
     load();
   }, []);
 
-  // === Helper ===
+  // === LOGIC ORDERS (Mới thêm) ===
+  // Chỉ fetch orders khi tab là "orders" và user đã load xong
+  useEffect(() => {
+    if (activeTab === "orders" && user) {
+      const fetchInvoices = async () => {
+        setOrdersLoading(true);
+        const token = localStorage.getItem("accessToken");
+        try {
+          // Logic phân quyền: Admin xem tất cả (/invoice), User xem của mình (/invoice/me)
+          const endpoint =
+            user.role === "admin" ? "/api/invoice" : "/api/invoice/me";
+
+          const res = await fetch(
+            `${SERVER_BASE_URL}${endpoint}?page=${currentPage}&limit=${limit}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const data = await res.json();
+          const list = Array.isArray(data)
+            ? data
+            : data.invoices || data.docs || [];
+          const total = data.totalPages || Math.ceil(list.length / limit) || 1;
+
+          setInvoices(list);
+          setTotalPages(total);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setOrdersLoading(false);
+        }
+      };
+      fetchInvoices();
+    }
+  }, [activeTab, user, currentPage]);
+
+  // Client-side filter cho orders
+  const filteredInvoices = useMemo(() => {
+    if (filterType === "all") return invoices;
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    return invoices.filter((inv) => {
+      const invDate = new Date(inv.createdAt);
+      if (filterType === "today") return invDate >= todayStart;
+      if (filterType === "week") {
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - 7);
+        return invDate >= weekStart;
+      }
+      if (filterType === "month") {
+        const monthStart = new Date(todayStart);
+        monthStart.setMonth(monthStart.getMonth() - 1);
+        return invDate >= monthStart;
+      }
+      return true;
+    });
+  }, [invoices, filterType]);
+
+  const handleSelectInvoice = async (invoiceId: string) => {
+    const token = localStorage.getItem("accessToken");
+    try {
+      const res = await fetch(`${SERVER_BASE_URL}/api/invoice/${invoiceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setSelectedInvoice(data);
+    } catch (e) {
+      toast.error("Lỗi tải chi tiết đơn hàng");
+    }
+  };
+
+  const handleDeleteInvoice = async (
+    e: React.MouseEvent,
+    invoiceId: string
+  ) => {
+    e.stopPropagation();
+    const result = await Swal.fire({
+      title: "Xóa đơn hàng?",
+      text: "Không thể hoàn tác!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Xóa",
+    });
+
+    if (result.isConfirmed) {
+      const token = localStorage.getItem("accessToken");
+      try {
+        await fetch(`${SERVER_BASE_URL}/api/invoice/${invoiceId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setInvoices((prev) => prev.filter((inv) => inv._id !== invoiceId));
+        if (selectedInvoice?._id === invoiceId) setSelectedInvoice(null);
+        Swal.fire("Đã xóa!", "", "success");
+      } catch {
+        Swal.fire("Lỗi!", "Không xóa được", "error");
+      }
+    }
+  };
+
+  // === HELPER FUNCTIONS ===
   const initials = (name?: string) =>
     (name || "U")
       .split(" ")
@@ -110,8 +267,6 @@ const UserPage: React.FC = () => {
       .join("")
       .slice(0, 2)
       .toUpperCase();
-
-  // === Password strength logic ===
   const calculateStrength = (password: string) => {
     if (!password) return 0;
     let score = 0;
@@ -122,54 +277,41 @@ const UserPage: React.FC = () => {
     if (password.length >= 10) score++;
     return score;
   };
-
   const getStrengthLabel = (score: number) => {
-    switch (score) {
-      case 0:
-        return { label: "", color: "bg-gray-200", textColor: "text-gray-500" };
-      case 1:
-        return { label: "Yếu", color: "bg-red-500", textColor: "text-red-500" };
-      case 2:
-        return {
-          label: "Trung bình",
-          color: "bg-yellow-500",
-          textColor: "text-yellow-600",
-        };
-      case 3:
-        return {
-          label: "Khá mạnh",
-          color: "bg-orange-500",
-          textColor: "text-orange-500",
-        };
-      case 4:
-        return {
-          label: "Mạnh",
-          color: "bg-green-500",
-          textColor: "text-green-500",
-        };
-      case 5:
-        return {
-          label: "Rất mạnh",
-          color: "bg-blue-500",
-          textColor: "text-blue-500",
-        };
-      default:
-        return { label: "", color: "bg-gray-200", textColor: "text-gray-500" };
-    }
+    const labels = ["", "Yếu", "Trung bình", "Khá mạnh", "Mạnh", "Rất mạnh"];
+    const colors = [
+      "bg-gray-200",
+      "bg-red-500",
+      "bg-yellow-500",
+      "bg-orange-500",
+      "bg-green-500",
+      "bg-blue-500",
+    ];
+    const texts = [
+      "text-gray-500",
+      "text-red-500",
+      "text-yellow-600",
+      "text-orange-500",
+      "text-green-500",
+      "text-blue-500",
+    ];
+    return {
+      label: labels[score],
+      color: colors[score],
+      textColor: texts[score],
+    };
   };
 
   useEffect(() => {
     setStrength(calculateStrength(newPassword));
   }, [newPassword]);
-
   useEffect(() => {
     setConfirmStrength(calculateStrength(confirmPassword));
   }, [confirmPassword]);
 
-  // === Save user info (Update Profile) ===
+  // === SAVE PROFILE ===
   const onSave = async () => {
     if (!user) return;
-
     const result = phoneSchema.safeParse(phone.trim());
     if (!result.success) {
       setPhoneError(result.error.issues[0].message);
@@ -179,11 +321,6 @@ const UserPage: React.FC = () => {
     }
 
     const token = localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Không tìm thấy token xác thực.");
-      return;
-    }
-
     const formData = new FormData();
     formData.append("displayName", displayName.trim());
     formData.append("phone", phone.trim());
@@ -198,7 +335,7 @@ const UserPage: React.FC = () => {
 
     try {
       setLoading(true);
-      toast.loading("Đang lưu thông tin...");
+      toast.loading("Đang lưu...");
       const res = await fetch(`${SERVER_BASE_URL}/api/users/me`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
@@ -206,61 +343,27 @@ const UserPage: React.FC = () => {
       });
       const data = await res.json();
       toast.dismiss();
-      if (!res.ok) throw new Error(data.message || "Cập nhật thất bại.");
-      const updatedUser: User = data.user;
-      setUser(updatedUser);
-      setDisplayName(updatedUser.displayName || "");
-      setPhone(updatedUser.phone || "");
-      setNewAvatarFile(null);
-      setAvatarPreview(null);
-      if (fileRef.current) fileRef.current.value = "";
+      if (!res.ok) throw new Error(data.message);
+      setUser(data.user);
       setEditMode(false);
-      toast.success(data.message || "Cập nhật thông tin thành công!");
+      toast.success("Cập nhật thành công!");
     } catch (e: any) {
       toast.dismiss();
-      console.error(e);
-      toast.error(e.message || "Đã xảy ra lỗi khi lưu thông tin.");
+      toast.error(e.message || "Lỗi cập nhật.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🚨 HÀM LOGOUT
+  // === LOGOUT ===
   const performLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("resetEmail");
+    localStorage.clear();
     window.location.href = "/signin";
   };
 
   if (loading)
-    return (
-      <div className="max-w-3xl mx-auto p-6">Đang tải thông tin tài khoản…</div>
-    );
-
-  if (!user)
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white border-gray-1500 rounded-lg p-6 shadow-sm text-center">
-          <h1 className="text-xl font-semibold mb-2">Bạn chưa đăng nhập</h1>
-          <p className="text-gray-600 mb-4">
-            Vui lòng đăng nhập để xem và chỉnh sửa thông tin tài khoản.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <a href="/signin">
-              <Button className="border hover:border-orange-500 hover:bg-white hover:text-orange-500">
-                Đăng nhập
-              </Button>
-            </a>
-            <a href="/signup">
-              <Button className="border hover:border-orange-500 hover:bg-white hover:text-orange-500">
-                Đăng ký
-              </Button>
-            </a>
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="p-6 text-center">Đang tải thông tin...</div>;
+  if (!user) return <div className="p-6 text-center">Vui lòng đăng nhập.</div>;
 
   const strengthInfo = getStrengthLabel(strength);
   const confirmStrengthInfo = getStrengthLabel(confirmStrength);
@@ -268,9 +371,20 @@ const UserPage: React.FC = () => {
   return (
     <div>
       <Navbar />
+
+      {/* CSS cho In ấn */}
+      <style>{`
+        @media print { 
+          body * { visibility: hidden; } 
+          #printable-area, #printable-area * { visibility: visible; } 
+          #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; } 
+          .modal-overlay { background: white; position: fixed; inset: 0; z-index: 9999; }
+        }
+      `}</style>
+
       <div className="min-h-svh bg-gradient-pattern pt-8 md:pt-10 pb-16 md:pb-24 px-3 sm:px-4 md:px-6">
         <div className="mx-auto max-w-7xl bg-white rounded-lg border border-gray-200 overflow-hidden grid grid-cols-1 md:grid-cols-[260px_1fr] shadow-sm mb-6">
-          {/* Sidebar */}
+          {/* SIDEBAR */}
           <aside className="bg-white md:border-r border-gray-200 border-b md:border-b-0 md:sticky md:top-24">
             <div className="px-4 py-3 border-b border-gray-200 font-semibold text-base">
               Tài khoản
@@ -309,12 +423,12 @@ const UserPage: React.FC = () => {
             </nav>
           </aside>
 
-          {/* Content */}
+          {/* CONTENT AREA */}
           <section className="bg-white p-4 sm:p-6 md:p-8">
+            {/* --- TAB: INFO --- */}
             {activeTab === "info" && (
-              <>
-                {/* Avatar */}
-                <div className="flex justify-center mb-4 sm:mb-6">
+              <div className="animate-in fade-in duration-300">
+                <div className="flex justify-center mb-6">
                   <div className="flex flex-col items-center gap-3">
                     {avatarPreview || user.avatarUrl ? (
                       <img
@@ -325,20 +439,19 @@ const UserPage: React.FC = () => {
                             : "")
                         }
                         alt="avatar"
-                        className="w-20 h-20 md:w-16 md:h-16 rounded-full object-cover border"
+                        className="w-20 h-20 rounded-full object-cover border"
                         onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = `https://placehold.co/64x64/CCCCCC/333333?text=${initials(
+                          e.currentTarget.src = `https://placehold.co/64x64?text=${initials(
                             user.displayName
                           )}`;
                         }}
                       />
                     ) : (
-                      <div className="w-20 h-20 md:w-16 md:h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
+                      <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600">
                         {initials(user.displayName)}
                       </div>
                     )}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex gap-2">
                       <input
                         ref={fileRef}
                         type="file"
@@ -354,7 +467,6 @@ const UserPage: React.FC = () => {
                       />
                       <Button
                         size="sm"
-                        className="w-full sm:w-auto"
                         onClick={() => fileRef.current?.click()}
                         disabled={!editMode}
                       >
@@ -363,7 +475,6 @@ const UserPage: React.FC = () => {
                       {(avatarPreview || user.avatarUrl) && editMode && (
                         <Button
                           size="sm"
-                          className="w-full sm:w-auto"
                           variant="ghost"
                           onClick={() => {
                             setAvatarPreview(null);
@@ -382,21 +493,18 @@ const UserPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Form info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm mb-1">Tên hiển thị</label>
+                    <label className="text-sm mb-1 block">Tên hiển thị</label>
                     <Input
-                      className="border-gray-300"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       disabled={!editMode}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Số điện thoại</label>
+                    <label className="text-sm mb-1 block">Số điện thoại</label>
                     <Input
-                      className="border-gray-300"
                       value={phone}
                       onChange={(e) => {
                         setPhone(e.target.value);
@@ -409,22 +517,12 @@ const UserPage: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Email</label>
-                    <Input
-                      className="border-gray-300"
-                      value={maskEmail(user.email)}
-                      disabled
-                      readOnly
-                    />
+                    <label className="text-sm mb-1 block">Email</label>
+                    <Input value={maskEmail(user.email)} disabled readOnly />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Tên đăng nhập</label>
-                    <Input
-                      className="border-gray-300"
-                      value={user.username}
-                      disabled
-                      readOnly
-                    />
+                    <label className="text-sm mb-1 block">Tên đăng nhập</label>
+                    <Input value={user.username} disabled readOnly />
                   </div>
                 </div>
 
@@ -437,7 +535,8 @@ const UserPage: React.FC = () => {
                         Lưu
                       </Button>
                       <Button
-                        className="border border-red-700 bg-white text-red-700 hover:bg-red-700 hover:text-white"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                         onClick={() => {
                           setEditMode(false);
                           setDisplayName(user.displayName || "");
@@ -451,96 +550,293 @@ const UserPage: React.FC = () => {
                     </>
                   )}
                 </div>
-                {editMode && (
-                  <p className="text-xs text-gray-500 mt-3">
-                    Lưu ý: Tất cả các thay đổi (kể cả ảnh) sẽ được lưu trong một
-                    yêu cầu.
-                  </p>
-                )}
-              </>
-            )}
-
-            {activeTab === "orders" && (
-              <div className="text-center text-gray-600 py-10">
-                Danh sách đơn hàng sẽ hiển thị ở đây
               </div>
             )}
 
+            {/* --- TAB: ORDERS (Đã tích hợp Full Code) --- */}
+            {activeTab === "orders" && (
+              <div className="animate-in fade-in duration-300">
+                {/* Header Filter */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800">
+                      {user.role === "admin"
+                        ? "Quản lý Đơn hàng"
+                        : "Lịch sử đơn hàng"}
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Danh sách các đơn hàng gần đây
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {(["all", "today", "week", "month"] as FilterType[]).map(
+                      (type) => (
+                        <Button
+                          key={type}
+                          variant={filterType === type ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setFilterType(type)}
+                          className={`text-xs h-8 ${
+                            filterType === type
+                              ? "bg-orange-500 hover:bg-orange-600"
+                              : ""
+                          }`}
+                        >
+                          {type === "all"
+                            ? "Tất cả"
+                            : type === "today"
+                            ? "Hôm nay"
+                            : type === "week"
+                            ? "Tuần này"
+                            : "Tháng này"}
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {/* Loading / Error / Empty / List */}
+                {ordersLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="animate-spin w-8 h-8 text-orange-500" />
+                  </div>
+                ) : filteredInvoices.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                    <PackageOpen className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500">
+                      Không tìm thấy đơn hàng nào.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {filteredInvoices.map((inv) => (
+                      <div
+                        key={inv._id}
+                        onClick={() => handleSelectInvoice(inv._id)}
+                        className="bg-white p-4 rounded-lg border border-gray-200 hover:border-orange-400 hover:shadow-md cursor-pointer transition-all relative overflow-hidden"
+                      >
+                        <div
+                          className={`absolute top-0 left-0 w-1 h-full ${
+                            inv.status === "COMPLETED" || inv.status === "PAID"
+                              ? "bg-green-500"
+                              : inv.status === "CANCELLED"
+                              ? "bg-red-500"
+                              : "bg-orange-500"
+                          }`}
+                        />
+
+                        <div className="flex justify-between items-center mb-2 pl-3">
+                          <span className="font-mono font-bold text-gray-700">
+                            #{inv._id.slice(-6).toUpperCase()}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 text-[10px] rounded-full font-bold uppercase ${
+                              inv.status === "PAID"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-orange-100 text-orange-700"
+                            }`}
+                          >
+                            {inv.status === "PAID" ? "Đã TT" : inv.status}
+                          </span>
+                        </div>
+
+                        <div className="pl-3 text-sm text-gray-600 space-y-1">
+                          <div className="font-medium truncate">
+                            {inv.recipient_info?.name ||
+                              inv.user?.name ||
+                              "Khách lẻ"}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {formatDateSafe(inv.createdAt)}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100 pl-3">
+                          <span className="font-bold text-orange-600">
+                            {formatVND(inv.totalPrice || inv.total_amount || 0)}
+                          </span>
+                          {(user.role === "admin" ||
+                            (inv.status !== "COMPLETED" &&
+                              inv.status !== "PAID")) && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              onClick={(e) => handleDeleteInvoice(e, inv._id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {invoices.length > 0 && filterType === "all" && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                    >
+                      Trước
+                    </Button>
+                    <span className="text-sm flex items-center px-2 text-gray-600">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage >= totalPages}
+                    >
+                      Sau
+                    </Button>
+                  </div>
+                )}
+
+                {/* --- MODAL CHI TIẾT (IN ĐƯỢC) --- */}
+                {selectedInvoice && (
+                  <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm modal-overlay"
+                    onClick={() => setSelectedInvoice(null)}
+                  >
+                    <div
+                      className="bg-white rounded-lg shadow-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div
+                        id="printable-area"
+                        className="p-5 font-mono text-sm bg-white"
+                      >
+                        {/* Bill Header */}
+                        <div className="text-center mb-4 border-b border-dashed pb-4">
+                          <h3 className="text-lg font-bold uppercase">
+                            Hóa Đơn
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            #{selectedInvoice._id.slice(-6).toUpperCase()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatDateSafe(selectedInvoice.createdAt)}
+                          </p>
+                        </div>
+                        {/* Customer Info */}
+                        <div className="mb-4 text-xs space-y-1">
+                          <div className="flex">
+                            <span className="w-16 text-gray-500">Khách:</span>{" "}
+                            <span className="font-bold">
+                              {selectedInvoice.recipient_info?.name ||
+                                selectedInvoice.user?.name}
+                            </span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-16 text-gray-500">SĐT:</span>{" "}
+                            <span>{selectedInvoice.recipient_info?.phone}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-16 text-gray-500">Đ/C:</span>{" "}
+                            <span>
+                              {selectedInvoice.recipient_info?.address}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Items */}
+                        <div className="border-t border-b border-dashed border-gray-300 py-2 mb-4">
+                          {selectedInvoice.items.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between mb-1"
+                            >
+                              <div className="truncate w-2/3">
+                                <span className="font-bold mr-1">
+                                  {item.quantity}x
+                                </span>{" "}
+                                {item.product_id?.name || "SP"}
+                              </div>
+                              <div className="font-medium">
+                                {formatVND(
+                                  (item.price || item.product_id?.price || 0) *
+                                    item.quantity
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Total */}
+                        <div className="flex justify-between items-end mb-6">
+                          <span className="font-bold text-gray-800">
+                            TỔNG CỘNG
+                          </span>
+                          <span className="text-xl font-bold text-orange-600">
+                            {formatVND(
+                              selectedInvoice.totalPrice ||
+                                selectedInvoice.total_amount ||
+                                0
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-center text-[10px] text-gray-400">
+                          Cảm ơn quý khách!
+                        </div>
+                      </div>
+                      {/* Action Buttons */}
+                      <div className="p-4 pt-0 flex flex-col gap-2 print:hidden">
+                        <Button
+                          onClick={() => window.print()}
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-white gap-2"
+                        >
+                          <Printer className="w-4 h-4" /> In Hóa Đơn
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedInvoice(null)}
+                          className="w-full"
+                        >
+                          Đóng
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- TAB: PASSWORD --- */}
             {activeTab === "password" && (
-              <div className="max-w-md mx-auto p-6">
+              <div className="max-w-md mx-auto p-4 animate-in fade-in duration-300">
                 <h2 className="text-xl font-bold text-center mb-6">
                   ĐỔI MẬT KHẨU
                 </h2>
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (!oldPassword || !newPassword || !confirmPassword)
+                      return Swal.fire(
+                        "Lỗi",
+                        "Vui lòng nhập đủ thông tin",
+                        "error"
+                      );
+                    if (newPassword !== confirmPassword)
+                      return Swal.fire(
+                        "Lỗi",
+                        "Mật khẩu xác nhận không khớp",
+                        "error"
+                      );
+                    if (newPassword.length < 6)
+                      return Swal.fire(
+                        "Lỗi",
+                        "Mật khẩu phải từ 6 ký tự",
+                        "warning"
+                      );
 
-                    // 1. Khóa nút và hiện Loading ngay lập tức
                     setIsSubmitting(true);
-
-                    Swal.fire({
-                      title: "Đang xử lý...",
-                      text: "Vui lòng chờ trong giây lát",
-                      allowOutsideClick: false,
-                      allowEscapeKey: false,
-                      didOpen: () => {
-                        Swal.showLoading();
-                      },
-                    });
-
-                    // 2. GIẢ LẬP CHỜ 2 GIÂY (Để tạo hiệu ứng đang kiểm tra)
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-                    // 3. BÂY GIỜ MỚI KIỂM TRA LỖI (VALIDATION)
-                    if (!oldPassword) {
-                      Swal.fire({
-                        icon: "error",
-                        title: "Lỗi",
-                        text: "Vui lòng nhập mật khẩu cũ",
-                        confirmButtonColor: "#ea580c",
-                      });
-                      setIsSubmitting(false);
-                      return;
-                    }
-                    if (newPassword.length < 6) {
-                      Swal.fire({
-                        icon: "warning",
-                        title: "Mật khẩu yếu",
-                        text: "Mật khẩu mới phải có ít nhất 6 ký tự",
-                        confirmButtonColor: "#ea580c",
-                      });
-                      setIsSubmitting(false);
-                      return;
-                    }
-                    if (newPassword !== confirmPassword) {
-                      Swal.fire({
-                        icon: "error",
-                        title: "Lỗi",
-                        text: "Mật khẩu xác nhận không khớp!",
-                        confirmButtonColor: "#ea580c",
-                      });
-                      setIsSubmitting(false);
-                      return;
-                    }
-                    if (oldPassword === newPassword) {
-                      Swal.fire({
-                        icon: "warning",
-                        title: "Cảnh báo",
-                        text: "Mật khẩu mới không được trùng với mật khẩu cũ",
-                        confirmButtonColor: "#ea580c",
-                      });
-                      setIsSubmitting(false);
-                      return;
-                    }
-
                     const token = localStorage.getItem("accessToken");
-                    if (!token) {
-                      toast.error("Vui lòng đăng nhập lại");
-                      setIsSubmitting(false);
-                      return;
-                    }
-
-                    // 4. NẾU MỌI THỨ OK -> GỌI API
                     try {
                       const res = await fetch(
                         `${SERVER_BASE_URL}/api/users/change-password`,
@@ -552,178 +848,110 @@ const UserPage: React.FC = () => {
                           },
                           body: JSON.stringify({
                             currentPassword: oldPassword,
-                            newPassword: newPassword,
+                            newPassword,
                             confirmNewPassword: confirmPassword,
                           }),
                         }
                       );
-
                       const data = await res.json();
+                      if (!res.ok) throw new Error(data.message);
 
-                      // 5. XỬ LÝ KẾT QUẢ API
-                      if (!res.ok) {
-                        Swal.fire({
-                          icon: "error",
-                          title: "Thất bại",
-                          text: data.message || "Đổi mật khẩu thất bại",
-                          confirmButtonColor: "#d33",
-                        });
-                      } else {
-                        Swal.fire({
-                          title: "Đổi mật khẩu thành công!",
-                          text: "Bạn muốn đăng xuất để đăng nhập lại hay tiếp tục sử dụng?",
-                          icon: "success",
-                          showCancelButton: true,
-                          confirmButtonText: "Đăng xuất ngay",
-                          cancelButtonText: "Ở lại trang này",
-                          confirmButtonColor: "#ea580c",
-                          cancelButtonColor: "#6b7280",
-                          reverseButtons: true,
-                          allowOutsideClick: false,
-                        }).then((result) => {
-                          if (result.isConfirmed) {
-                            performLogout();
-                          } else {
-                            setOldPassword("");
-                            setNewPassword("");
-                            setConfirmPassword("");
-                            toast.success("Bạn có thể tiếp tục sử dụng!");
-                          }
-                        });
-                      }
-                    } catch (error) {
-                      console.error("Change pass error:", error);
                       Swal.fire({
-                        icon: "error",
-                        title: "Lỗi hệ thống",
-                        text: "Vui lòng thử lại sau.",
-                        confirmButtonColor: "#ea580c",
-                      });
+                        title: "Thành công!",
+                        text: "Vui lòng đăng nhập lại.",
+                        icon: "success",
+                        confirmButtonText: "Đăng xuất",
+                      }).then(() => performLogout());
+                    } catch (err: any) {
+                      Swal.fire("Thất bại", err.message, "error");
                     } finally {
                       setIsSubmitting(false);
                     }
                   }}
                   className="flex flex-col gap-4"
                 >
-                  {/* 🔹 Mật khẩu cũ */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Mật khẩu cũ
-                    </label>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Mật khẩu cũ</label>
                     <div className="relative">
                       <Input
                         type={showOld ? "text" : "password"}
-                        placeholder="Nhập mật khẩu cũ"
-                        className="pr-12"
                         value={oldPassword}
                         onChange={(e) => setOldPassword(e.target.value)}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowOld((s) => !s)}
-                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowOld(!showOld)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500"
                       >
                         {showOld ? (
-                          <EyeOff className="w-5 h-5" />
+                          <EyeOff className="w-4 h-4" />
                         ) : (
-                          <Eye className="w-5 h-5" />
+                          <Eye className="w-4 h-4" />
                         )}
                       </button>
                     </div>
                   </div>
 
-                  {/* 🔹 Mật khẩu mới */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Mật khẩu mới
-                    </label>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Mật khẩu mới</label>
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
-                        placeholder="Nhập mật khẩu mới"
-                        className="pr-12"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword((s) => !s)}
-                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500"
                       >
                         {showPassword ? (
-                          <EyeOff className="w-5 h-5" />
+                          <EyeOff className="w-4 h-4" />
                         ) : (
-                          <Eye className="w-5 h-5" />
+                          <Eye className="w-4 h-4" />
                         )}
                       </button>
                     </div>
-
-                    {/* Thanh độ mạnh Mật khẩu mới */}
                     {newPassword && (
-                      <div className="mt-2">
-                        <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-300 ${strengthInfo.color}`}
-                            style={{ width: `${(strength / 5) * 100}%` }}
-                          />
-                        </div>
-                        <p
-                          className={`text-xs mt-1 font-medium ${strengthInfo.textColor}`}
-                        >
-                          Độ mạnh: {strengthInfo.label}
+                      <div className="mt-1">
+                        <div
+                          className={`h-1 rounded-full ${strengthInfo.color}`}
+                          style={{ width: `${(strength / 5) * 100}%` }}
+                        />
+                        <p className={`text-xs ${strengthInfo.textColor}`}>
+                          {strengthInfo.label}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* 🔹 Xác nhận mật khẩu */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">
                       Xác nhận mật khẩu
                     </label>
                     <div className="relative">
                       <Input
                         type={showConfirm ? "text" : "password"}
-                        placeholder="Nhập lại mật khẩu"
-                        className="pr-12"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowConfirm((s) => !s)}
-                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute inset-y-0 right-3 flex items-center text-gray-500"
                       >
                         {showConfirm ? (
-                          <EyeOff className="w-5 h-5" />
+                          <EyeOff className="w-4 h-4" />
                         ) : (
-                          <Eye className="w-5 h-5" />
+                          <Eye className="w-4 h-4" />
                         )}
                       </button>
                     </div>
-
-                    {/* Thanh độ mạnh Xác nhận mật khẩu */}
-                    {confirmPassword && (
-                      <div className="mt-2">
-                        <div className="h-1.5 rounded-full bg-gray-200 w-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-300 ${confirmStrengthInfo.color}`}
-                            style={{ width: `${(confirmStrength / 5) * 100}%` }}
-                          />
-                        </div>
-                        <p
-                          className={`text-xs mt-1 font-medium ${confirmStrengthInfo.textColor}`}
-                        >
-                          Độ mạnh: {confirmStrengthInfo.label}
-                        </p>
-                      </div>
-                    )}
                   </div>
 
-                  {/* 🔘 Button */}
                   <Button
                     type="submit"
-                    className="bg-orange-600 hover:bg-orange-700 text-white w-full py-3 rounded-lg text-base font-semibold"
+                    className="bg-orange-600 hover:bg-orange-700 w-full mt-2"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? "Đang xử lý..." : "Đổi mật khẩu"}
