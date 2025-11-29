@@ -2,11 +2,11 @@ import React from "react";
 import {
   IconShieldCheck,
   IconTruck,
-  IconPercentage,
   IconHeadphones,
   IconGift,
   IconRefresh,
   IconLoader2,
+  IconTicket
 } from '@tabler/icons-react';
 
 type Benefit = {
@@ -68,7 +68,7 @@ const benefits: Benefit[] = [
     bullets: ["Giao trong ngày cho khu vực nội thành", "Theo dõi đơn hàng realtime", "Dịch vụ lắp/đóng gói bảo vệ sản phẩm"],
   },
   {
-    icon: <IconPercentage className="w-8 h-8 text-red-600" />,
+    icon: <IconTicket className="w-8 h-8 text-red-600" />,
     title: "Giá ưu đãi minh bạch",
     desc: "Chiết khấu rõ ràng theo dung tích & dòng sản phẩm, không phí ẩn.",
     details:
