@@ -1,34 +1,34 @@
-import Navbar from '@/components/Navbar/Navbar'
-import Footer from '@/components/Footer/Footer'
-import React from 'react'
-import Banner from '@/components/Banner/Banner'
-import Introduce from '@/components/Introduce/Introduce'
-import HomePageProduct from '@/components/Product/HomePageProduct'
-import Promote from '@/components/Promote/Promote'
+import Navbar from "@/components/Navbar/Navbar";
+import Footer from "@/components/Footer/Footer";
+import React from "react";
+import Banner from "@/components/Banner/Banner";
+import Introduce from "@/components/Introduce/Introduce";
+import HomePageProduct from "@/components/Product/HomePageProduct";
+import Promote from "@/components/Promote/Promote";
 
 const HomePage = () => {
   return (
     <>
       <div>
-        <Navbar/>
+        <Navbar />
       </div>
       <div>
-        <Banner/>
+        <Banner />
       </div>
       <div>
-        <Introduce/>
+        <Introduce />
       </div>
       <div>
-        <Promote/>
+        <HomePageProduct />
       </div>
       <div>
-        <HomePageProduct/>
+        <Promote />
       </div>
       <div>
-        <Footer/>
+        <Footer />
       </div>
     </>
-  )
-}
+  );
+};
 
-export default HomePage
+export default HomePage;
