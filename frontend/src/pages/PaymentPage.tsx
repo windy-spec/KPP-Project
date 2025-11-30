@@ -417,6 +417,8 @@ const PaymentPage: React.FC = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // --- SỬA: Trạng thái cho validation số điện thoại
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [address, setAddress] = useState("");
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
@@ -437,6 +439,14 @@ const PaymentPage: React.FC = () => {
       setPhone(user.phone || "");
     }
   }, [user]);
+
+  // --- SỬA: Hàm kiểm tra số điện thoại (chỉ dùng khi submit)
+  // Quy tắc: Phải bắt đầu bằng '09' và tiếp theo là 8 chữ số -> tổng 10 chữ số
+  const validatePhone = (value: string) => {
+    const cleaned = String(value).trim();
+    const re = /^0\d{9}$/; // Ví dụ: 0912345678
+    return re.test(cleaned);
+  };
 
   // Derived Data
   const items = useMemo(() => cart?.items || [], [cart]);
@@ -481,6 +491,13 @@ const PaymentPage: React.FC = () => {
     setOrderError(null);
     if (!name || !phone || !address || !province || !district) {
       setOrderError("Vui lòng điền đầy đủ thông tin giao hàng.");
+      return;
+    }
+
+    // --- SỬA: Kiểm tra hợp lệ số điện thoại theo quy tắc '09xxxxxxxx'
+    if (!validatePhone(phone)) {
+      setOrderError("Số điện thoại không hợp lệ. Vui lòng nhập SĐT bắt đầu bằng 09 và đủ 10 chữ số.");
+      setPhoneError("SĐT phải bắt đầu bằng '09' và có 10 chữ số");
       return;
     }
 
@@ -663,19 +680,27 @@ const PaymentPage: React.FC = () => {
                     className={inputStyle}
                     placeholder="Họ và tên"
                     value={name}
+                    // --- SỬA: Khóa trường tên nếu đã đăng nhập (lock lại theo yêu cầu)
+                    readOnly={!!user}
                     onChange={(e) => setName(e.target.value)}
                   />
                   <input
                     className={inputStyle}
                     placeholder="Email"
                     value={email}
+                    // --- SỬA: Khóa trường email nếu đã đăng nhập (lock lại theo yêu cầu)
+                    readOnly={!!user}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                   <input
                     className={inputStyle}
                     placeholder="Số điện thoại"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    // --- SỬA: BỎ validate realtime, chỉ set giá trị. Nếu trước đó có lỗi, clear khi user sửa
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (phoneError) setPhoneError(null);
+                    }}
                   />
                   <input
                     className={inputStyle}
