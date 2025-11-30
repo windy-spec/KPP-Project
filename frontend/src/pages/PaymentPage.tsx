@@ -441,7 +441,7 @@ const PaymentPage: React.FC = () => {
   }, [user]);
 
   // --- SỬA: Hàm kiểm tra số điện thoại (chỉ dùng khi submit)
-  // Quy tắc: Phải bắt đầu bằng '09' và tiếp theo là 8 chữ số -> tổng 10 chữ số
+  // Quy tắc: Phải bắt đầu bằng '0' và tiếp theo là 9 chữ số -> tổng 10 chữ số
   const validatePhone = (value: string) => {
     const cleaned = String(value).trim();
     const re = /^0\d{9}$/; // Ví dụ: 0912345678
