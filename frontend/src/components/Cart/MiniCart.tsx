@@ -38,7 +38,40 @@ const MiniCart: React.FC = () => {
   // Hàm gọi API lấy giỏ hàng
   const fetchCart = async () => {
     const token = localStorage.getItem("accessToken");
-    if (!token) return;
+    // If no token (guest), try to read cart from localStorage fallback
+    if (!token) {
+      try {
+        const raw = localStorage.getItem("cart");
+        if (!raw) {
+          setItems([]);
+          return;
+        }
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return setItems([]);
+
+        // Map localStorage shape to CartItem[] used by MiniCart
+        const mapped: CartItem[] = arr
+          .slice()
+          .reverse()
+          .slice(0, 5)
+          .map((it: any) => ({
+            _id: it.productId || it.id || JSON.stringify(it),
+            quantity: it.quantity || 1,
+            product: {
+              _id: it.productId || (it.product && it.product._id) || "",
+              name: it.name || (it.product && it.product.name) || "Sản phẩm",
+              price: it.price || (it.product && it.product.price) || 0,
+              avatar: it.avatar || (it.product && it.product.avatar),
+            },
+          }));
+
+        setItems(mapped);
+      } catch (e) {
+        console.error("Lỗi đọc cart từ localStorage", e);
+        setItems([]);
+      }
+      return;
+    }
 
     try {
       setLoading(true);
@@ -70,12 +103,17 @@ const MiniCart: React.FC = () => {
     };
 
     window.addEventListener("cartUpdated", handler);
+    // --- SỬA: Lắng nghe thêm event 'cartUpdatedShow' từ các component khác (như danh sách sản phẩm)
+    // Mục đích: đảm bảo MiniCart luôn mở sau khi nhấn "Thêm vào giỏ hàng" ở nhiều nơi
+    window.addEventListener("cartUpdatedShow", handler);
 
     // Load lần đầu (ẩn) để có dữ liệu sẵn nếu cần
     fetchCart();
 
     return () => {
       window.removeEventListener("cartUpdated", handler);
+      // Loại bỏ listener bổ sung để tránh rò rỉ bộ nhớ
+      window.removeEventListener("cartUpdatedShow", handler);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
@@ -163,7 +201,7 @@ const MiniCart: React.FC = () => {
             Xem giỏ hàng
           </Link>
           <Link
-            to="/thanh-toan" // Đổi thành link thanh toán của bạn (VD: /payment)
+            to="/thanh-toan" 
             onClick={() => setShow(false)}
             className="px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 text-center transition shadow-sm"
           >

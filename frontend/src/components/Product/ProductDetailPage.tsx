@@ -101,7 +101,51 @@ const ProductDetailPage: React.FC = () => {
         }
       );
       toast.success("Đã thêm vào giỏ!");
-      window.dispatchEvent(new Event("cartUpdated")); // Update navbar
+      // Nếu là guest thì duy trì ở localStorage để MiniCart/Nav có thể đọc được
+      if (!token) {
+        try {
+          const raw = localStorage.getItem("cart");
+          const arr = raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+          // Tìm sản phẩm hiện có trong local storage
+          const idx = arr.findIndex((it: any) => it.productId === product._id);
+          if (idx >= 0) {
+            arr[idx].quantity = (arr[idx].quantity || 0) + quantity;
+          } else {
+            arr.push({
+              productId: product._id,
+              name: product.name,
+              price: product.final_price || product.price,
+              avatar: product.avatar || product.images?.[0] || null,
+              quantity,
+            });
+          }
+          localStorage.setItem("cart", JSON.stringify(arr));
+        } catch (e) {
+          console.error("Lỗi lưu cart vào localStorage", e);
+        }
+      } else {
+        // Nếu là user đã đăng nhập: đồng bộ lại localStorage từ server để Navbar badge cập nhật
+        try {
+          const cartRes = await axios.get(`${SERVER_BASE_URL}/api/cart`, {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const serverItems = cartRes.data?.items || [];
+          const local = serverItems.map((it: any) => ({
+            productId: it.product?._id || (it.product && it.product.id) || JSON.stringify(it.product),
+            name: it.product?.name || "Sản phẩm",
+            price: it.price_discount || it.price_original || it.product?.price || 0,
+            avatar: it.product?.avatar || null,
+            quantity: it.quantity || 1,
+          }));
+          localStorage.setItem("cart", JSON.stringify(local));
+        } catch (e) {
+          console.error("Không thể đồng bộ cart từ server sau khi thêm", e);
+        }
+      }
+
+      // Thông báo cho UI Minicart/Navbar update
+      window.dispatchEvent(new Event("cartUpdated")); // Update navbar / mini cart
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi thêm giỏ hàng");
     } finally {
