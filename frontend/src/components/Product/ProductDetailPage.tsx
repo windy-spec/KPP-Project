@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom"; // Thêm useNavigate
 import { Button } from "@/components/ui/button";
 import Navbar from "../Navbar/Navbar";
 import Footer from "../Footer/Footer";
@@ -21,7 +21,6 @@ type Product = {
   quantity: number;
   is_Active: boolean;
   category: Category | null;
-  // 🚨 Dữ liệu mới
   final_price?: number;
   discount_info?: { percent: number; code: string } | null;
 };
@@ -31,17 +30,18 @@ const getFullImageUrl = (path?: string) =>
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate(); // Hook chuyển hướng
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
+
+  // State quantity: Cho phép là string để user xóa rỗng được
+  const [quantity, setQuantity] = useState<number | string>(1);
+
   const [isAdding, setIsAdding] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [triedHighRes, setTriedHighRes] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // Fetch Product
   useEffect(() => {
     if (!id) {
       setError("Lỗi ID");
@@ -51,7 +51,6 @@ const ProductDetailPage: React.FC = () => {
     const fetchProductDetail = async () => {
       try {
         setLoading(true);
-        // API này giờ đã trả về final_price và discount_info
         const res = await axios.get(`${SERVER_BASE_URL}/api/product/${id}`);
         setProduct(res.data);
       } catch (err: any) {
@@ -67,12 +66,10 @@ const ProductDetailPage: React.FC = () => {
     fetchProductDetail();
   }, [id]);
 
-  // Update Image & Quantity
   useEffect(() => {
     if (product?.avatar) setCurrentImage(getFullImageUrl(product.avatar));
     else if (product?.images && product.images.length > 0)
       setCurrentImage(getFullImageUrl(product.images[0]));
-    setTriedHighRes(false);
     setQuantity(1);
   }, [product]);
 
@@ -83,9 +80,84 @@ const ProductDetailPage: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(value);
 
+  // --- LOGIC INPUT SỐ LƯỢNG MỚI ---
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === "") {
+      setQuantity("");
+      return;
+    }
+    const num = parseInt(val, 10);
+    if (isNaN(num)) return;
+
+    if (product && num > product.quantity) {
+      setQuantity(product.quantity);
+      toast.error(`Chỉ còn ${product.quantity} sản phẩm!`);
+    } else {
+      setQuantity(num);
+    }
+  };
+
+  const handleBlurQuantity = () => {
+    if (quantity === "" || (typeof quantity === "number" && quantity < 1)) {
+      setQuantity(1);
+    }
+  };
+
+  const decreaseQty = () => {
+    setQuantity((prev) => {
+      const q = typeof prev === "number" ? prev : 1;
+      return Math.max(1, q - 1);
+    });
+  };
+
+  const increaseQty = () => {
+    if (!product) return;
+    setQuantity((prev) => {
+      const q = typeof prev === "number" ? prev : 1;
+      if (q >= product.quantity) {
+        toast.error("Đã đạt giới hạn tồn kho");
+        return q;
+      }
+      return q + 1;
+    });
+  };
+
+  // --- LOGIC MUA NGAY ---
+  const handleBuyNow = () => {
+    if (!product) return;
+    if (product.quantity <= 0) {
+      toast.error("Sản phẩm đã hết hàng!");
+      return;
+    }
+
+    const qtyNumber = typeof quantity === "number" ? quantity : 1;
+    const salePrice = product.final_price || product.price;
+
+    navigate("/thanh-toan", {
+      state: {
+        directBuy: {
+          items: [
+            {
+              product_id: product._id,
+              product: product,
+              quantity: qtyNumber,
+              price_original: product.price,
+              price_discount: salePrice,
+              Total_price: salePrice * qtyNumber,
+            },
+          ],
+          totalAmount: salePrice * qtyNumber,
+        },
+      },
+    });
+  };
+
   const handleAddToCart = async () => {
     if (!product) return;
-    if (product.quantity < quantity) {
+    const qtyNumber = typeof quantity === "number" ? quantity : 1;
+
+    if (product.quantity < qtyNumber) {
       toast.error("Quá số lượng tồn kho!");
       return;
     }
@@ -94,14 +166,58 @@ const ProductDetailPage: React.FC = () => {
       const token = localStorage.getItem("accessToken");
       await axios.post(
         `${SERVER_BASE_URL}/api/cart/add`,
-        { productId: product._id, quantity },
+        { productId: product._id, quantity: qtyNumber },
         {
           withCredentials: true,
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
       );
       toast.success("Đã thêm vào giỏ!");
-      window.dispatchEvent(new Event("cartUpdated")); // Update navbar
+
+      if (!token) {
+        try {
+          const raw = localStorage.getItem("cart");
+          const arr =
+            raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+          const idx = arr.findIndex((it: any) => it.productId === product._id);
+          if (idx >= 0) {
+            arr[idx].quantity = (arr[idx].quantity || 0) + qtyNumber;
+          } else {
+            arr.push({
+              productId: product._id,
+              name: product.name,
+              price: product.final_price || product.price,
+              avatar: product.avatar || product.images?.[0] || null,
+              quantity: qtyNumber,
+            });
+          }
+          localStorage.setItem("cart", JSON.stringify(arr));
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        try {
+          const cartRes = await axios.get(`${SERVER_BASE_URL}/api/cart`, {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const serverItems = cartRes.data?.items || [];
+          const local = serverItems.map((it: any) => ({
+            productId:
+              it.product?._id ||
+              (it.product && it.product.id) ||
+              JSON.stringify(it.product),
+            name: it.product?.name || "Sản phẩm",
+            price:
+              it.price_discount || it.price_original || it.product?.price || 0,
+            avatar: it.product?.avatar || null,
+            quantity: it.quantity || 1,
+          }));
+          localStorage.setItem("cart", JSON.stringify(local));
+        } catch (e) {}
+      }
+
+      window.dispatchEvent(new Event("cartUpdated"));
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi thêm giỏ hàng");
     } finally {
@@ -122,6 +238,9 @@ const ProductDetailPage: React.FC = () => {
     ])
   ).map(getFullImageUrl);
 
+  const displayPrice = product.final_price || product.price;
+  const qtyNumber = typeof quantity === "number" ? quantity : 0;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -133,7 +252,7 @@ const ProductDetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left: Images (Giữ nguyên logic cũ của bạn) */}
+            {/* Left: Images */}
             <div className="lg:w-1/2">
               <div className="flex items-center justify-center p-4 bg-gray-50 rounded-xl border relative h-[450px]">
                 <img
@@ -145,7 +264,6 @@ const ProductDetailPage: React.FC = () => {
                     e.currentTarget.src = "https://placehold.co/600x400";
                   }}
                 />
-                {/* Badge trên ảnh lớn */}
                 {product.discount_info && (
                   <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
                     Giảm {product.discount_info.percent}%
@@ -183,7 +301,6 @@ const ProductDetailPage: React.FC = () => {
                 <h1 className="text-3xl font-bold mt-4">{product.name}</h1>
               </div>
 
-              {/* 🚨 HIỂN THỊ GIÁ */}
               <div>
                 {product.discount_info ? (
                   <div className="flex flex-col">
@@ -208,24 +325,27 @@ const ProductDetailPage: React.FC = () => {
 
               <p className="text-gray-700">{product.description}</p>
 
+              {/* Input Số Lượng (Đã cập nhật) */}
               <div className="space-y-3">
                 <label className="font-medium">Số lượng</label>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center border rounded-lg">
                     <button
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      onClick={decreaseQty}
                       className="p-3 hover:bg-gray-50"
                     >
                       <Minus size={16} />
                     </button>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={quantity}
-                      readOnly
+                      onChange={handleQuantityChange}
+                      onBlur={handleBlurQuantity}
                       className="w-16 text-center py-3 outline-none"
                     />
                     <button
-                      onClick={() => setQuantity((q) => q + 1)}
+                      onClick={increaseQty}
                       className="p-3 hover:bg-gray-50"
                     >
                       <Plus size={16} />
@@ -234,9 +354,7 @@ const ProductDetailPage: React.FC = () => {
                   <div className="text-sm text-gray-600">
                     Tổng:{" "}
                     <span className="font-semibold">
-                      {formatVND(
-                        (product.final_price || product.price) * quantity
-                      )}
+                      {formatVND(displayPrice * qtyNumber)}
                     </span>
                   </div>
                 </div>
@@ -256,9 +374,13 @@ const ProductDetailPage: React.FC = () => {
                     </>
                   )}
                 </Button>
+
+                {/* Nút Mua ngay (Đã cập nhật) */}
                 <Button
                   variant="outline"
-                  className="sm:w-auto px-6 py-6 text-lg border-orange-500 text-orange-500"
+                  onClick={handleBuyNow}
+                  disabled={product.quantity <= 0}
+                  className="sm:w-auto px-6 py-6 text-lg border-orange-500 text-orange-500 hover:bg-orange-50"
                 >
                   Mua ngay
                 </Button>

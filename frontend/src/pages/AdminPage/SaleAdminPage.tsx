@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
 import { toast } from "sonner";
 import Swal from "sweetalert2";
+
 type Tier = {
   condition_type: "QUANTITY" | "TOTAL_PRICE";
   min_value: number;
@@ -22,7 +23,7 @@ type Discount = {
   start_sale?: string;
   end_sale?: string;
   isActive?: boolean;
-  tiers?: Tier[] | string[]; // when fetched, tiers are objects (populated) or ids
+  tiers?: Tier[] | string[];
 };
 
 const PAGE_SIZE = 10;
@@ -55,28 +56,25 @@ const SaleAdminPage: React.FC = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 
+  // --- FETCH DATA ---
   const fetchDiscounts = async () => {
     setLoading(true);
     try {
       const res = await fetch("http://localhost:5001/api/discount", {
         headers: { "Content-Type": "application/json" },
-        cache: "no-store", // <-- FIX 1: Thêm dòng này để chống caching
+        cache: "no-store",
       });
       const data = await res.json();
 
-      // === FIX 2: Thêm logic parsing an toàn ===
       if (Array.isArray(data)) {
         setDiscounts(data);
       } else if (data && Array.isArray(data.discounts)) {
-        // Nếu API trả về { discounts: [...] }
         setDiscounts(data.discounts);
       } else if (data && Array.isArray(data.data)) {
-        // Nếu API trả về { data: [...] }
         setDiscounts(data.data);
       } else {
         setDiscounts([]);
       }
-      // === Kết thúc FIX 2 ===
     } catch (err) {
       console.error(err);
       toast.error("Không tải được danh sách discount");
@@ -84,59 +82,37 @@ const SaleAdminPage: React.FC = () => {
       setLoading(false);
     }
   };
+
   const fetchSelectData = async () => {
     try {
       const [prodRes, catRes] = await Promise.all([
         fetch("http://localhost:5001/api/product"),
         fetch("http://localhost:5001/api/category"),
       ]);
-      if (!prodRes.ok || !catRes.ok) {
-        throw new Error("Failed to fetch product/category data");
-      }
-
       const prodData = await prodRes.json();
       const catData = await catRes.json();
 
-      // === BẮT ĐẦU SỬA ===
-      // Kiểm tra xem prodData có phải là mảng không
-      if (Array.isArray(prodData)) {
-        setProducts(prodData);
-      }
-      // Kiểm tra xem nó có được bọc trong key 'products' không
-      else if (prodData && Array.isArray(prodData.products)) {
-        setProducts(prodData.products);
-      }
-      // Kiểm tra xem nó có được bọc trong key 'data' không
-      else if (prodData && Array.isArray(prodData.data)) {
-        setProducts(prodData.data);
-      }
-      // Nếu không thì fallback về mảng rỗng
-      else {
-        setProducts([]);
-      }
+      if (Array.isArray(prodData)) setProducts(prodData);
+      else if (prodData?.products) setProducts(prodData.products);
+      else if (prodData?.data) setProducts(prodData.data);
+      else setProducts([]);
 
-      // Làm tương tự cho categories
-      if (Array.isArray(catData)) {
-        setCategories(catData);
-      } else if (catData && Array.isArray(catData.categories)) {
-        setCategories(catData.categories);
-      } else if (catData && Array.isArray(catData.data)) {
-        setCategories(catData.data);
-      } else {
-        setCategories([]);
-      }
-      // === KẾT THÚC SỬA ===
+      if (Array.isArray(catData)) setCategories(catData);
+      else if (catData?.categories) setCategories(catData.categories);
+      else if (catData?.data) setCategories(catData.data);
+      else setCategories([]);
     } catch (err) {
       console.error(err);
       toast.error("Không tải được danh sách sản phẩm/danh mục");
     }
   };
+
   useEffect(() => {
     fetchDiscounts();
     fetchSelectData();
   }, []);
 
-  // open create modal
+  // --- HANDLERS ---
   const openCreate = () => {
     setEditing(null);
     setForm({
@@ -154,44 +130,37 @@ const SaleAdminPage: React.FC = () => {
     setOpenModal(true);
   };
 
-  // open edit modal
   const openEdit = (d: Discount) => {
-    // 1. Normalize tiers (bạn đã làm)
     const normalizedTiers = Array.isArray(d.tiers)
       ? (d.tiers as any[])
           .map((t) =>
             typeof t === "string"
               ? null
               : {
-                  // === SỬA TÊN TRƯỜNG KHI ĐỌC VÀO ===
-                  condition_type: t.condition_type || "QUANTITY", // (Giả sử)
-                  min_value: t.min_quantity, // <-- Đổi t.min_value
-                  percent: t.discount_percent, // <-- Đổi t.percent
+                  condition_type: t.condition_type || "QUANTITY",
+                  min_value: t.min_quantity,
+                  percent: t.discount_percent,
                 }
           )
           .filter(Boolean)
       : [];
 
-    // 2. Format lại toàn bộ object cho Form
     const formattedDiscount = {
       ...d,
-      // === FORMAT DATE CHO Ô INPUT ===
       start_sale: d.start_sale
         ? new Date(d.start_sale).toISOString().slice(0, 10)
         : "",
       end_sale: d.end_sale
         ? new Date(d.end_sale).toISOString().slice(0, 10)
         : "",
-      // === GÁN LẠI TIERS ĐÃ CHUẨN HÓA ===
       tiers: normalizedTiers,
     };
 
     setEditing(d);
-    setForm(formattedDiscount); // <-- Dùng object đã format
+    setForm(formattedDiscount);
     setOpenModal(true);
   };
 
-  // Add/Remove tier in form
   const addTier = () => {
     setForm((prev) => ({
       ...prev,
@@ -201,12 +170,14 @@ const SaleAdminPage: React.FC = () => {
       ],
     }));
   };
+
   const removeTier = (index: number) => {
     setForm((prev) => ({
       ...prev,
       tiers: (prev.tiers as Tier[]).filter((_, i) => i !== index),
     }));
   };
+
   const updateTier = (index: number, key: keyof Tier, value: any) => {
     setForm((prev) => {
       const t = [...((prev.tiers as Tier[]) || [])];
@@ -215,33 +186,19 @@ const SaleAdminPage: React.FC = () => {
     });
   };
 
-  // Submit create/update
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("accessToken");
 
-    // === BẮT ĐẦU SỬA ĐỔI ===
-
-    // 1. "Dịch" lại mảng tiers từ FE -> BE
     const formattedTiers = ((form.tiers as Tier[]) || []).map((t) => ({
-      min_quantity: t.min_value, // <-- Đổi 'min_value' thành 'min_quantity'
-      discount_percent: t.percent, // <-- Đổi 'percent' thành 'discount_percent'
-      // Lưu ý: 'condition_type' sẽ bị bỏ qua
+      min_quantity: t.min_value,
+      discount_percent: t.percent,
     }));
 
-    // 2. Tách mảng 'tiers' gốc ra khỏi 'form'
     const { tiers, ...restOfForm } = form;
-
-    // 3. Tạo payload cuối cùng để gửi đi
-    const payload = {
-      ...restOfForm, // Gồm: name, type, target_type, target_id...
-      tiers: formattedTiers, // Sử dụng mảng tiers đã được "dịch"
-    };
-
-    // === KẾT THÚC SỬA ĐỔI ===
+    const payload = { ...restOfForm, tiers: formattedTiers };
 
     try {
-      // Logic gửi request (bạn đã làm ở tin nhắn trước)
       const method = editing ? "PUT" : "POST";
       const url = editing
         ? `http://localhost:5001/api/discount/${editing!._id}`
@@ -253,7 +210,7 @@ const SaleAdminPage: React.FC = () => {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(payload), // <-- Gửi payload đã được "dịch"
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -264,8 +221,8 @@ const SaleAdminPage: React.FC = () => {
           editing ? "Cập nhật thành công" : "Tạo discount thành công"
         );
         setOpenModal(false);
-        setQuery(""); // Reset thanh tìm kiếm
-        setPage(1); // Đưa về trang 1
+        setQuery("");
+        setPage(1);
         await fetchDiscounts();
       }
     } catch (err) {
@@ -274,30 +231,21 @@ const SaleAdminPage: React.FC = () => {
     }
   };
 
-  // Delete
   const handleDelete = async (id?: string) => {
     if (!id) return;
-
-    // === BẮT ĐẦU THAY THẾ ===
-    // Dùng Swal.fire() thay cho confirm()
     const result = await Swal.fire({
       title: "Bạn có chắc chắn?",
       text: "Bạn sẽ XÓA VĨNH VIỄN discount này! Không thể hoàn tác!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33", // Màu đỏ cho nút xóa
-      cancelButtonColor: "#3085d6", // Màu xanh cho nút hủy
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
       confirmButtonText: "Vâng, xóa vĩnh viễn!",
       cancelButtonText: "Hủy",
     });
 
-    // Nếu người dùng bấm "Hủy" (hoặc đóng)
-    if (!result.isConfirmed) {
-      return;
-    }
-    // === KẾT THÚC THAY THẾ ===
+    if (!result.isConfirmed) return;
 
-    // Logic xóa giữ nguyên
     const token = localStorage.getItem("accessToken");
     try {
       const res = await fetch(
@@ -320,7 +268,7 @@ const SaleAdminPage: React.FC = () => {
       toast.error("Xảy ra lỗi");
     }
   };
-  // filtered & pagination
+
   const filtered = discounts.filter((d) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -336,235 +284,348 @@ const SaleAdminPage: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold">Quản lý Discount</h1>
+      {/* 🔥 FIX 1: Tăng độ rộng container lên 95% */}
+      <div className="max-w-[95%] mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Quản lý Chương trình Khuyến mãi
+          </h1>
           <div className="flex items-center gap-3">
-            <input
-              className="border rounded px-3 py-1"
-              placeholder="Tìm theo tên hoặc loại..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+            <div className="relative">
+              <input
+                className="border border-gray-300 rounded-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 w-64 transition-all"
+                placeholder="Tìm theo tên hoặc loại..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <span className="absolute right-3 top-2.5 text-gray-400">🔍</span>
+            </div>
             <button
               onClick={openCreate}
-              className="bg-orange-500 text-white px-4 py-2 rounded"
+              className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
             >
-              Tạo mới
+              <span>+</span> Tạo mới
             </button>
           </div>
         </div>
 
         {loading ? (
-          <p>Đang tải...</p>
+          <div className="flex justify-center items-center h-40">
+            <p className="text-gray-500">Đang tải dữ liệu...</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto bg-white rounded shadow">
-            <table className="min-w-full">
-              <thead className="bg-gray-100">
+          /* 🔥 FIX 2: Style lại bảng, thêm shadow, bo góc */
+          <div className="overflow-x-auto bg-white rounded-xl shadow-md border border-gray-100">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="bg-gray-50 text-gray-700 uppercase text-xs font-semibold">
                 <tr>
-                  <th className="p-3 text-left">Tên</th>
-                  <th className="p-3 text-left">Loại</th>
-                  <th className="p-3 text-left">Áp dụng cho</th>
-                  <th className="p-3 text-left">% cơ bản</th>
-                  <th className="p-3 text-left">Tiers</th>
-                  <th className="p-3 text-left">Trạng thái</th>
-                  <th className="p-3 text-center">Hành động</th>
+                  {/* 🔥 FIX 3: Thêm whitespace-nowrap để không bị gãy dòng */}
+                  <th className="px-6 py-4 whitespace-nowrap">Tên</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Loại</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Áp dụng cho</th>
+                  <th className="px-6 py-4 whitespace-nowrap text-center">
+                    % Giảm
+                  </th>
+                  <th className="px-6 py-4 whitespace-nowrap">Bắt đầu</th>
+                  <th className="px-6 py-4 whitespace-nowrap">Kết thúc</th>
+                  <th className="px-6 py-4 whitespace-nowrap min-w-[200px]">
+                    Tiers (Mức giảm)
+                  </th>
+                  <th className="px-6 py-4 whitespace-nowrap text-center">
+                    Trạng thái
+                  </th>
+                  <th className="px-6 py-4 whitespace-nowrap text-center">
+                    Hành động
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
                 {pageData.map((d) => (
-                  <tr key={d._id} className="border-t">
-                    <td className="p-3">{d.name}</td>
-                    <td className="p-3">{d.type}</td>
-                    <td className="p-3">{d.target_type}</td>
-                    <td className="p-3">{d.discount_percent ?? "-"}</td>
-                    <td className="p-3">
-                      {d.tiers && (d.tiers as any[]).length > 0 ? (
-                        (d.tiers as any[]).map((t: any, i: number) => (
-                          <div key={i} className="text-sm">
-                            {/* API (t) không có 'condition_type' hoặc 'min_value'.
-                           Nó có 'min_quantity' và 'discount_percent'.
-                            Chúng ta sẽ hiển thị theo tên trường đúng từ API.
-                            */}
-                            {`Mua >= ${t.min_quantity}`} → {t.discount_percent}%
-                          </div>
-                        ))
+                  <tr
+                    key={d._id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                      {d.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-bold ${
+                          d.type === "SALE"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}
+                      >
+                        {d.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">
+                      {d.target_type}
+                    </td>
+                    <td className="px-6 py-4 text-center font-bold text-orange-600">
+                      {d.discount_percent ? `${d.discount_percent}%` : "-"}
+                    </td>
+
+                    {/* Ngày bắt đầu */}
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      {d.start_sale
+                        ? new Date(d.start_sale).toLocaleDateString("vi-VN")
+                        : "-"}
+                    </td>
+
+                    {/* Ngày kết thúc */}
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      {d.end_sale ? (
+                        new Date(d.end_sale).toLocaleDateString("vi-VN")
                       ) : (
-                        <span className="text-sm text-gray-400">Không có</span>
+                        <span className="text-green-600 font-medium text-xs">
+                          ♾️ Vĩnh viễn
+                        </span>
                       )}
                     </td>
-                    <td className="p-3">
+
+                    <td className="px-6 py-4">
+                      {d.tiers && (d.tiers as any[]).length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {(d.tiers as any[]).map((t: any, i: number) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200"
+                            >
+                              🛒 Mua &ge; {t.min_quantity}{" "}
+                              <span className="mx-1 text-gray-400">→</span>{" "}
+                              <b className="text-red-500">
+                                Giảm {t.discount_percent}%
+                              </b>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">
+                          Không có bậc thang
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
                       {d.isActive ? (
-                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                          Đang hoạt động
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                          Hoạt động
                         </span>
                       ) : (
-                        <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></span>
                           Đã ẩn
                         </span>
                       )}
                     </td>
-                    <td className="p-3 text-center">
-                      <button
-                        onClick={() => openEdit(d)}
-                        className="px-3 py-1 bg-yellow-400 rounded mr-2"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => handleDelete(d._id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded"
-                      >
-                        Xoá{" "}
-                      </button>
+
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEdit(d)}
+                          className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
+                          title="Chỉnh sửa"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDelete(d._id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Xóa vĩnh viễn"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {pageData.length === 0 && (
+              <div className="text-center py-10">
+                <p className="text-gray-400">Không tìm thấy dữ liệu nào.</p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <div>
-            <small>{filtered.length} kết quả</small>
+        <div className="flex items-center justify-between mt-6 px-2">
+          <div className="text-sm text-gray-500">
+            Hiển thị <span className="font-medium">{pageData.length}</span> trên
+            tổng số <span className="font-medium">{filtered.length}</span> kết
+            quả
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="px-2"
+              className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Prev
+              Trước
             </button>
-            <span>
-              {page} / {totalPages}
+            <span className="text-sm font-medium px-2">
+              Trang {page} / {totalPages}
             </span>
             <button
-              className="px-2"
+              className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Next
+              Sau
             </button>
           </div>
         </div>
       </div>
 
-      {/* Modal (Create / Edit) */}
+      {/* Modal Form */}
       {openModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-6">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">
-                {editing ? "Chỉnh sửa Discount" : "Tạo Discount"}
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 mt-10 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-6 border-b pb-4">
+              <h3 className="text-xl font-bold text-gray-800">
+                {editing ? "Chỉnh sửa Chương trình" : "Tạo Chương trình Mới"}
               </h3>
-              <button onClick={() => setOpenModal(false)} className="text-sm">
-                Đóng
+              <button
+                onClick={() => setOpenModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
               </button>
             </div>
 
-            <form onSubmit={submitForm} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  className="border p-2 rounded"
-                  placeholder="Tên"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-                <select
-                  className="border p-2 rounded"
-                  value={form.type}
-                  onChange={(e) =>
-                    setForm({ ...form, type: e.target.value as any })
-                  }
-                >
-                  <option value="SALE">SALE</option>
-                  <option value="AGENCY">AGENCY</option>
-                </select>
-                <select
-                  className="border p-2 rounded"
-                  value={form.target_type}
-                  onChange={(e) => {
-                    const newTargetType = e.target.value as any;
-                    setForm({
-                      ...form,
-                      target_type: newTargetType,
-                      target_id: null,
-                      // Nếu là ORDER_TOTAL, tự động xóa hết tier
-                      tiers: newTargetType === "ORDER_TOTAL" ? [] : form.tiers,
-                    });
-                  }}
-                >
-                  <option value="PRODUCT">PRODUCT</option>
-                  <option value="CATEGORY">CATEGORY</option>
-                  <option value="ORDER_TOTAL">ORDER_TOTAL</option>
-                </select>
-                {/* 2. THÊM DROPDOWN MỚI NÀY VÀO */}
-                <select
-                  className="border p-2 rounded"
-                  value={form.target_id || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, target_id: e.target.value || null })
-                  }
-                  // Vô hiệu hóa khi áp dụng cho tổng đơn
-                  disabled={form.target_type === "ORDER_TOTAL"}
-                  required={form.target_type !== "ORDER_TOTAL"}
-                >
-                  <option value="">— Chọn đối tượng —</option>
-                  {form.target_type === "PRODUCT" &&
-                    products.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  {form.target_type === "CATEGORY" &&
-                    categories.map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  {form.target_type === "ORDER_TOTAL" && (
-                    <option value="">(Áp dụng tổng đơn)</option>
-                  )}
-                </select>
-                <input
-                  type="number"
-                  className="border p-2 rounded"
-                  placeholder="% giảm cơ bản (tùy chọn)"
-                  value={form.discount_percent ?? 0}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      discount_percent: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={submitForm} className="space-y-4">
+              {/* Row 1: Tên & Loại */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên chương trình
+                  </label>
+                  <input
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                    placeholder="Nhập tên..."
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                    value={form.type}
+                    onChange={(e) =>
+                      setForm({ ...form, type: e.target.value as any })
+                    }
+                  >
+                    <option value="SALE">SALE (Giảm giá thường)</option>
+                    <option value="AGENCY">AGENCY (Đại lý)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Target */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Áp dụng cho
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                    value={form.target_type}
+                    onChange={(e) => {
+                      const newTargetType = e.target.value as any;
+                      setForm({
+                        ...form,
+                        target_type: newTargetType,
+                        target_id: null,
+                        tiers:
+                          newTargetType === "ORDER_TOTAL" ? [] : form.tiers,
+                      });
+                    }}
+                  >
+                    <option value="PRODUCT">Sản phẩm cụ thể</option>
+                    <option value="CATEGORY">Danh mục</option>
+                    <option value="ORDER_TOTAL">Tổng đơn hàng</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đối tượng
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all disabled:bg-gray-100"
+                    value={form.target_id || ""}
+                    onChange={(e) =>
+                      setForm({ ...form, target_id: e.target.value || null })
+                    }
+                    disabled={form.target_type === "ORDER_TOTAL"}
+                    required={form.target_type !== "ORDER_TOTAL"}
+                  >
+                    <option value="">— Chọn đối tượng —</option>
+                    {form.target_type === "PRODUCT" &&
+                      products.map((p) => (
+                        <option key={p._id} value={p._id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    {form.target_type === "CATEGORY" &&
+                      categories.map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    {form.target_type === "ORDER_TOTAL" && (
+                      <option value="">(Áp dụng toàn bộ đơn)</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Percent & Date */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    % Giảm (Cơ bản)
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none"
+                    value={form.discount_percent ?? 0}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        discount_percent: Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Ngày bắt đầu
                   </label>
                   <input
                     type="date"
-                    className="border p-2 rounded w-full mt-1"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none"
                     value={form.start_sale ? form.start_sale.slice(0, 10) : ""}
                     onChange={(e) =>
                       setForm({ ...form, start_sale: e.target.value })
                     }
-                    required // <-- Rất quan trọng vì schema yêu cầu
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Ngày kết thúc (tùy chọn)
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày kết thúc
                   </label>
                   <input
                     type="date"
-                    className="border p-2 rounded w-full mt-1"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none"
                     value={form.end_sale ? form.end_sale.slice(0, 10) : ""}
                     onChange={(e) =>
                       setForm({ ...form, end_sale: e.target.value })
@@ -572,43 +633,46 @@ const SaleAdminPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Active Toggle */}
               <div className="flex items-center gap-3 pt-2">
                 <input
                   type="checkbox"
                   id="isActive"
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                  checked={form.isActive ?? true} // Mặc định là true
+                  className="h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                  checked={form.isActive ?? true}
                   onChange={(e) =>
                     setForm({ ...form, isActive: e.target.checked })
                   }
                 />
                 <label
                   htmlFor="isActive"
-                  className="text-sm font-medium text-gray-900"
+                  className="text-sm font-medium text-gray-800 cursor-pointer"
                 >
-                  Kích hoạt (cho phép discount này hoạt động)
+                  Kích hoạt chương trình ngay lập tức
                 </label>
               </div>
-              {/* Tiers list */}
+
+              {/* Tiers Section */}
               {form.target_type !== "ORDER_TOTAL" && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="font-medium">
-                      Discount tiers (mức giảm theo điều kiện)
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="font-bold text-gray-700 text-sm">
+                      ⚡ Mức giảm theo số lượng (Tiers)
                     </label>
                     <button
                       type="button"
                       onClick={addTier}
-                      className="text-sm bg-green-500 text-white px-3 py-1 rounded"
+                      className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded transition-colors"
                     >
-                      Thêm tier
+                      + Thêm mức
                     </button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3 max-h-40 overflow-y-auto pr-1">
                     {((form.tiers as Tier[]) || []).map((t, idx) => (
                       <div
                         key={idx}
-                        className="grid grid-cols-6 gap-2 items-center"
+                        className="grid grid-cols-6 gap-2 items-center bg-gray-50 p-2 rounded border"
                       >
                         <select
                           value={t.condition_type}
@@ -619,10 +683,10 @@ const SaleAdminPage: React.FC = () => {
                               e.target.value as any
                             )
                           }
-                          className="col-span-2 border p-2 rounded"
+                          className="col-span-2 border p-1.5 rounded text-sm"
                         >
-                          <option value="QUANTITY">Số lượng</option>
-                          <option value="TOTAL_PRICE">Tổng tiền</option>
+                          <option value="QUANTITY">Số lượng &ge;</option>
+                          <option value="TOTAL_PRICE">Tổng tiền &ge;</option>
                         </select>
                         <input
                           type="number"
@@ -630,44 +694,54 @@ const SaleAdminPage: React.FC = () => {
                           onChange={(e) =>
                             updateTier(idx, "min_value", Number(e.target.value))
                           }
-                          className="col-span-2 border p-2 rounded"
+                          className="col-span-2 border p-1.5 rounded text-sm"
+                          placeholder="Giá trị"
                         />
-                        <input
-                          type="number"
-                          value={t.percent}
-                          onChange={(e) =>
-                            updateTier(idx, "percent", Number(e.target.value))
-                          }
-                          className="col-span-1 border p-2 rounded"
-                        />
+                        <div className="col-span-1 relative">
+                          <input
+                            type="number"
+                            value={t.percent}
+                            onChange={(e) =>
+                              updateTier(idx, "percent", Number(e.target.value))
+                            }
+                            className="w-full border p-1.5 rounded text-sm text-center font-bold text-orange-600"
+                          />
+                          <span className="absolute right-1 top-1.5 text-xs text-gray-400">
+                            %
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeTier(idx)}
-                          className="col-span-1 bg-red-500 text-white p-2 rounded"
+                          className="col-span-1 text-red-500 hover:bg-red-100 p-1.5 rounded text-xs font-bold"
                         >
                           Xóa
                         </button>
                       </div>
                     ))}
                     {((form.tiers as Tier[]) || []).length === 0 && (
-                      <div className="text-sm text-gray-500">Chưa có tier</div>
+                      <div className="text-sm text-gray-400 italic text-center py-2">
+                        Chưa có mức giảm giá nào
+                      </div>
                     )}
                   </div>
                 </div>
               )}
-              <div className="flex items-center gap-3 justify-end">
+
+              {/* Form Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t mt-6">
                 <button
                   type="button"
                   onClick={() => setOpenModal(false)}
-                  className="px-4 py-2 border rounded"
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
                 >
-                  Huỷ
+                  Huỷ bỏ
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-white rounded"
+                  className="px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium shadow-sm transition-colors"
                 >
-                  {editing ? "Cập nhật" : "Tạo mới"}
+                  {editing ? "Lưu thay đổi" : "Tạo mới"}
                 </button>
               </div>
             </form>

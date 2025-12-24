@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import toast from "react-hot-toast";
+import MiniCart from "../Cart/MiniCart";
 
 const SERVER_BASE_URL = "http://localhost:5001";
 
@@ -67,6 +69,7 @@ const Products: React.FC = () => {
   );
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [addingId, setAddingId] = useState<string | null>(null);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
@@ -158,6 +161,87 @@ const Products: React.FC = () => {
       currency: "VND",
       maximumFractionDigits: 0,
     }).format(value);
+
+  // Hàm xử lý thêm sản phẩm vào giỏ hàng (áp dụng cho cả user đã đăng nhập và guest)
+  // - Nếu đã đăng nhập (có accessToken): gọi API backend để thêm
+  // - Nếu guest (không có token): lưu tạm vào localStorage key `cart` (mảng các item)
+  // Sau khi thêm thành công luôn phát event `cartUpdated` để các thành phần UI (Navbar, MiniCart...) cập nhật
+  const handleAddToCart = async (product: Product, qty = 1) => {
+    if (!product) return;
+    const productId = product._id || product.id || String(product.name);
+    // Nếu có thông tin tồn kho mà số lượng nhỏ hơn 1 thì từ chối
+    if (typeof product.quantity === "number" && product.quantity < qty) {
+      toast.error("Không đủ số lượng trong kho");
+      return;
+    }
+
+    setAddingId(productId);
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        // Đã đăng nhập -> gọi API backend
+        await axios.post(
+          `${SERVER_BASE_URL}/api/cart/add`,
+          { productId, quantity: qty },
+          { withCredentials: true, headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Sau khi thêm thành công ở backend, lấy lại giỏ hàng từ server
+        // và lưu về localStorage để Navbar/mini cart đọc được (đồng bộ)
+        try {
+          const cartRes = await axios.get(`${SERVER_BASE_URL}/api/cart`, {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const serverItems = cartRes.data?.items || [];
+          const local = serverItems.map((it: any) => ({
+            productId: it.product?._id || (it.product && it.product.id) || JSON.stringify(it.product),
+            name: it.product?.name || "Sản phẩm",
+            price: it.price_discount || it.price_original || it.product?.price || 0,
+            avatar: it.product?.avatar || null,
+            quantity: it.quantity || 1,
+          }));
+          localStorage.setItem("cart", JSON.stringify(local));
+        } catch (e) {
+          // Nếu không lấy được cart từ server thì bỏ qua (không làm crash UI)
+          console.error("Không thể đồng bộ cart từ server sau khi thêm", e);
+        }
+      } else {
+        // Guest -> lưu vào localStorage dưới key `cart`
+        try {
+          const raw = localStorage.getItem("cart");
+          const arr = raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+          const idx = arr.findIndex((it: any) => it.productId === productId);
+          if (idx >= 0) {
+            arr[idx].quantity = (arr[idx].quantity || 0) + qty;
+          } else {
+            arr.push({
+              productId,
+              name: product.name,
+              price: product.final_price || product.price || 0,
+              avatar: product.avatar || null,
+              quantity: qty,
+            });
+          }
+          localStorage.setItem("cart", JSON.stringify(arr));
+        } catch (e) {
+          console.error("Lỗi lưu cart vào localStorage", e);
+        }
+      }
+
+      toast.success("Đã thêm vào giỏ hàng");
+      // Thông báo cho Navbar / MiniCart cập nhật
+      window.dispatchEvent(new Event("cartUpdated"));
+      // --- SỬA: Đảm bảo MiniCart luôn được mở sau khi thêm sản phẩm
+      // Phát thêm một event riêng để MiniCart lắng nghe và hiển thị popup.
+      // Không thay đổi logic lưu trữ hay sync, chỉ thêm event hiển thị.
+      window.dispatchEvent(new Event("cartUpdatedShow"));
+    } catch (err: any) {
+      console.error("Lỗi thêm giỏ hàng", err);
+      toast.error(err?.response?.data?.message || "Lỗi thêm vào giỏ hàng");
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   const handleApplyPrice = () => {
     setPrice(tempPrice);
@@ -399,12 +483,14 @@ const Products: React.FC = () => {
                     "
                   >
                     <button
-                      className="
+                      onClick={() => handleAddToCart(p)}
+                      disabled={addingId === (p._id || p.id || p.name)}
+                      className={`
                         bg-orange-500 text-white text-sm px-4 py-2 rounded-lg 
-                        shadow-md hover:bg-orange-600 transition
-                      "
+                        shadow-md hover:bg-orange-600 transition disabled:opacity-60 disabled:cursor-wait
+                      `}
                     >
-                      Thêm vào giỏ hàng
+                      {addingId === (p._id || p.id || p.name) ? "Đang thêm..." : "Thêm vào giỏ hàng"}
                     </button>
                   </div>
 
@@ -466,6 +552,7 @@ const Products: React.FC = () => {
           </div>
         </section>
       </div>
+      <MiniCart/>
     </div>
   );
 };

@@ -11,39 +11,89 @@ export const createMomoPayment = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // 1. Lấy dữ liệu từ Frontend
-    // Frontend có thể gửi note nằm trong recipient_info HOẶC nằm riêng ở ngoài
-    const { recipient_info, shipping_fee, shippingMethod, note } = req.body;
+    // 1. Lấy dữ liệu
+    const {
+      recipient_info,
+      shipping_fee,
+      shippingMethod,
+      note,
+      items,
+      isDirectBuy,
+    } = req.body;
 
-    // 2. Xử lý thông tin người nhận + Ghi chú
     const recipientName = recipient_info?.name || req.body.recipient_name;
     const recipientPhone = recipient_info?.phone || req.body.recipient_phone;
     const recipientAddress =
       recipient_info?.address || req.body.recipient_address;
-
-    // 🔥 SỬA: Bắt note từ mọi nguồn có thể
     const recipientNote =
       recipient_info?.note || req.body.recipient_note || note || "";
 
-    // 3. Lấy giỏ hàng
-    const cart = await Cart.findOne({ user: userId }).populate("items.product");
-    if (!cart || !cart.items.length) {
-      return res.status(400).json({ message: "Giỏ hàng trống" });
-    }
+    let checkoutItems = [];
+    let totalProductPrice = 0;
 
-    // 4. Kiểm tra tồn kho
-    for (const item of cart.items) {
-      if (item.product.quantity < item.quantity) {
-        return res
-          .status(400)
-          .json({ message: `Sản phẩm ${item.product.name} không đủ hàng.` });
+    // 🔥 QUAN TRỌNG: Chỉ coi là Mua Ngay nếu có cờ isDirectBuy = true
+    let finalIsDirectBuy = isDirectBuy === true;
+
+    // --- PHÂN LOẠI XỬ LÝ ---
+    if (finalIsDirectBuy && items && items.length > 0) {
+      // A. MUA NGAY (Direct Buy) -> Dùng items từ Frontend
+      console.log("⚡ [MOMO] MUA NGAY (Direct Buy)");
+
+      for (const item of items) {
+        const product = await Product.findById(
+          item.product_id || item.product._id
+        );
+        if (!product)
+          return res.status(404).json({ message: "Sản phẩm không tồn tại" });
+
+        const price =
+          Number(item.price) || product.final_price || product.price;
+        checkoutItems.push({
+          product_id: product._id,
+          product_name: product.name,
+          quantity: item.quantity,
+          price_original: product.price,
+          unit_price: price,
+          Total_price: price * item.quantity,
+        });
+        totalProductPrice += price * item.quantity;
       }
+    } else {
+      // B. THANH TOÁN GIỎ HÀNG (Cart Checkout) -> Lấy từ DB Cart cho an toàn
+      // Dù Frontend có gửi items lên thì ta vẫn ưu tiên lấy từ DB để đảm bảo tính nhất quán
+      console.log("🛒 [MOMO] THANH TOÁN GIỎ HÀNG");
+      finalIsDirectBuy = false; // Chắc chắn cờ là false để tí nữa xóa giỏ
+
+      const cart = await Cart.findOne({ user: userId }).populate(
+        "items.product"
+      );
+      if (!cart || !cart.items.length) {
+        return res.status(400).json({ message: "Giỏ hàng trống" });
+      }
+
+      // Check tồn kho
+      for (const item of cart.items) {
+        if (item.product.quantity < item.quantity) {
+          return res
+            .status(400)
+            .json({ message: `Sản phẩm ${item.product.name} không đủ hàng.` });
+        }
+      }
+      checkoutItems = cart.items.map((i) => ({
+        product_id: i.product._id,
+        product_name: i.product.name,
+        quantity: i.quantity,
+        price_original: i.price_original,
+        unit_price: i.price_discount || i.price_original,
+        Total_price: i.Total_price,
+      }));
+      totalProductPrice = cart.final_total_price;
     }
 
     // 5. Tính toán tiền
     const finalShippingFee =
       Number(shipping_fee) || (shippingMethod === "fast" ? 30000 : 15000);
-    const finalAmount = cart.final_total_price + finalShippingFee;
+    const finalAmount = totalProductPrice + finalShippingFee;
     const orderId = "MOMO" + new Date().getTime();
 
     // 6. Config MoMo
@@ -52,29 +102,33 @@ export const createMomoPayment = async (req, res) => {
     const secretKey = process.env.MOMO_SECRET_KEY;
     const requestId = partnerCode + new Date().getTime();
     const orderInfo = "Thanh toan don hang " + orderId;
-
     const redirectUrl = `${process.env.BASE_URL}/order-history`;
     const ipnUrl = process.env.SERVER_URL + "/api/payments/momo/callback";
     const requestType = "captureWallet";
 
-    // 7. Đóng gói extraData (QUAN TRỌNG: Phải chứa note ở đây)
+    // 7. Gói dữ liệu vào ExtraData
+    const itemsMinified = checkoutItems.map((i) => ({
+      id: i.product_id,
+      qty: i.quantity,
+      price: i.unit_price,
+    }));
     const extraDataObj = {
       userId,
+      isDirectBuy: finalIsDirectBuy, // Gửi cờ chuẩn
       recipient_info: {
         name: recipientName,
         phone: recipientPhone,
         address: recipientAddress,
-        note: recipientNote, // 👈 Đảm bảo note đã được đưa vào đây
+        note: recipientNote,
       },
       shipping_fee: finalShippingFee,
+      items: itemsMinified,
     };
-
-    // Mã hóa extraData base64 để gửi sang MoMo
     const extraData = Buffer.from(JSON.stringify(extraDataObj)).toString(
       "base64"
     );
 
-    // 8. Tạo chữ ký (Signature)
+    // 8. Chữ ký
     const rawSignature = `accessKey=${accessKey}&amount=${finalAmount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
     const signature = crypto
       .createHmac("sha256", secretKey)
@@ -104,10 +158,9 @@ export const createMomoPayment = async (req, res) => {
       { timeout: 10000 }
     );
 
-    return res.status(200).json({
-      payUrl: result.data.payUrl,
-      qrCodeUrl: result.data.qrCodeUrl,
-    });
+    return res
+      .status(200)
+      .json({ payUrl: result.data.payUrl, qrCodeUrl: result.data.qrCodeUrl });
   } catch (error) {
     console.error("Lỗi tạo Momo:", error?.response?.data || error.message);
     res.status(500).json({ message: "Lỗi tạo thanh toán Momo" });
@@ -115,13 +168,11 @@ export const createMomoPayment = async (req, res) => {
 };
 
 // =============================
-// 2. CALLBACK MOMO (Webhook)
+// 2. CALLBACK MOMO
 // =============================
 export const momoCallback = async (req, res) => {
   try {
     const { orderId, resultCode, extraData, amount } = req.body;
-    console.log(`📡 MoMo Callback: ${orderId}, Result: ${resultCode}`);
-
     if (resultCode === 0 && extraData) {
       await processSuccessfulMomoPayment(orderId, extraData, amount);
     }
@@ -133,7 +184,7 @@ export const momoCallback = async (req, res) => {
 };
 
 // =============================
-// 3. CHECK STATUS (Frontend gọi)
+// 3. CHECK STATUS
 // =============================
 export const checkMomoTransactionStatus = async (req, res) => {
   try {
@@ -144,7 +195,6 @@ export const checkMomoTransactionStatus = async (req, res) => {
     const accessKey = process.env.MOMO_ACCESS_KEY;
     const secretKey = process.env.MOMO_SECRET_KEY;
     const requestId = partnerCode + new Date().getTime();
-
     const rawSignature = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
     const signature = crypto
       .createHmac("sha256", secretKey)
@@ -159,7 +209,6 @@ export const checkMomoTransactionStatus = async (req, res) => {
       signature,
       lang: "vi",
     };
-
     const result = await axios.post(
       "https://test-payment.momo.vn/v2/gateway/api/query",
       requestBody
@@ -174,14 +223,14 @@ export const checkMomoTransactionStatus = async (req, res) => {
       );
       const finalInvoice =
         invoice || (await Invoice.findOne({ momoOrderId: orderId }));
-
-      return res.status(200).json({
-        message: "Giao dịch thành công",
-        invoiceId: finalInvoice?._id,
-        status: "PAID",
-      });
+      return res
+        .status(200)
+        .json({
+          message: "Giao dịch thành công",
+          invoiceId: finalInvoice?._id,
+          status: "PAID",
+        });
     }
-
     return res
       .status(400)
       .json({ message: "Giao dịch thất bại", momoResult: resultCode });
@@ -192,70 +241,105 @@ export const checkMomoTransactionStatus = async (req, res) => {
 };
 
 // =============================
-// HELPER: HÀM TẠO HÓA ĐƠN VÀ TRỪ KHO
+// HELPER: XỬ LÝ THÀNH CÔNG
 // =============================
 const processSuccessfulMomoPayment = async (orderId, extraData, amount) => {
   const existing = await Invoice.findOne({ momoOrderId: orderId });
-  if (existing) return existing;
+  if (existing) {
+    if (existing.payment_status !== "PAID") {
+      existing.payment_status = "PAID";
+      existing.status = "PLACED";
+      existing.order_status = "PLACED";
+      await existing.save();
+    }
+    return existing;
+  }
 
   try {
     const decodedRaw = Buffer.from(extraData, "base64").toString("utf-8");
-    // Vì ở bước createMomoPayment ta đã đóng gói note vào recipient_info rồi
-    // Nên khi parse ra ở đây, recipient_info sẽ tự động có note.
-    const { userId, recipient_info, shipping_fee } = JSON.parse(decodedRaw);
+    const {
+      userId,
+      recipient_info,
+      shipping_fee,
+      isDirectBuy,
+      items: itemsMinified,
+    } = JSON.parse(decodedRaw);
 
-    const cart = await Cart.findOne({ user: userId }).populate("items.product");
+    let finalItems = [];
 
-    if (!cart) {
-      console.log("⚠️ Cart không còn tồn tại (có thể luồng khác đã xử lý).");
-      return null;
+    // Tái tạo items
+    if (itemsMinified && itemsMinified.length > 0) {
+      for (const mItem of itemsMinified) {
+        const product = await Product.findById(mItem.id);
+        if (product) {
+          const price = mItem.price || product.final_price || product.price;
+          finalItems.push({
+            product_id: product._id,
+            product_name: product.name,
+            quantity: mItem.qty,
+            unit_price: price,
+            total_price: price * mItem.qty,
+          });
+        }
+      }
+    } else {
+      // Fallback
+      const cart = await Cart.findOne({ user: userId }).populate(
+        "items.product"
+      );
+      if (cart && cart.items.length > 0) {
+        finalItems = cart.items.map((i) => ({
+          product_id: i.product._id,
+          product_name: i.product.name,
+          quantity: i.quantity,
+          unit_price: i.price_discount || i.price_original,
+          total_price: i.Total_price || i.quantity * i.price_original,
+        }));
+      }
     }
 
-    if (cart.items.length > 0) {
-      const items = cart.items.map((i) => ({
-        product_id: i.product._id,
-        product_name: i.product.name,
-        quantity: i.quantity,
-        unit_price: i.price_original,
-        total_price: i.Total_price || i.quantity * i.price_original,
-      }));
-
+    if (finalItems.length > 0) {
       const newInvoice = new Invoice({
         user: userId,
         momoOrderId: orderId,
-        recipient_info, // ✅ Đã chứa note
-        items,
+        recipient_info,
+        items: finalItems,
         payment_method: "MOMO_QR",
         shipping_fee,
         total_amount: Number(amount),
-        status: "PAID",
+        status: "PLACED",
+        order_status: "PLACED",
+        payment_status: "PAID",
       });
 
       await newInvoice.save();
 
-      // TRỪ KHO (Giữ nguyên logic đúng của bạn)
-      const bulkOps = items.map((item) => ({
+      const bulkOps = finalItems.map((item) => ({
         updateOne: {
           filter: { _id: item.product_id },
-          update: {
-            $inc: { quantity: -item.quantity, sold: +item.quantity },
-          },
+          update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
         },
       }));
-
       await Product.bulkWrite(bulkOps);
-      console.log(`✅ Đã trừ kho cho đơn MoMo: ${orderId}`);
 
-      await Cart.findOneAndDelete({ user: userId });
-      console.log("✅ Hóa đơn MoMo đã tạo:", newInvoice._id);
+      // 🔥 CHỈ XÓA GIỎ HÀNG KHI KHÔNG PHẢI MUA NGAY 🔥
+      if (!isDirectBuy) {
+        await Cart.findOneAndDelete({ user: userId });
+        console.log("🗑️ Đã xóa giỏ hàng (Cart Checkout).");
+      } else {
+        console.log("🛡️ Giữ nguyên giỏ hàng (Direct Buy).");
+      }
+
       return newInvoice;
     }
   } catch (error) {
     if (error.code === 11000) {
-      console.log(
-        `⚠️ Race condition chặn thành công: Hóa đơn ${orderId} đã tồn tại.`
-      );
-      return await Invoice.findOne({ momoOrderId: orderId });
+      const racewin = await Invoice.findOne({ momoOrderId: orderId });
+      if (racewin && racewin.payment_status !== "PAID") {
+        racewin.payment_status = "PAID";
+        await racewin.save();
+      }
+      return racewin;
     }
     console.error("🔥 Lỗi tạo hóa đơn MoMo:", error);
   }
@@ -263,18 +347,17 @@ const processSuccessfulMomoPayment = async (orderId, extraData, amount) => {
 };
 
 // =============================
-// 4. CHUYỂN KHOẢN NGÂN HÀNG (Sửa thêm Note)
+// 4. CHUYỂN KHOẢN NGÂN HÀNG (Giữ nguyên)
 // =============================
 export const createBankPayment = async (req, res) => {
   try {
     const userId = req.user._id;
-    // Lấy thêm note từ req.body
     const {
       recipient_name,
       recipient_phone,
       recipient_address,
-      note, // 👈 Lấy note
-      recipient_note, // Hoặc lấy ở đây
+      note,
+      recipient_note,
       shippingMethod,
     } = req.body;
 
@@ -283,7 +366,6 @@ export const createBankPayment = async (req, res) => {
     const cart = await Cart.findOne({ user: userId }).populate("items.product");
     if (!cart) return res.status(400).json({ message: "Cart empty" });
 
-    // Check tồn kho
     for (const item of cart.items) {
       if (item.product.quantity < item.quantity) {
         return res
@@ -294,14 +376,13 @@ export const createBankPayment = async (req, res) => {
 
     const shippingCost = shippingMethod === "fast" ? 30000 : 15000;
     const finalAmount = cart.final_total_price + shippingCost;
-
     const newInvoice = new Invoice({
       user: userId,
       recipient_info: {
         name: recipient_name,
         phone: recipient_phone,
         address: recipient_address,
-        note: finalNote, // 👈 🔥 LƯU NOTE VÀO DB
+        note: finalNote,
       },
       items: cart.items.map((i) => ({
         product_id: i.product._id,
@@ -317,9 +398,6 @@ export const createBankPayment = async (req, res) => {
     });
 
     await newInvoice.save();
-
-    // 🚨 Với Bank Transfer (Pending), có thể bạn chưa muốn trừ kho ngay,
-    // hoặc trừ ngay tùy logic. Nếu muốn trừ ngay thì thêm bulkWrite ở đây.
 
     const BANK_ID = "MB";
     const ACCOUNT_NO = "0333666999";

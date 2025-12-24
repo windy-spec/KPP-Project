@@ -15,33 +15,45 @@ const invoiceItemSchema = new mongoose.Schema({
 const invoiceSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-
-    // 🔥 SỬA ĐOẠN NÀY: Thêm unique và sparse để chặn trùng lặp
     momoOrderId: {
       type: String,
-      unique: true, // Bắt buộc duy nhất trong toàn bộ DB
-      sparse: true, // Cho phép giá trị null/undefined (để đơn COD không bị lỗi)
+      unique: true,
+      sparse: true,
     },
-
     recipient_info: {
       name: String,
       phone: String,
-      address: String,
-      note: String, // Thêm note nếu cần
+      address: String, // Lưu địa chỉ đầy đủ (VD: 123 Lê Lợi, Quận 1, Hồ Chí Minh)
+      note: String,
     },
     items: [invoiceItemSchema],
+
+    // Phương thức thanh toán
     payment_method: {
       type: String,
       enum: ["COD", "MOMO_QR", "BANK_TRANSFER"],
       required: true,
     },
+
     shipping_fee: Number,
     total_amount: Number,
-    status: {
+
+    //  1. Trạng thái thanh toán (Tách riêng)
+    payment_status: {
       type: String,
-      enum: ["PENDING", "PAID", "CANCELLED"],
-      default: "PENDING",
+      enum: ["UNPAID", "PAID"],
+      default: "UNPAID",
     },
+
+    //  2. Trạng thái tiến độ đơn hàng (4 bước theo yêu cầu)
+    order_status: {
+      type: String,
+      enum: ["PLACED", "PREPARING", "SHIPPING", "COMPLETED", "CANCELLED"],
+      default: "PLACED",
+    },
+
+    //  3. Thời gian bắt đầu giao hàng (Để tính 3 ngày/7 ngày)
+    shipped_at: { type: Date, default: null },
   },
   { timestamps: true }
 );

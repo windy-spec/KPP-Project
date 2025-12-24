@@ -21,12 +21,10 @@ const productUploadMiddleware = upload.fields([
 router.get("/partition", partitionPageProduct);
 router.get("/", getAllProduct);
 
-console.log("✅ productRoute loaded");
-
 // Áp dụng middleware chấp nhận nhiều trường cho POST
 router.post("/", productUploadMiddleware, createProduct);
 
-// 🚨 ĐÃ SỬA LỖI TẠI ĐÂY: Áp dụng middleware chấp nhận nhiều trường cho PUT
+// Áp dụng middleware chấp nhận nhiều trường cho PUT
 router.put("/:id", productUploadMiddleware, updateProduct);
 
 router.delete("/:id", deleteProduct);

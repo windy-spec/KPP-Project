@@ -20,6 +20,7 @@ import {
   Truck,
   Loader2,
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
@@ -100,9 +101,11 @@ interface CreateOrderPayload {
     quantity: number;
     price: number;
   }[];
-  payment_method: string; // <-- Quan trọng: phải có gạch dưới
+  payment_method: string;
   shipping_fee: number;
   total_amount: number;
+  isDirectBuy?: boolean;
+  shippingMethod?: string;
 }
 
 interface AuthContextType {
@@ -241,7 +244,6 @@ const CartProvider = ({ children }: ChildrenProps) => {
       const data = await apiFetch("/cart");
       setCart(data);
     } catch {
-      // Không set error ở đây để tránh popup lỗi khi cart trống
       setCart(null);
     } finally {
       setLoading(false);
@@ -253,7 +255,6 @@ const CartProvider = ({ children }: ChildrenProps) => {
       fetchProfile();
       fetchCart();
     } else {
-      // Nếu không có token (khách vãng lai), có thể load cart từ localStorage nếu bạn có lưu
       setCart(null);
     }
   }, [token, fetchCart, fetchProfile]);
@@ -285,32 +286,19 @@ const CartProvider = ({ children }: ChildrenProps) => {
     }
   };
 
-  // 🔥 HÀM NÀY ĐÃ ĐƯỢC CẬP NHẬT ĐỂ XOÁ GIỎ HÀNG 🔥
   const createOrder = async (payload: CreateOrderPayload) => {
     setLoading(true);
     try {
-      // 1. Gọi API tạo hóa đơn
-      const res = await apiFetch("/invoice", {
+      // 🔥 SỬA: /invoice -> /invoices
+      const res = await apiFetch("/invoices", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
-      // 2. Xóa State giỏ hàng trên giao diện ngay lập tức
       setCart(null);
-
-      // 3. Xóa LocalStorage (Chỉ xóa thông tin giỏ hàng, KHÔNG xóa accessToken)
-      localStorage.removeItem("cart"); // Nếu bạn có lưu biến này
-      localStorage.removeItem("cart_items"); // Nếu bạn có lưu biến này
-      localStorage.removeItem("guestCartId"); // Nếu có cart vãng lai
-
-      // 4. (Tùy chọn) Gọi API xóa sạch giỏ hàng trên Server
-      // (Nếu API /invoice bên Backend chưa tự động xóa giỏ hàng sau khi tạo đơn)
-      /* try {
-          await apiFetch("/cart/clear", { method: "DELETE" });
-      } catch (err) {
-          console.log("Lỗi dọn dẹp giỏ hàng server", err);
-      }
-      */
+      localStorage.removeItem("cart");
+      localStorage.removeItem("cart_items");
+      localStorage.removeItem("guestCartId");
 
       return res;
     } catch (e: any) {
@@ -408,25 +396,26 @@ const DISTRICTS: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
-// --- COMPONENT TRANG THANH TOÁN (UPDATED) ---
+// =========================================================
+// 🔥 COMPONENT PaymentPage (LOGIC MỚI)
+// =========================================================
 const PaymentPage: React.FC = () => {
   const { cart, loading: cartLoading, updateItem, createOrder } = useCart();
   const { user } = useAuth();
 
-  // Form State
+  const location = useLocation();
+  const directBuyData = location.state?.directBuy;
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [address, setAddress] = useState("");
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
   const [note, setNote] = useState("");
   const [shipMethod, setShipMethod] = useState("fast");
-
-  // Payment Method: 'COD' | 'MOMO'
   const [payMethod, setPayMethod] = useState("cod");
-
-  // Status State
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
 
@@ -438,9 +427,40 @@ const PaymentPage: React.FC = () => {
     }
   }, [user]);
 
-  // Derived Data
-  const items = useMemo(() => cart?.items || [], [cart]);
-  const subTotal = useMemo(() => cart?.final_total_price || 0, [cart]);
+  const validatePhone = (value: string) => {
+    const cleaned = String(value).trim();
+    const re = /^0\d{9}$/;
+    return re.test(cleaned);
+  };
+
+  const items = useMemo(() => {
+    if (directBuyData && directBuyData.items) return directBuyData.items;
+    return cart?.items || [];
+  }, [cart, directBuyData]);
+
+  // --- TÍNH TOÁN TIỀN ---
+  const totalOriginalPrice = useMemo(() => {
+    if (directBuyData) {
+      return directBuyData.items.reduce(
+        (acc: number, item: any) =>
+          acc + (item.price_original || item.product.price) * item.quantity,
+        0
+      );
+    }
+    return cart?.total_original_price || 0;
+  }, [cart, directBuyData]);
+
+  const totalAfterDiscount = useMemo(() => {
+    if (directBuyData) {
+      return directBuyData.totalAmount;
+    }
+    return cart?.final_total_price || 0;
+  }, [cart, directBuyData]);
+
+  const totalDiscount = useMemo(() => {
+    return Math.max(0, totalOriginalPrice - totalAfterDiscount);
+  }, [totalOriginalPrice, totalAfterDiscount]);
+
   const shippingCost = useMemo(
     () => (shipMethod === "fast" ? 30000 : 15000),
     [shipMethod]
@@ -449,9 +469,10 @@ const PaymentPage: React.FC = () => {
     () => (shipMethod === "fast" ? "Nhanh" : "Tiết kiệm"),
     [shipMethod]
   );
+
   const totalWithShipping = useMemo(
-    () => subTotal + shippingCost,
-    [subTotal, shippingCost]
+    () => totalAfterDiscount + shippingCost,
+    [totalAfterDiscount, shippingCost]
   );
 
   const paymentLabel = useMemo(() => {
@@ -459,24 +480,23 @@ const PaymentPage: React.FC = () => {
     return "Thanh toán khi nhận hàng (COD)";
   }, [payMethod]);
 
-  // Actions
   const increase = (pid: string) => {
-    const item = items.find((i) => i.product._id === pid);
+    if (directBuyData) return;
+    const item = items.find((i: any) => i.product._id === pid);
     if (item && !cartLoading) updateItem(pid, item.quantity + 1);
   };
   const decrease = (pid: string) => {
-    const item = items.find((i) => i.product._id === pid);
+    if (directBuyData) return;
+    const item = items.find((i: any) => i.product._id === pid);
     if (item && !cartLoading) updateItem(pid, item.quantity - 1);
   };
 
-  // Select Options
   const districtOptions = useMemo(() => DISTRICTS[province] || [], [province]);
 
   const inputStyle =
     "border p-2 rounded-md shadow-sm w-full focus:border-blue-500 focus:ring-blue-500 transition-all outline-none";
   const boxStyle = "bg-white border shadow-sm p-4 rounded-md";
 
-  // --- LOGIC XỬ LÝ THANH TOÁN CHÍNH (Đã sửa lỗi Payload) ---
   const placeOrder = async () => {
     setOrderError(null);
     if (!name || !phone || !address || !province || !district) {
@@ -484,47 +504,46 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    if (!cart || cart.items.length === 0) {
-      setOrderError("Giỏ hàng trống.");
+    if (!validatePhone(phone)) {
+      setOrderError("Số điện thoại không hợp lệ.");
+      setPhoneError("SĐT phải bắt đầu bằng '09' và có 10 chữ số");
       return;
     }
 
-    // Lấy tên Quận/Huyện từ value (để lưu vào DB cho đẹp)
-    const districtObj = districtOptions.find((d) => d.value === district);
-    const districtLabel = districtObj ? districtObj.label : district;
+    if (items.length === 0) {
+      setOrderError("Không có sản phẩm để thanh toán.");
+      return;
+    }
 
-    // Lấy tên Tỉnh/Thành
-    const provinceObj = PROVINCES.find((p) => p.code === province);
-    const provinceLabel = provinceObj ? provinceObj.name : province;
+    const districtLabel =
+      districtOptions.find((d) => d.value === district)?.label || district;
+    const provinceLabel =
+      PROVINCES.find((p) => p.code === province)?.name || province;
 
-    // Payload chuẩn gửi lên Backend
     const payload: CreateOrderPayload = {
-      // 1. Thông tin người nhận
       recipient_info: {
         name,
         phone,
         address: `${address}, ${districtLabel}, ${provinceLabel}`,
         note,
       },
-      // 2. Danh sách sản phẩm
-      items: cart.items.map((item) => ({
-        product_id: item.product._id,
+      items: items.map((item: any) => ({
+        product_id: item.product._id || item.product_id,
         quantity: item.quantity,
         price: item.price_discount || item.price_original,
       })),
-      // 3. Phương thức thanh toán (QUAN TRỌNG: CÓ GẠCH DƯỚI)
       payment_method: payMethod === "momo" ? "MOMO_QR" : "COD",
-
-      // 4. Các loại phí
       shipping_fee: shippingCost,
       total_amount: totalWithShipping,
+      shippingMethod: shipMethod,
+      isDirectBuy: !!directBuyData,
     };
 
     console.log("Đang gửi đơn hàng:", payload);
 
     try {
-      // 1. THANH TOÁN MOMO
       if (payMethod === "momo") {
+        // 🔥 Đường dẫn API MoMo
         const res = await apiFetch("/payments/momo", {
           method: "POST",
           body: JSON.stringify(payload),
@@ -534,10 +553,16 @@ const PaymentPage: React.FC = () => {
         } else {
           setOrderError("Không nhận được link thanh toán từ MoMo.");
         }
-
-        // 2. COD (Thanh toán khi nhận)
       } else {
-        await createOrder(payload);
+        // COD
+        if (directBuyData) {
+          await apiFetch("/invoices", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+        } else {
+          await createOrder(payload);
+        }
         setOrderSuccess(true);
       }
     } catch (error) {
@@ -546,7 +571,6 @@ const PaymentPage: React.FC = () => {
     }
   };
 
-  // --- GIAO DIỆN THÀNH CÔNG ---
   if (orderSuccess) {
     return (
       <>
@@ -573,7 +597,6 @@ const PaymentPage: React.FC = () => {
     );
   }
 
-  // --- GIAO DIỆN CHÍNH ---
   return (
     <>
       <Navbar />
@@ -589,7 +612,14 @@ const PaymentPage: React.FC = () => {
               {/* 1. Danh sách sản phẩm */}
               <div className={`${boxStyle} overflow-hidden p-0`}>
                 <div className="bg-gray-100 px-4 py-3 border-b font-semibold text-gray-700">
-                  Sản phẩm trong giỏ
+                  Sản phẩm{" "}
+                  {directBuyData ? (
+                    <span className="text-orange-600 text-xs ml-2">
+                      (Mua ngay)
+                    </span>
+                  ) : (
+                    ""
+                  )}
                 </div>
                 {cartLoading ? (
                   <div className="p-8 text-center text-gray-500">
@@ -597,11 +627,11 @@ const PaymentPage: React.FC = () => {
                   </div>
                 ) : items.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
-                    Giỏ hàng trống.
+                    Chưa có sản phẩm.
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {items.map((it) => (
+                    {items.map((it: any) => (
                       <div
                         key={it.product._id}
                         className="p-4 flex items-center justify-between hover:bg-gray-50 transition"
@@ -617,34 +647,52 @@ const PaymentPage: React.FC = () => {
                               {it.product.name}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {formatVND(it.price_discount)} x {it.quantity}
+                              {/* Hiển thị giá giảm nếu có */}
+                              {it.price_discount &&
+                              it.price_discount < it.price_original ? (
+                                <span>
+                                  <span className="text-red-500 font-bold">
+                                    {formatVND(it.price_discount)}
+                                  </span>
+                                  <span className="line-through text-xs ml-2">
+                                    {formatVND(it.price_original)}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span>{formatVND(it.price_original)}</span>
+                              )}
+                              <span className="ml-1">x {it.quantity}</span>
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-gray-800">
-                            {formatVND(it.Total_price)}
+                            {formatVND(
+                              (it.price_discount || it.price_original) *
+                                it.quantity
+                            )}
                           </div>
-                          {/* Nút tăng giảm nhỏ */}
-                          <div className="flex items-center justify-end gap-2 mt-1">
-                            <button
-                              onClick={() => decrease(it.product._id)}
-                              disabled={cartLoading}
-                              className="p-1 bg-gray-200 rounded hover:bg-gray-300"
-                            >
-                              <Minus size={12} />
-                            </button>
-                            <span className="text-xs font-medium w-4 text-center">
-                              {it.quantity}
-                            </span>
-                            <button
-                              onClick={() => increase(it.product._id)}
-                              disabled={cartLoading}
-                              className="p-1 bg-gray-200 rounded hover:bg-gray-300"
-                            >
-                              <Plus size={12} />
-                            </button>
-                          </div>
+                          {!directBuyData && (
+                            <div className="flex items-center justify-end gap-2 mt-1">
+                              <button
+                                onClick={() => decrease(it.product._id)}
+                                disabled={cartLoading}
+                                className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <span className="text-xs font-medium w-4 text-center">
+                                {it.quantity}
+                              </span>
+                              <button
+                                onClick={() => increase(it.product._id)}
+                                disabled={cartLoading}
+                                className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -663,19 +711,24 @@ const PaymentPage: React.FC = () => {
                     className={inputStyle}
                     placeholder="Họ và tên"
                     value={name}
+                    readOnly={!!user}
                     onChange={(e) => setName(e.target.value)}
                   />
                   <input
                     className={inputStyle}
                     placeholder="Email"
                     value={email}
+                    readOnly={!!user}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                   <input
                     className={inputStyle}
                     placeholder="Số điện thoại"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (phoneError) setPhoneError(null);
+                    }}
                   />
                   <input
                     className={inputStyle}
@@ -722,7 +775,6 @@ const PaymentPage: React.FC = () => {
 
               {/* 3. Vận chuyển & Thanh toán */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* VẬN CHUYỂN */}
                 <div className={boxStyle}>
                   <div className="font-semibold mb-3 flex items-center gap-2">
                     <Truck className="w-4 h-4" /> Vận chuyển
@@ -779,13 +831,11 @@ const PaymentPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* THANH TOÁN */}
                 <div className={boxStyle}>
                   <div className="font-semibold mb-3 flex items-center gap-2">
                     <CreditCard className="w-4 h-4" /> Thanh toán
                   </div>
                   <div className="space-y-2">
-                    {/* MOMO */}
                     <label
                       className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
                         payMethod === "momo"
@@ -814,7 +864,6 @@ const PaymentPage: React.FC = () => {
                       </div>
                     </label>
 
-                    {/* COD */}
                     <label
                       className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition-colors ${
                         payMethod === "cod"
@@ -844,7 +893,7 @@ const PaymentPage: React.FC = () => {
               </div>
             </div>
 
-            {/* CỘT PHẢI: TỔNG KẾT & NÚT ĐẶT */}
+            {/* 🔥 CỘT PHẢI: CHI TIẾT THANH TOÁN */}
             <aside className="lg:col-span-4 lg:sticky lg:top-4 h-fit">
               <div className={`${boxStyle} p-5 border-t-4 border-t-orange-500`}>
                 <h3 className="font-bold text-lg mb-4 pb-2 border-b">
@@ -853,19 +902,17 @@ const PaymentPage: React.FC = () => {
 
                 <div className="space-y-3 text-sm text-gray-600">
                   <div className="flex justify-between">
-                    <span>Tổng tiền hàng</span>
-                    <span className="font-medium">
-                      {formatVND(cart?.total_original_price || 0)}
+                    <span>Tổng tiền hàng (Gốc)</span>
+                    <span className="font-medium text-gray-500 line-through">
+                      {formatVND(totalOriginalPrice)}
                     </span>
                   </div>
-                  {(cart?.total_discount_amount || 0) > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Đã giảm giá</span>
-                      <span>
-                        - {formatVND(cart?.total_discount_amount || 0)}
-                      </span>
-                    </div>
-                  )}
+
+                  <div className="flex justify-between text-green-600">
+                    <span>Khuyến mãi</span>
+                    <span>- {formatVND(totalDiscount)}</span>
+                  </div>
+
                   <div className="flex justify-between">
                     <span>Phí vận chuyển ({shippingLabel})</span>
                     <span>+ {formatVND(shippingCost)}</span>
@@ -909,7 +956,7 @@ const PaymentPage: React.FC = () => {
   );
 };
 
-// --- LOGIN FORM (Giữ nguyên) ---
+// --- LOGIN FORM ---
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("user");
   const [password, setPassword] = useState("123456");
@@ -990,7 +1037,6 @@ const App: React.FC = () => {
     );
   return user ? <PaymentPage /> : <LoginForm />;
 };
-
 const AppWrapper: React.FC = () => (
   <AuthProvider>
     <CartProvider>
@@ -998,5 +1044,4 @@ const AppWrapper: React.FC = () => (
     </CartProvider>
   </AuthProvider>
 );
-
 export default AppWrapper;

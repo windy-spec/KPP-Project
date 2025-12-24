@@ -6,8 +6,8 @@ import {
   getAllInvoices,
   getMyInvoices,
   getInvoiceById,
-  updateInvoiceStatus,
   deleteInvoice,
+  updateInvoice, // 👈 Import hàm mới này
 } from "../controllers/invoiceController.js";
 
 const router = express.Router();
@@ -21,9 +21,15 @@ router.get("/me", protectedRoute, getMyInvoices);
 // 3. ADMIN LẤY TẤT CẢ HÓA ĐƠN
 router.get("/", protectedRoute, verifyAdmin, getAllInvoices);
 
-// 4. XEM CHI TIẾT + ADMIN UPDATE TRẠNG THÁI
+// 4. XEM CHI TIẾT
 router.get("/:id", protectedRoute, getInvoiceById);
-router.put("/:id", protectedRoute, verifyAdmin, updateInvoiceStatus);
 
+// 5. 🔥 ROUTE CẬP NHẬT (DÙNG CHUNG CHO ADMIN VÀ USER)
+// Frontend gọi: PUT /api/invoice/:id
+// Controller sẽ tự phân biệt ai đang gọi
+router.put("/:id", protectedRoute, updateInvoice);
+
+// 6. Xóa hóa đơn
 router.delete("/:id", protectedRoute, deleteInvoice);
+
 export default router;

@@ -32,6 +32,7 @@ type ProductItem = {
   _id: string;
   name: string;
   price: number;
+  quantity: number;
   category?: { _id: string; name: string };
   description?: string;
   avatar?: string;
@@ -81,7 +82,7 @@ const Management: React.FC = () => {
         </aside>
 
         {/* Main */}
-  <main className="flex-1 p-8 min-h-screen">
+        <main className="flex-1 p-8 min-h-screen">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
               {sections.find((s) => s.id === active)?.label}
@@ -246,12 +247,14 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     setName(it.name);
     setPrice(it.price);
     setPriceInput(
-      it.price
-        ? String(it.price).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-        : ""
+      it.price ? String(it.price).replace(/\B(?=(\d{3})+(?!\d))/g, ".") : ""
     );
     setCategory(it.category?._id || "");
     setDescription(it.description || "");
+
+    // 🔥 THÊM DÒNG NÀY ĐỂ LẤY SỐ LƯỢNG
+    setQuantity(it.quantity || 0);
+
     setOldAvatar(it.avatar || "");
     setOldImages(it.images || []);
     setAvatarFile(null);
@@ -557,7 +560,8 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                       <AlertDialogHeader>
                         <AlertDialogTitle>Xóa nhiều sản phẩm?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Bạn chắc chắn muốn xóa {selectedIds.size} sản phẩm đã chọn? Hành động này không thể hoàn tác.
+                          Bạn chắc chắn muốn xóa {selectedIds.size} sản phẩm đã
+                          chọn? Hành động này không thể hoàn tác.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -597,7 +601,10 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
               </thead>
               <tbody>
                 {allItems.map((it) => (
-                  <tr key={it._id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <tr
+                    key={it._id}
+                    className="border-t border-gray-100 hover:bg-gray-50"
+                  >
                     <td className="py-3 px-2">
                       <input
                         type="checkbox"
@@ -618,7 +625,9 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                     <td className="py-3 px-2 md:px-4">
                       {new Intl.NumberFormat("vi-VN").format(it.price)} đ
                     </td>
-                    <td className="py-3 px-2 md:px-4">{it.category?.name || "—"}</td>
+                    <td className="py-3 px-2 md:px-4">
+                      {it.category?.name || "—"}
+                    </td>
                     <td className="py-3 px-2 md:px-4">
                       <div className="flex gap-2">
                         <Button onClick={() => openEdit(it._id)}>Sửa</Button>
@@ -733,7 +742,9 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
         body: JSON.stringify({ name, description }),
       });
       if (!res.ok) throw new Error();
-      toast.success(editingId ? "Cập nhật danh mục thành công" : "Thêm danh mục thành công");
+      toast.success(
+        editingId ? "Cập nhật danh mục thành công" : "Thêm danh mục thành công"
+      );
       resetForm();
       onParentClose && onParentClose();
       await fetchAll();
@@ -771,7 +782,9 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
     try {
       const results = await Promise.all(
         ids.map((id) =>
-          fetch(`http://localhost:5001/api/category/${id}`, { method: "DELETE" })
+          fetch(`http://localhost:5001/api/category/${id}`, {
+            method: "DELETE",
+          })
         )
       );
       const okCount = results.filter((r) => r.ok).length;
@@ -806,7 +819,9 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
       <h3 className="font-bold text-xl mb-4 text-orange-600">{title}</h3>
       <div className="space-y-4 md:space-y-5">
         <div>
-          <label className="block text-sm text-gray-700 mb-1">Tên danh mục</label>
+          <label className="block text-sm text-gray-700 mb-1">
+            Tên danh mục
+          </label>
           <input
             className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
             placeholder="Nhập tên danh mục"
@@ -815,7 +830,9 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-700 mb-1">Mô tả (tuỳ chọn)</label>
+          <label className="block text-sm text-gray-700 mb-1">
+            Mô tả (tuỳ chọn)
+          </label>
           <textarea
             className="w-full border border-gray-100 rounded px-3 py-3 focus:ring-2 focus:ring-orange-200 focus:border-orange-300 outline-none"
             placeholder="Nhập mô tả cho danh mục"
@@ -869,7 +886,8 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Xóa nhiều danh mục?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Bạn chắc chắn muốn xóa {selectedIds.size} danh mục đã chọn? Hành động này không thể hoàn tác.
+                        Bạn chắc chắn muốn xóa {selectedIds.size} danh mục đã
+                        chọn? Hành động này không thể hoàn tác.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -893,7 +911,10 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                 <th className="w-10 px-2">
                   <input
                     type="checkbox"
-                    checked={items.length > 0 && items.every((i) => selectedIds.has(i._id))}
+                    checked={
+                      items.length > 0 &&
+                      items.every((i) => selectedIds.has(i._id))
+                    }
                     onChange={() => toggleSelectAll()}
                   />
                 </th>
@@ -904,7 +925,10 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
             </thead>
             <tbody>
               {items.map((it) => (
-                <tr key={it._id} className="border-t border-gray-100 hover:bg-gray-50">
+                <tr
+                  key={it._id}
+                  className="border-t border-gray-100 hover:bg-gray-50"
+                >
                   <td className="py-3 px-2">
                     <input
                       type="checkbox"
@@ -913,7 +937,9 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                     />
                   </td>
                   <td className="py-3 px-2 md:px-4">{it.name}</td>
-                  <td className="py-3 px-2 md:px-4 text-gray-700">{it.description || "—"}</td>
+                  <td className="py-3 px-2 md:px-4 text-gray-700">
+                    {it.description || "—"}
+                  </td>
                   <td className="py-3 px-2 md:px-4">
                     <div className="flex gap-2">
                       <Button onClick={() => openEdit(it._id)}>Sửa</Button>
@@ -925,7 +951,8 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                           <AlertDialogHeader>
                             <AlertDialogTitle>Xóa danh mục?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Hành động này sẽ xóa vĩnh viễn danh mục <b>{it.name}</b>.
+                              Hành động này sẽ xóa vĩnh viễn danh mục{" "}
+                              <b>{it.name}</b>.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

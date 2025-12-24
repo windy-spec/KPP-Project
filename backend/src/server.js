@@ -12,17 +12,16 @@ import momoRoute from "./routes/momoRoute.js";
 import invoiceRoute from "./routes/invoiceRoute.js";
 import path from "path";
 import discountRoute from "./routes/discountRoute.js";
-import SaleProgram from "./routes/saleProgramRoute.js"; // call env port
+import SaleProgram from "./routes/saleProgramRoute.js";
+import cron from "node-cron";
+import { autoUpdateOrderStatus } from "./controllers/CronController.js";
 
 dotenv.config();
-
-// Set port 5001
+// Set port
 const app = express();
-// Lấy biến PORT từ .env, nếu không có thì mặc định là 5001
 const PORT = process.env.PORT || 5001;
-
-// cors
-app.use(express.static("public")); // để multer upload ảnh có thể truy cập
+// Middleware
+app.use(express.static("public"));
 app.use(express.json());
 app.use(
   cors({
@@ -31,10 +30,12 @@ app.use(
   })
 );
 app.use(cookieParser());
+// Static Files
 app.use("/public", express.static(path.join(process.cwd(), "public")));
+app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
+// Routes
 app.use("/api/category", categoryRoute);
 app.use("/api/saleprogram", SaleProgram);
-app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 app.use("/api/discount", discountRoute);
 app.use("/api/product", productRoute);
 app.use("/api/auth", authRoute);
@@ -42,9 +43,25 @@ app.use("/api/users", userRoute);
 app.use("/api/cart", cartRoute);
 app.use("/api/payments", momoRoute);
 app.use("/api/invoice", invoiceRoute);
+
+//  2. Cấu hình Cron Job (Chạy mỗi 1 tiếng)
+// Cú pháp: 'phút giờ ngày tháng thứ'
+// '0 * * * *' nghĩa là chạy vào phút thứ 0 của mỗi giờ (1h00, 2h00...)
+cron.schedule("0 * * * *", () => {
+  console.log(" [CRON] Đang quét đơn hàng để cập nhật trạng thái...");
+  autoUpdateOrderStatus();
+});
+
+// TEST
+// cron.schedule("* * * * *", () => {
+//   console.log(" [CRON] Đang quét đơn hàng để cập nhật trạng thái...");
+//   autoUpdateOrderStatus();
+// });
+
+// Connect DB & Start Server
 connectDB().then(() => {
-  //
   app.listen(PORT, () => {
     console.log(`Server đã bắt đầu ở cổng ${PORT}`);
+    console.log("✅ Cron Job đã được kích hoạt.");
   });
 });
