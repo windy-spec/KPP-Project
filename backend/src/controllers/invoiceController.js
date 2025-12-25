@@ -39,7 +39,6 @@ export const createInvoice = async (req, res) => {
       total_amount,
       momoOrderId: momoOrderId || undefined,
       order_status: "PLACED",
-      status: "PLACED",
       payment_status: "UNPAID",
     });
 
@@ -156,9 +155,7 @@ export const updateInvoice = async (req, res) => {
     // --- LOGIC ADMIN ---
     if (userRole === "admin") {
       if (newStatus) {
-        invoice.status = newStatus;
         invoice.order_status = newStatus;
-
         if (newStatus === "SHIPPING" && !invoice.shipped_at) {
           invoice.shipped_at = new Date();
         }
@@ -178,15 +175,13 @@ export const updateInvoice = async (req, res) => {
       }
 
       if (newStatus === "COMPLETED") {
-        if (invoice.status !== "SHIPPING") {
+        if (invoice.order_status !== "SHIPPING") {
+          // Sửa check status -> order_status
           return res
             .status(400)
             .json({ message: "Đơn hàng chưa được giao đi" });
         }
-
-        invoice.status = "COMPLETED";
         invoice.order_status = "COMPLETED";
-
         // 🔥 LOGIC BẠN YÊU CẦU: Giao xong -> Auto update thành ĐÃ THANH TOÁN
         if (invoice.payment_status !== "PAID") {
           invoice.payment_status = "PAID";
