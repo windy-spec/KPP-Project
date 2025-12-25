@@ -29,6 +29,8 @@ const DashboardAdmin: React.FC = () => {
       totalOrders: number;
       totalProducts: number;
       totalUsers: number;
+      totalInventory: number;
+      stockByCategory?: any[];
     };
     chartData: { name: string; revenue: number }[];
     topProducts: {
@@ -38,10 +40,12 @@ const DashboardAdmin: React.FC = () => {
       stock: number;
     }[];
   }>({
-    stats: { totalRevenue: 0, totalOrders: 0, totalProducts: 0, totalUsers: 0 },
+    stats: { totalRevenue: 0, totalOrders: 0, totalProducts: 0, totalUsers: 0, totalInventory: 0 },
     chartData: [],
     topProducts: [],
   });
+
+  const [showStockModal, setShowStockModal] = useState(false); // State để mở Form chi tiết
 
   // Gọi API khi component được mount
   useEffect(() => {
@@ -96,24 +100,101 @@ const DashboardAdmin: React.FC = () => {
     colorClass: string;
     icon: React.ElementType;
   }) => (
-    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-start justify-between hover:shadow-md transition-shadow">
-      <div>
-        <p className="text-gray-500 text-sm font-medium uppercase mb-1">
+    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+      <div className="mb-2">
+        <Icon size={20} className="text-gray-600 mx-auto mb-2" />
+        <p className="text-gray-500 text-[10px] font-medium uppercase mb-1 line-clamp-2">
           {title}
         </p>
-        <h4 className="text-2xl font-bold text-gray-800">{value}</h4>
-        <p className={`text-xs mt-2 font-medium ${colorClass}`}>{sub}</p>
+        <h4 className="text-lg font-bold text-gray-800 line-clamp-1">{value}</h4>
+        <p className={`text-[10px] mt-1 font-medium ${colorClass}`}>{sub}</p>
       </div>
-      <div className={`p-3 rounded-lg bg-gray-50 text-gray-600`}>
-        <Icon size={24} />
+    </div>
+  );
+
+  //component hiển thị chi tiết tồn kho theo danh mục
+  const StockByCategory = () => (
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Chi tiết tồn kho theo danh mục
+            </h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Hiển thị số lượng sản phẩm còn lại trong mỗi danh mục
+            </p>
+          </div>
+          <button
+            onClick={() => setShowStockModal(false)}
+            className="text-gray-400 hover:text-gray-600 transition-colors text-2xl font-bold"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {data.stats.stockByCategory && data.stats.stockByCategory.length > 0 ? (
+            <div className="space-y-3">
+              {data.stats.stockByCategory.map((category: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {category.categoryName || category.name || "Danh mục không xác định"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {category.productCount || 0} sản phẩm
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-orange-600">
+                      {category.totalStock || 0}
+                    </p>
+                    <p className="text-xs text-gray-500">sản phẩm</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-400 font-medium">
+                Chưa có dữ liệu tồn kho theo danh mục
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6">
+          <button
+            onClick={() => setShowStockModal(false)}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
       </div>
     </div>
   );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* 4 Thẻ thống kê nhanh lấy từ API */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Modal hiển thị chi tiết tồn kho */}
+      {showStockModal && <StockByCategory />}
+
+      {/* 5 Thẻ thống kê nhanh lấy từ API */}
+      <div className="grid grid-cols-5 gap-4">
         <StatCard
           title="Tổng doanh thu"
           value={formatVND(data.stats.totalRevenue)}
@@ -142,6 +223,18 @@ const DashboardAdmin: React.FC = () => {
           colorClass="text-purple-600"
           icon={Users}
         />
+        <div
+          onClick={() => setShowStockModal(true)}
+          className="cursor-pointer transition-transform hover:scale-105"
+        >
+          <StatCard
+            title="Tồn kho"
+            value={(data.stats.totalInventory || 0).toString()}
+            sub="Tổng số lượng sản phẩm"
+            colorClass="text-cyan-600"
+            icon={LayoutDashboard}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

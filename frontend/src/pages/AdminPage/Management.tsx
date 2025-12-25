@@ -16,6 +16,9 @@ import {
   Truck,
   CheckCircle,
   LayoutDashboard,
+  Pencil,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
@@ -552,6 +555,27 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       </div>
     </div>
   );
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      // Logic đơn giản: Hiện tất cả các số trang
+      // Nếu bạn có quá nhiều trang (ví dụ > 10), ta sẽ cần logic rút gọn (1 2 ... 9 10)
+      pages.push(
+        <button
+          key={i}
+          onClick={() => goToPage(i)}
+          className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
+            page === i
+              ? "bg-orange-600 text-white" // Trang hiện tại
+              : "border border-gray-200 text-gray-600 hover:bg-orange-50" // Các trang khác
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
 
   return (
     <div className="space-y-4">
@@ -631,17 +655,22 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                     </td>
                     <td className="p-3">{it.quantity}</td>
                     <td className="p-3 flex gap-2">
+                      {/* Nút Sửa */}
                       <button
                         onClick={() => openEdit(it._id)}
-                        className="text-blue-600 hover:underline"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group"
+                        title="Chỉnh sửa"
                       >
-                        Sửa
+                        <Pencil size={18} className="group-hover:scale-110 transition-transform" />
                       </button>
+
+                      {/* Nút Xóa */}
                       <button
                         onClick={() => remove(it._id)}
-                        className="text-red-600 hover:underline"
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
+                        title="Xóa sản phẩm"
                       >
-                        Xóa
+                        <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
                       </button>
                     </td>
                   </tr>
@@ -649,24 +678,41 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
               </tbody>
             </table>
             {totalPages > 1 && (
-              <div className="p-4 flex justify-end gap-2 border-t">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page === 1}
-                  onClick={() => goToPage(page - 1)}
-                >
-                  Trước
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page === totalPages}
-                  onClick={() => goToPage(page + 1)}
-                >
-                  Sau
-                </Button>
+              <div className="p-4 flex items-center justify-between border-t bg-gray-50/50">
+            {/* Hiển thị thông tin tổng quát */}
+            <span className="text-xs text-gray-500">
+              Trang {page} / {totalPages}
+            </span>
+
+            <div className="flex items-center gap-2">
+              {/* Nút Trước */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                disabled={page === 1}
+                onClick={() => goToPage(page - 1)}
+              >
+                <ChevronLeft size={16} />
+              </Button>
+
+              {/* Dãy số trang */}
+              <div className="flex items-center gap-1">
+                {renderPageNumbers()}
               </div>
+
+              {/* Nút Sau */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                disabled={page === totalPages}
+                onClick={() => goToPage(page + 1)}
+              >
+                <ChevronRight size={16} />
+              </Button>
+            </div>
+          </div>
             )}
           </div>
         </>
@@ -796,21 +842,25 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                   <td className="p-3 font-medium">{c.name}</td>
                   <td className="p-3 text-gray-500">{c.description}</td>
                   <td className="p-3 flex gap-2">
+                    {/* Nút Sửa danh mục */}
                     <button
                       onClick={() => {
                         setEditingId(cleanId(c._id));
                         setName(c.name);
                         setDescription(c.description || "");
                       }}
-                      className="text-blue-600 hover:underline"
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all group"
+                      title="Sửa danh mục"
                     >
-                      Sửa
+                      <Pencil size={18} className="group-hover:rotate-12 transition-transform" />
                     </button>
+                    {/* Nút Xóa danh mục */}
                     <button
                       onClick={() => remove(c._id)}
-                      className="text-red-600 hover:underline"
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all group"
+                      title="Xóa danh mục"
                     >
-                      Xóa
+                      <Trash2 size={18} className="group-hover:shake transition-transform" />
                     </button>
                   </td>
                 </tr>
@@ -1429,17 +1479,22 @@ const DiscountsAdmin: React.FC = () => {
                     )}
                   </td>
                   <td className="p-4 flex gap-2 justify-center">
+                    {/* Nút Sửa */}
                     <button
                       onClick={() => openEdit(d)}
-                      className="text-yellow-600 hover:bg-yellow-50 p-1 rounded"
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group"
+                      title="Chỉnh sửa"
                     >
-                      ✏️
+                      <Pencil size={18} className="group-hover:scale-110 transition-transform" />
                     </button>
+
+                    {/* Nút Xóa */}
                     <button
                       onClick={() => handleDelete(d._id)}
-                      className="text-red-600 hover:bg-red-50 p-1 rounded"
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
+                      title="Xóa"
                     >
-                      🗑️
+                      <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
                     </button>
                   </td>
                 </tr>

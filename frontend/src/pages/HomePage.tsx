@@ -5,7 +5,7 @@ import Banner from "@/components/Banner/Banner";
 import Introduce from "@/components/Introduce/Introduce";
 import HomePageProduct from "@/components/Product/HomePageProduct";
 import Promote from "@/components/Promote/Promote";
-
+import Comment from "@/components/Comment/Comment";
 const HomePage = () => {
   return (
     <>
@@ -23,6 +23,9 @@ const HomePage = () => {
       </div>
       <div>
         <Promote />
+      </div>
+      <div>
+        <Comment />
       </div>
       <div>
         <Footer />

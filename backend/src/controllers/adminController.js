@@ -1,6 +1,7 @@
 import Invoice from "../models/Invoice.js";
 import Product from "../models/Product.js";
 import User from "../models/User.js";
+import Category from "../models/Category.js";
 
 export const getDashboardStats = async (req, res) => {
   try {
@@ -78,10 +79,46 @@ export const getDashboardStats = async (req, res) => {
       })
     );
 
+    // --- LOGIC MỚI: TÍNH TỔNG TỒN KHO ---
+    const inventoryStats = await Product.aggregate([
+      { $group: { _id: null, totalQuantity: { $sum: "$quantity" } } }
+    ]);
+    const totalInventory = inventoryStats.length > 0 ? inventoryStats[0].totalQuantity : 0;
+
+    // --- LOGIC MỚI: TÍNH TỒN KHO THEO DANH MỤC (Để hiện trong Form chi tiết) ---
+    const stockByCategory = await Product.aggregate([
+      { $match: { category: { $ne: null } } }, // Lọc những sản phẩm có category
+      { 
+        $group: { 
+          _id: "$category", 
+          totalStock: { $sum: "$quantity" }, 
+          productCount: { $sum: 1 } 
+        } 
+      },
+      { 
+        $lookup: { 
+          from: "categories", 
+          localField: "_id", 
+          foreignField: "_id", 
+          as: "categoryInfo" 
+        } 
+      },
+      { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+      { 
+        $project: { 
+          _id: 0,
+          categoryName: { $ifNull: ["$categoryInfo.name", "Chưa phân loại"] },
+          totalStock: 1, 
+          productCount: 1 
+        } 
+      },
+      { $sort: { totalStock: -1 } } // Sắp xếp giảm dần theo tồn kho
+    ]);
+
     // --- BƯỚC 5: TRẢ KẾT QUẢ ---
     res.status(200).json({
       success: true,
-      stats: { totalRevenue, totalOrders, totalProducts, totalUsers },
+      stats: { totalRevenue, totalOrders, totalProducts, totalUsers, totalInventory, stockByCategory },
       chartData: chartDataRaw.map((item) => ({
         name: item._id,
         revenue: item.revenue,
