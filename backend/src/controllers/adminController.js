@@ -10,7 +10,7 @@ export const getDashboardStats = async (req, res) => {
       // Chỉ lấy những hóa đơn đã thanh toán xong (payment_status: "PAID")
       { $match: { payment_status: "PAID" } },
       // Gom tất cả lại thành 1 nhóm (_id: null) và cộng dồn trường total_amount
-      { $group: { _id: null, total: { $sum: "$total_amount" } } }
+      { $group: { _id: null, total: { $sum: "$total_amount" } } },
     ]);
     // Nếu có dữ liệu thì lấy số tổng, nếu không có hóa đơn nào thì trả về 0
     const totalRevenue = revenueStats.length > 0 ? revenueStats[0].total : 0;
@@ -20,7 +20,7 @@ export const getDashboardStats = async (req, res) => {
     const [totalOrders, totalProducts, totalUsers] = await Promise.all([
       Invoice.countDocuments(), // Đếm tổng số hóa đơn
       Product.countDocuments(), // Đếm tổng số sản phẩm trong kho
-      User.countDocuments({ role: "user" }) // Chỉ đếm những tài khoản là khách hàng (bỏ qua admin)
+      User.countDocuments({ role: "user" }), // Chỉ đếm những tài khoản là khách hàng (bỏ qua admin)
     ]);
 
     // --- BƯỚC 3: DỮ LIỆU BIỂU ĐỒ 7 NGÀY GẦN NHẤT ---
@@ -33,61 +33,59 @@ export const getDashboardStats = async (req, res) => {
         // Lọc hóa đơn đã thanh toán và được tạo trong vòng 7 ngày qua
         $match: {
           payment_status: "PAID",
-          createdAt: { $gte: sevenDaysAgo }
-        }
+          createdAt: { $gte: sevenDaysAgo },
+        },
       },
       {
         // Nhóm theo ngày. Hàm $dateToString sẽ chuyển ngày giờ phức tạp thành dạng "Ngày/Tháng"
         $group: {
           _id: { $dateToString: { format: "%d/%m", date: "$createdAt" } },
-          revenue: { $sum: "$total_amount" } // Tổng tiền theo từng ngày đó
-        }
+          revenue: { $sum: "$total_amount" }, // Tổng tiền theo từng ngày đó
+        },
       },
       // Sắp xếp ngày tăng dần để biểu đồ chạy từ trái sang phải
-      { $sort: { "_id": 1 } }
+      { $sort: { _id: 1 } },
     ]);
 
     // --- BƯỚC 4: TÌM TOP 5 SẢN PHẨM BÁN CHẠY ---
-    const topProducts = await Invoice.aggregate([
+    const topProductsRaw = await Invoice.aggregate([
       { $match: { payment_status: "PAID" } },
-      // Vì mỗi hóa đơn có mảng 'items', lệnh này sẽ tách mảng đó ra. 
-      // VD: 1 hóa đơn có 3 món sẽ tách thành 3 dòng dữ liệu riêng biệt để dễ đếm.
-      { $unwind: "$items" }, 
+      { $unwind: "$items" },
       {
-        // Nhóm theo mã sản phẩm (product_id)
         $group: {
           _id: "$items.product_id",
-          name: { $first: "$items.product_name" }, // Lấy tên sản phẩm đầu tiên tìm thấy
-          sales: { $sum: "$items.quantity" },      // Cộng dồn số lượng đã bán
-          revenue: { $sum: "$items.total_price" }  // Cộng dồn số tiền thu được từ sản phẩm đó
-        }
+          sales: { $sum: "$items.quantity" },
+          // Lấy doanh thu, nếu total_price bị null thì mặc định là 0 để sum không lỗi
+          revenue: { $sum: { $ifNull: ["$items.total_price", 0] } },
+        },
       },
-      // Sắp xếp theo số lượng bán (sales) từ cao xuống thấp
       { $sort: { sales: -1 } },
-      // Chỉ lấy 5 sản phẩm đầu bảng
-      { $limit: 5 }
+      { $limit: 5 },
     ]);
 
-    // --- BƯỚC 5: TRẢ KẾT QUẢ VỀ CHO FRONTEND ---
+    // ✅ FIX: Truy vấn thêm tên sản phẩm từ bảng Product
+    const topProducts = await Promise.all(
+      topProductsRaw.map(async (item) => {
+        const productInfo = await Product.findById(item._id).select("name");
+        return {
+          ...item,
+          // Nếu có tên trong DB thì lấy, không thì báo "Sản phẩm không tên"
+          name: productInfo ? productInfo.name : "Sản phẩm không tên",
+        };
+      })
+    );
+
+    // --- BƯỚC 5: TRẢ KẾT QUẢ ---
     res.status(200).json({
       success: true,
-      stats: {
-        totalRevenue,
-        totalOrders,
-        totalProducts,
-        totalUsers
-      },
-      // Map lại dữ liệu biểu đồ để Frontend (Recharts) dễ đọc hơn
-      chartData: chartDataRaw.map(item => ({
-        name: item._id,     // Tên cột (VD: 25/12)
-        revenue: item.revenue // Chiều cao cột (Số tiền)
+      stats: { totalRevenue, totalOrders, totalProducts, totalUsers },
+      chartData: chartDataRaw.map((item) => ({
+        name: item._id,
+        revenue: item.revenue,
       })),
-      topProducts
+      topProducts, // Trả về danh sách đã được bổ sung tên
     });
-
   } catch (error) {
-    // Nếu có bất kỳ lỗi nào (sai Database, lỗi mạng...), in ra log và báo lỗi về client
-    console.error("Lỗi Thống Kê Dashboard:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

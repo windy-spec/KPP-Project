@@ -92,6 +92,7 @@ export const getMyInvoices = async (req, res) => {
 };
 
 // 3. ADMIN LẤY TẤT CẢ
+// src/controllers/invoiceController.js
 export const getAllInvoices = async (req, res) => {
   try {
     const page = Number(req.query.page) || 1;
@@ -101,16 +102,19 @@ export const getAllInvoices = async (req, res) => {
     const [invoices, total] = await Promise.all([
       Invoice.find()
         .populate("user", "name email")
-        .populate("items.product_id", "name price")
+        // ✅ Bắt buộc phải populate product_id để lấy tên hiển thị ở phần bán chạy/chi tiết
+        .populate("items.product_id", "name price avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
       Invoice.countDocuments(),
     ]);
 
-    res
-      .status(200)
-      .json({ invoices, totalPages: Math.ceil(total / limit), total });
+    res.status(200).json({
+      invoices,
+      totalPages: Math.ceil(total / limit),
+      total,
+    });
   } catch (err) {
     res.status(500).json({ message: "Lỗi server" });
   }
