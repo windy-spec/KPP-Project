@@ -290,7 +290,7 @@ const CartProvider = ({ children }: ChildrenProps) => {
     setLoading(true);
     try {
       // 🔥 SỬA: /invoice -> /invoices
-      const res = await apiFetch("/invoices", {
+      const res = await apiFetch("/invoice", {
         method: "POST",
         body: JSON.stringify(payload),
       });

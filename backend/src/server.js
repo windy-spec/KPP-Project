@@ -15,6 +15,7 @@ import discountRoute from "./routes/discountRoute.js";
 import SaleProgram from "./routes/saleProgramRoute.js";
 import cron from "node-cron";
 import { autoUpdateOrderStatus } from "./controllers/CronController.js";
+import adminRoute from "./routes/adminRoute.js";
 
 dotenv.config();
 // Set port
@@ -43,6 +44,7 @@ app.use("/api/users", userRoute);
 app.use("/api/cart", cartRoute);
 app.use("/api/payments", momoRoute);
 app.use("/api/invoice", invoiceRoute);
+app.use("/api/admin", adminRoute);
 
 //  2. Cấu hình Cron Job (Chạy mỗi 1 tiếng)
 // Cú pháp: 'phút giờ ngày tháng thứ'

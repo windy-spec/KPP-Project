@@ -15,7 +15,20 @@ import {
   X,
   Truck,
   CheckCircle,
+  LayoutDashboard
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -35,9 +48,10 @@ import {
 // 🚨 IMPORT COMPONENT SALE PROGRAM TABLE (Đảm bảo đường dẫn đúng)
 // Nếu file Management.tsx nằm ở src/pages/AdminPage/ thì đường dẫn này đúng
 import SaleProgramTable from "../../components/Admin/SaleProgramTable";
-
+import DashboardAdmin from "../../components/Admin/DashboardAdmin";
 /* ---------------------- Cấu hình & Helper ---------------------- */
 const sections = [
+  { id: "dashboard", label: "Thống kê" },
   { id: "products", label: "Sản phẩm" },
   { id: "categories", label: "Danh mục" },
   { id: "orders", label: "Đơn hàng" },
@@ -137,7 +151,7 @@ type Discount = {
 
 /* ---------------------- Main Component: Management ---------------------- */
 const Management: React.FC = () => {
-  const [active, setActive] = useState<string>("products");
+  const [active, setActive] = useState<string>("dashboard");
   const [parentModalFor, setParentModalFor] = useState<string | null>(null);
 
   return (
@@ -204,6 +218,8 @@ const Management: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 min-h-[600px] p-6 relative">
+            {/* Hiển thị Dashboard */}
+            {active === "dashboard" && <DashboardAdmin />}
             {active === "products" && (
               <ProductsAdmin
                 openFromParent={parentModalFor === "products"}
@@ -818,7 +834,7 @@ const OrdersAdmin: React.FC = () => {
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get("/invoice", {
+      const res = await apiClient.get("/invoice/${id}", {
         params: { page: currentPage, limit },
       });
       const data = Array.isArray(res.data)
