@@ -32,7 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
-import apiClient from "@/utils/api-user";
+import apiClient from "@/utils/api-user"; // Đảm bảo đường dẫn này đúng với project của bạn
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,8 +45,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// 🚨 IMPORT COMPONENT SALE PROGRAM TABLE (Đảm bảo đường dẫn đúng)
-// Nếu file Management.tsx nằm ở src/pages/AdminPage/ thì đường dẫn này đúng
+// 🚨 IMPORT COMPONENT SALE PROGRAM TABLE
+// Hãy chắc chắn đường dẫn này đúng trong máy bạn
 import SaleProgramTable from "../../components/Admin/SaleProgramTable";
 import DashboardAdmin from "../../components/Admin/DashboardAdmin";
 /* ---------------------- Cấu hình & Helper ---------------------- */
@@ -55,12 +55,19 @@ const sections = [
   { id: "products", label: "Sản phẩm" },
   { id: "categories", label: "Danh mục" },
   { id: "orders", label: "Đơn hàng" },
-  { id: "sale_programs", label: "Chương trình Sale" }, // 🆕 Mới
-  { id: "discounts", label: "Mã giảm giá" }, // 🆕 Mới
+  { id: "sale_programs", label: "Chương trình Sale" },
+  { id: "discounts", label: "Mã giảm giá" },
   { id: "users", label: "Người dùng" },
 ];
 
+// Dùng chung base URL từ apiClient hoặc biến môi trường
 const SERVER_BASE_URL = "http://localhost:5001";
+
+// ✅ Helper quan trọng: Làm sạch ID để tránh lỗi ":1"
+const cleanId = (id: string | undefined | null) => {
+  if (!id) return "";
+  return String(id).split(":")[0];
+};
 
 const getImageUrl = (path?: string) =>
   path ? (path.startsWith("http") ? path : `${SERVER_BASE_URL}${path}`) : "";
@@ -244,13 +251,12 @@ const Management: React.FC = () => {
 };
 
 /* =========================================================================================
-   1. PRODUCTS ADMIN (Giữ nguyên logic)
+   1. PRODUCTS ADMIN (Đã chuyển sang dùng apiClient & fix ID)
    ========================================================================================= */
 const ProductsAdmin: React.FC<AdminChildProps> = ({
   openFromParent,
   onParentClose,
 }) => {
-  // ... (Code ProductsAdmin cũ, tôi thu gọn để tập trung vào phần mới)
   const [categories, setCategories] = useState<Category[]>([]);
   const [allItems, setAllItems] = useState<ProductItem[]>([]);
   const [page, setPage] = useState<number>(1);
@@ -299,8 +305,8 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${SERVER_BASE_URL}/api/category`);
-        setCategories(await res.json());
+        const res = await apiClient.get(`/category`); // ✅ Dùng apiClient
+        setCategories(res.data);
       } catch {
         toast.error("Lỗi tải danh mục");
       }
@@ -311,10 +317,10 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${SERVER_BASE_URL}/api/product/partition?page=${page}&limit=${PAGE_SIZE}`
-      );
-      const data = await res.json();
+      const res = await apiClient.get(`/product/partition`, {
+        params: { page, limit: PAGE_SIZE },
+      }); // ✅ Dùng apiClient
+      const data = res.data;
       setAllItems(data.products || []);
       setTotalPages(data.totalPages || 1);
       setSelectedIds(new Set());
@@ -333,10 +339,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       toast.error("Thiếu thông tin");
       return;
     }
-    const endpoint = editingId
-      ? `${SERVER_BASE_URL}/api/product/${editingId}`
-      : `${SERVER_BASE_URL}/api/product`;
-    const method = editingId ? "PUT" : "POST";
+    // ✅ cleanId cho editingId
+    const safeId = cleanId(editingId);
+    const endpoint = safeId ? `/product/${safeId}` : `/product`;
+    const method = safeId ? "put" : "post";
+
     setIsLoading(true);
     try {
       const formData = new FormData();
@@ -347,22 +354,30 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       formData.append("quantity", quantity.toString());
       if (avatarFile) formData.append("avatar", avatarFile);
       imageFiles.forEach((file) => formData.append("images", file));
-      const res = await fetch(endpoint, { method, body: formData });
-      if (!res.ok) throw new Error();
-      toast.success(editingId ? "Đã cập nhật" : "Đã thêm");
+
+      // ✅ Dùng apiClient với FormData
+      await apiClient({
+        method,
+        url: endpoint,
+        data: formData,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success(safeId ? "Đã cập nhật" : "Đã thêm");
       resetForm();
       await fetchProducts();
-    } catch {
-      toast.error("Lỗi lưu sản phẩm");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi lưu sản phẩm");
     } finally {
       setIsLoading(false);
     }
   };
 
   const openEdit = (id: string) => {
-    const it = allItems.find((i) => i._id === id);
+    const realId = cleanId(id); // ✅ FIX LỖI ID
+    const it = allItems.find((i) => i._id === realId);
     if (!it) return;
-    setEditingId(id);
+    setEditingId(realId);
     setEditingProduct(it);
     setName(it.name);
     setPrice(it.price);
@@ -381,8 +396,9 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   };
 
   const remove = async (id: string) => {
+    const realId = cleanId(id); // ✅ FIX LỖI ID
     try {
-      await fetch(`${SERVER_BASE_URL}/api/product/${id}`, { method: "DELETE" });
+      await apiClient.delete(`/product/${realId}`);
       toast.success("Đã xóa");
       fetchProducts();
     } catch {
@@ -392,12 +408,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
 
   const removeMany = async (ids: string[]) => {
     if (ids.length === 0) return;
+    const cleanIds = ids.map((id) => cleanId(id)); // ✅ FIX LỖI ID
     setIsLoading(true);
     try {
       await Promise.all(
-        ids.map((id) =>
-          fetch(`${SERVER_BASE_URL}/api/product/${id}`, { method: "DELETE" })
-        )
+        cleanIds.map((id) => apiClient.delete(`/product/${id}`))
       );
       toast.success(`Đã xóa ${ids.length} sản phẩm`);
       setSelectedIds(new Set());
@@ -464,7 +479,6 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
             onChange={(e) => setDescription(e.target.value)}
           />
 
-          {/* Nút Upload Avatar & Gallery (Giản lược UI) */}
           <div className="flex gap-4 items-center">
             <Button
               type="button"
@@ -488,12 +502,17 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
               }}
             />
             {avatarPreview ? (
-              <img src={avatarPreview} className="w-10 h-10 rounded border" />
+              <img
+                src={avatarPreview}
+                className="w-10 h-10 rounded border"
+                alt="preview"
+              />
             ) : (
               oldAvatar && (
                 <img
                   src={getImageUrl(oldAvatar)}
                   className="w-10 h-10 rounded border"
+                  alt="old"
                 />
               )
             )}
@@ -614,6 +633,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                         <img
                           src={getImageUrl(it.avatar)}
                           className="w-10 h-10 object-cover rounded shadow-sm"
+                          alt={it.name}
                         />
                       )}
                     </td>
@@ -668,7 +688,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
 };
 
 /* =========================================================================================
-   2. CATEGORIES ADMIN (Giữ nguyên)
+   2. CATEGORIES ADMIN (Đã chuyển sang apiClient)
    ========================================================================================= */
 const CategoriesAdmin: React.FC<AdminChildProps> = ({
   openFromParent,
@@ -687,8 +707,8 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
   };
   const fetchAll = async () => {
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/category`);
-      setItems(await res.json());
+      const res = await apiClient.get(`/category`);
+      setItems(res.data);
     } catch {
       toast.error("Lỗi tải danh mục");
     }
@@ -700,18 +720,18 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
   const submit = async () => {
     if (!name.trim()) return toast.error("Nhập tên danh mục");
     setIsLoading(true);
-    const url = editingId
-      ? `${SERVER_BASE_URL}/api/category/${editingId}`
-      : `${SERVER_BASE_URL}/api/category`;
-    const method = editingId ? "PUT" : "POST";
+
+    const safeId = cleanId(editingId);
+    const url = safeId ? `/category/${safeId}` : `/category`;
+    const method = safeId ? "put" : "post";
+
     try {
-      const res = await fetch(url, {
+      await apiClient({
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
+        url,
+        data: { name, description },
       });
-      if (!res.ok) throw new Error();
-      toast.success(editingId ? "Đã cập nhật" : "Đã thêm");
+      toast.success(safeId ? "Đã cập nhật" : "Đã thêm");
       resetForm();
       onParentClose && onParentClose();
       fetchAll();
@@ -725,9 +745,7 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
   const remove = async (id: string) => {
     if (!confirm("Xóa danh mục này?")) return;
     try {
-      await fetch(`${SERVER_BASE_URL}/api/category/${id}`, {
-        method: "DELETE",
-      });
+      await apiClient.delete(`/category/${cleanId(id)}`);
       toast.success("Đã xóa");
       fetchAll();
     } catch {
@@ -792,7 +810,7 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                   <td className="p-3 flex gap-2">
                     <button
                       onClick={() => {
-                        setEditingId(c._id);
+                        setEditingId(cleanId(c._id));
                         setName(c.name);
                         setDescription(c.description || "");
                       }}
@@ -818,7 +836,7 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
 };
 
 /* =========================================================================================
-   3. ORDERS ADMIN (Tích hợp từ OrderHistory)
+   3. ORDERS ADMIN (FIX LỖI 400 và cleanId)
    ========================================================================================= */
 const OrdersAdmin: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -907,15 +925,18 @@ const OrdersAdmin: React.FC = () => {
     );
   }, [invoices, filterType, productSearch]);
 
+  // ✅ SỬA 1: Dùng cleanId
   const handleSelectInvoice = async (invoiceId: string) => {
     try {
-      const res = await apiClient.get(`/invoice/${invoiceId}`);
+      const realId = cleanId(invoiceId);
+      const res = await apiClient.get(`/invoice/${realId}`);
       setSelectedInvoice(res.data);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi tải chi tiết");
     }
   };
 
+  // ✅ SỬA 2: Dùng cleanId
   const handleDeleteInvoice = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -931,7 +952,8 @@ const OrdersAdmin: React.FC = () => {
     });
     if (result.isConfirmed) {
       try {
-        await apiClient.delete(`/invoice/${invoiceId}`);
+        const realId = cleanId(invoiceId);
+        await apiClient.delete(`/invoice/${realId}`);
         setInvoices((prev) => prev.filter((i) => i._id !== invoiceId));
         Swal.fire("Đã xóa!", "", "success");
       } catch (err: any) {
@@ -940,6 +962,7 @@ const OrdersAdmin: React.FC = () => {
     }
   };
 
+  // ✅ SỬA 3: Dùng cleanId
   const handleAdminShipOrder = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -955,9 +978,9 @@ const OrdersAdmin: React.FC = () => {
     });
     if (result.isConfirmed) {
       try {
-        await apiClient.put(`/invoice/${invoiceId}`, {
+        const realId = cleanId(invoiceId);
+        await apiClient.put(`/invoice/${realId}`, {
           order_status: "SHIPPING",
-          status: "SHIPPING",
         });
         setInvoices((prev) =>
           prev.map((i) =>
@@ -1146,19 +1169,18 @@ const OrdersAdmin: React.FC = () => {
 };
 
 /* =========================================================================================
-   4. SALE PROGRAMS ADMIN (Chỉ cần render Table)
+   4. SALE PROGRAMS ADMIN
    ========================================================================================= */
 const SaleProgramsAdmin: React.FC = () => {
   return (
     <div className="animate-in fade-in zoom-in duration-200">
-      {/* Component này sẽ hiển thị bảng chương trình Sale */}
       <SaleProgramTable />
     </div>
   );
 };
 
 /* =========================================================================================
-   5. DISCOUNTS ADMIN (Tích hợp từ SaleAdminPage)
+   5. DISCOUNTS ADMIN (Đã chuyển sang apiClient)
    ========================================================================================= */
 const DiscountsAdmin: React.FC = () => {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -1187,11 +1209,9 @@ const DiscountsAdmin: React.FC = () => {
   const fetchDiscounts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${SERVER_BASE_URL}/api/discount`, {
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const data = await res.json();
+      // ✅ Dùng apiClient, không cần cấu hình header thủ công
+      const res = await apiClient.get(`/discount`);
+      const data = res.data;
       if (Array.isArray(data)) setDiscounts(data);
       else if (data?.discounts) setDiscounts(data.discounts);
       else if (data?.data) setDiscounts(data.data);
@@ -1206,11 +1226,11 @@ const DiscountsAdmin: React.FC = () => {
   const fetchSelectData = async () => {
     try {
       const [prodRes, catRes] = await Promise.all([
-        fetch(`${SERVER_BASE_URL}/api/product`),
-        fetch(`${SERVER_BASE_URL}/api/category`),
+        apiClient.get(`/product`),
+        apiClient.get(`/category`),
       ]);
-      const prodData = await prodRes.json();
-      const catData = await catRes.json();
+      const prodData = prodRes.data;
+      const catData = catRes.data;
       setProducts(prodData.products || prodData.data || []);
       setCategories(catData.categories || catData.data || []);
     } catch {
@@ -1225,37 +1245,26 @@ const DiscountsAdmin: React.FC = () => {
 
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem("accessToken");
     const formattedTiers = ((form.tiers as Tier[]) || []).map((t) => ({
       min_quantity: t.min_value,
       discount_percent: t.percent,
     }));
     const payload = { ...form, tiers: formattedTiers };
+
     try {
-      const method = editing ? "PUT" : "POST";
-      const url = editing
-        ? `${SERVER_BASE_URL}/api/discount/${editing!._id}`
-        : `${SERVER_BASE_URL}/api/discount`;
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error(err?.message || "Lỗi lưu");
-      } else {
-        toast.success(editing ? "Đã cập nhật" : "Đã tạo");
-        setOpenModal(false);
-        setQuery("");
-        setPage(1);
-        await fetchDiscounts();
-      }
-    } catch {
-      toast.error("Lỗi hệ thống");
+      const safeId = cleanId(editing?._id);
+      const method = safeId ? "put" : "post";
+      const url = safeId ? `/discount/${safeId}` : `/discount`;
+
+      await apiClient({ method, url, data: payload });
+
+      toast.success(safeId ? "Đã cập nhật" : "Đã tạo");
+      setOpenModal(false);
+      setQuery("");
+      setPage(1);
+      await fetchDiscounts();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi lưu");
     }
   };
 
@@ -1270,20 +1279,11 @@ const DiscountsAdmin: React.FC = () => {
       confirmButtonText: "Xóa",
     });
     if (!result.isConfirmed) return;
-    const token = localStorage.getItem("accessToken");
+
     try {
-      const res = await fetch(
-        `${SERVER_BASE_URL}/api/discount/hard-delete/${id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        }
-      );
-      if (!res.ok) toast.error("Xóa thất bại");
-      else {
-        toast.success("Đã xóa");
-        fetchDiscounts();
-      }
+      await apiClient.delete(`/discount/hard-delete/${cleanId(id)}`);
+      toast.success("Đã xóa");
+      fetchDiscounts();
     } catch {
       toast.error("Lỗi xóa");
     }
@@ -1686,7 +1686,7 @@ const DiscountsAdmin: React.FC = () => {
   );
 };
 
-/* ---------------------- 6. UsersAdmin (Placeholder) ---------------------- */
+/* ---------------------- 6. UsersAdmin (Đã chuyển sang apiClient) ---------------------- */
 const UsersAdmin: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1698,24 +1698,17 @@ const UsersAdmin: React.FC = () => {
   // Fetch Users
   const fetchUsers = async () => {
     setLoading(true);
-    const token = localStorage.getItem("accessToken");
     try {
-      // Gọi API Backend (Đảm bảo bạn đã tạo route GET /api/users)
-      const res = await fetch(
-        `${SERVER_BASE_URL}/api/users?page=${page}&limit=${PAGE_SIZE}&search=${encodeURIComponent(
-          search
-        )}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      if (res.ok) {
-        setUsers(data.users || []);
-        setTotalPages(data.totalPages || 1);
-      } else {
-        toast.error("Không tải được danh sách người dùng");
-      }
+      // ✅ Dùng apiClient, params được axios tự xử lý
+      const res = await apiClient.get(`/users`, {
+        params: { page, limit: PAGE_SIZE, search },
+      });
+      const data = res.data;
+      setUsers(data.users || []);
+      setTotalPages(data.totalPages || 1);
     } catch (error) {
       console.error(error);
+      toast.error("Không tải được danh sách người dùng");
     } finally {
       setLoading(false);
     }
@@ -1740,20 +1733,12 @@ const UsersAdmin: React.FC = () => {
     });
 
     if (result.isConfirmed) {
-      const token = localStorage.getItem("accessToken");
       try {
-        const res = await fetch(`${SERVER_BASE_URL}/api/users/${id}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          toast.success("Đã xóa người dùng");
-          fetchUsers();
-        } else {
-          toast.error("Lỗi khi xóa");
-        }
+        await apiClient.delete(`/users/${cleanId(id)}`);
+        toast.success("Đã xóa người dùng");
+        fetchUsers();
       } catch {
-        toast.error("Lỗi kết nối");
+        toast.error("Lỗi khi xóa");
       }
     }
   };
@@ -1853,7 +1838,7 @@ const UsersAdmin: React.FC = () => {
                               minute: "2-digit",
                             })}
                           </span>
-                          {/* Logic hiển thị trạng thái Online (ví dụ: trong vòng 5 phút) */}
+                          {/* Logic hiển thị trạng thái Online */}
                           {new Date().getTime() -
                             new Date(u.lastLogin).getTime() <
                             5 * 60 * 1000 && (
