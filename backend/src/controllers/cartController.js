@@ -346,3 +346,143 @@ export const proceedToCheckout = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+export const getGuestCartPreview = async (req, res) => {
+  try {
+    // 1. Nhận danh sách items từ client gửi lên: [{ productId, quantity }]
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(200).json({
+        items: [],
+        total_original_price: 0,
+        total_discount_amount: 0,
+        final_total_price: 0,
+      });
+    }
+
+    // 2. Lấy thông tin sản phẩm từ DB (để lấy giá gốc, category, v.v.)
+    const productIds = items.map((item) => item.productId);
+    const products = await Product.find({ _id: { $in: productIds } })
+      .select("name price avatar stock category") // Lấy các trường cần thiết
+      .populate("category", "_id name");
+
+    // 3. Lấy các chương trình khuyến mãi đang chạy
+    const discounts = await getActiveDiscountsCached();
+
+    let totalOriginal = 0;
+    let totalFinal = 0;
+
+    // 4. Duyệt qua từng item client gửi lên và tính toán
+    const computedItems = items
+      .map((clientItem) => {
+        const product = products.find(
+          (p) => p._id.toString() === clientItem.productId
+        );
+
+        // Nếu sản phẩm không tìm thấy (đã bị xóa), bỏ qua
+        if (!product) return null;
+
+        const qty = Number(clientItem.quantity);
+        const price = product.price || 0;
+
+        // --- LOGIC TÍNH KHUYẾN MÃI (Copy logic từ calculateCartTotals) ---
+
+        // Tìm discount tốt nhất cho sản phẩm này
+        let chosenDiscount = null;
+        let bestPercent = 0;
+
+        for (const d of discounts) {
+          let isMatch = false;
+          const targetIds = d.target_ids?.map((id) => id.toString()) || [];
+
+          // A. Check theo PRODUCT
+          if (d.target_type === "PRODUCT") {
+            if (targetIds.includes(product._id.toString())) isMatch = true;
+          }
+          // B. Check theo CATEGORY
+          else if (d.target_type === "CATEGORY" && product.category) {
+            if (targetIds.includes(product.category._id.toString()))
+              isMatch = true;
+          }
+          // C. Check ALL
+          else if (d.target_type === "ALL") {
+            isMatch = true;
+          }
+
+          if (!isMatch) continue;
+
+          // Logic Tier
+          let percent = 0;
+          // Mức cơ bản
+          if (qty >= (d.min_quantity ?? 1)) {
+            percent = d.discount_percent ?? 0;
+          }
+          // Mức bậc thang
+          if (d.tiers?.length) {
+            const eligibleTiers = d.tiers
+              .filter((t) => qty >= (t.min_quantity ?? 0))
+              .sort((a, b) => b.discount_percent - a.discount_percent); // Giảm dần
+
+            if (eligibleTiers.length > 0) {
+              percent = Math.max(percent, eligibleTiers[0].discount_percent);
+            }
+          }
+
+          // Lấy mức giảm tốt nhất
+          if (percent > bestPercent) {
+            bestPercent = percent;
+            chosenDiscount = { ...d, _applied_percent: bestPercent };
+          }
+        }
+
+        // Tính tiền sau khi có (hoặc không có) discount
+        let finalPrice = price;
+        let appliedDiscountData = null;
+
+        if (chosenDiscount) {
+          const pct = chosenDiscount._applied_percent;
+          const discountAmountPerUnit = price * (pct / 100);
+          finalPrice = price - discountAmountPerUnit;
+
+          appliedDiscountData = {
+            discount_id: chosenDiscount._id,
+            program_name: chosenDiscount.program_name,
+            discount_percent: pct,
+            saved_amount: discountAmountPerUnit * qty,
+          };
+        }
+
+        const itemTotal = finalPrice * qty;
+        totalOriginal += price * qty;
+        totalFinal += itemTotal;
+
+        // Trả về cấu trúc khớp với CartItemBackend ở Frontend
+        return {
+          product: {
+            _id: product._id,
+            name: product.name,
+            price: product.price,
+            avatar: product.avatar,
+            stock: product.stock,
+          },
+          quantity: qty,
+          price_original: price,
+          price_discount: finalPrice,
+          Total_price: itemTotal,
+          applied_discount: appliedDiscountData,
+        };
+      })
+      .filter((item) => item !== null); // Lọc bỏ item null
+
+    // 5. Trả kết quả về Frontend
+    return res.status(200).json({
+      items: computedItems,
+      total_original_price: totalOriginal,
+      total_discount_amount: totalOriginal - totalFinal,
+      final_total_price: totalFinal,
+    });
+  } catch (error) {
+    console.error("Guest Preview Error:", error);
+    return res.status(500).json({ message: "Lỗi tính toán giỏ hàng" });
+  }
+};

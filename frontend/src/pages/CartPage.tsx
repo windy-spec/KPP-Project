@@ -74,86 +74,120 @@ const CartPage: React.FC = () => {
     };
   };
 
+  // Copy đè hàm fetchCart cũ bằng hàm này
   const fetchCart = async () => {
+    console.log("🚀 [START] Bắt đầu hàm fetchCart");
+    setLoading(true);
+
     try {
       const token = localStorage.getItem("accessToken");
+      console.log(
+        "ℹ️ Trạng thái Token:",
+        token ? "Đã đăng nhập" : "Chưa đăng nhập (Guest)"
+      );
 
-      // Nếu có token -> lấy giỏ hàng từ server và đồng bộ vào localStorage
+      // --- TRƯỜNG HỢP 1: ĐÃ ĐĂNG NHẬP ---
       if (token) {
+        console.log("🔄 Đang gọi API giỏ hàng User...");
         const res = await axios.get(`${SERVER_BASE_URL}/api/cart`, getConfig());
         const data: CartResponse = res.data;
-
         setItems(data.items || []);
-        // Lưu thông tin tổng giỏ hàng từ BE trả về
         setCartSummary({
           original: data.total_original_price || 0,
           discount: data.total_discount_amount || 0,
           final: data.final_total_price || 0,
         });
-        // Đồng bộ server cart sang localStorage để Navbar/mini cart đọc được
-        try {
-          const local = (data.items || []).map((it) => ({
-            productId: it.product?._id || (it.product as any)?.id || JSON.stringify(it.product),
-            name: it.product?.name || "Sản phẩm",
-            price: it.price_discount || it.price_original || it.product?.price || 0,
-            avatar: it.product?.avatar || null,
-            quantity: it.quantity || 1,
-          }));
-          localStorage.setItem("cart", JSON.stringify(local));
-          window.dispatchEvent(new Event("cartUpdated"));
-        } catch (err) {
-          // bỏ qua lỗi localStorage
-        }
-      } else {
-        // Nếu không có token (guest) -> đọc fallback từ localStorage
-        try {
-          const raw = localStorage.getItem("cart");
-          if (!raw) {
-            setItems([]);
-            setCartSummary({ original: 0, discount: 0, final: 0 });
-            return;
-          }
-          const arr = JSON.parse(raw);
-          if (!Array.isArray(arr) || arr.length === 0) {
-            setItems([]);
-            setCartSummary({ original: 0, discount: 0, final: 0 });
-            return;
-          }
+      }
 
-          // Map cấu trúc localStorage -> CartItemBackend để trang Cart có thể hiển thị giống như khi gọi BE
-          const mapped: CartItemBackend[] = arr.map((it: any) => {
-            const priceNumber = Number(it.price || 0);
-            const qtyNumber = Number(it.quantity || 1);
-            return {
-              product: {
-                _id: it.productId || String(it.name) || JSON.stringify(it),
-                name: it.name || "Sản phẩm",
-                price: priceNumber,
-                avatar: it.avatar || undefined,
-                stock: undefined,
-              },
-              quantity: qtyNumber,
-              price_original: priceNumber,
-              price_discount: priceNumber,
-              Total_price: priceNumber * qtyNumber,
-              applied_discount: null,
-            } as CartItemBackend;
-          });
+      // --- TRƯỜNG HỢP 2: KHÁCH VÃNG LAI (GUEST) ---
+      else {
+        console.log("👤 Đang xử lý logic Guest...");
+        const raw = localStorage.getItem("cart");
 
-          setItems(mapped);
-          // Cập nhật tổng tiền từ mapped
-          const finalTotal = mapped.reduce((s, it) => s + it.Total_price, 0);
-          setCartSummary({ original: finalTotal, discount: 0, final: finalTotal });
-        } catch (err) {
-          console.error("Lỗi đọc cart từ localStorage", err);
+        if (!raw) {
+          console.log("⚠️ LocalStorage trống -> Set items rỗng");
           setItems([]);
           setCartSummary({ original: 0, discount: 0, final: 0 });
+          return;
+        }
+
+        let arr = [];
+        try {
+          arr = JSON.parse(raw);
+          console.log("📦 Dữ liệu gốc trong LocalStorage:", arr);
+        } catch (e) {
+          console.error("❌ Lỗi parse JSON LocalStorage:", e);
+          return;
+        }
+
+        if (!Array.isArray(arr) || arr.length === 0) {
+          console.log("⚠️ Mảng giỏ hàng rỗng -> Return");
+          setItems([]);
+          return;
+        }
+
+        // Map dữ liệu
+        const guestPayload = arr.map((item: any) => ({
+          productId: item.productId || item.id || item._id || item.product?._id,
+          quantity: Number(item.quantity),
+        }));
+
+        console.log("📤 Payload chuẩn bị gửi lên Server:", guestPayload);
+        console.log(
+          `🌐 URL gọi API: ${SERVER_BASE_URL}/api/cart/guest-preview`
+        );
+
+        try {
+          // GỌI API
+          console.log("⏳ Đang gọi axios.post...");
+          const res = await axios.post(
+            `${SERVER_BASE_URL}/api/cart/guest-preview`,
+            {
+              items: guestPayload,
+            }
+          );
+
+          console.log("✅ API phản hồi thành công:", res.data);
+          const data: CartResponse = res.data;
+
+          setItems(data.items || []);
+          setCartSummary({
+            original: data.total_original_price || 0,
+            discount: data.total_discount_amount || 0,
+            final: data.final_total_price || 0,
+          });
+        } catch (apiErr: any) {
+          console.error("🔥 LỖI KHI GỌI API GUEST:", apiErr);
+          console.log("⚠️ Đang chuyển sang chế độ hiển thị Offline (Fallback)");
+
+          // FALLBACK: Nếu API lỗi thì hiển thị tạm dữ liệu local
+          const mapped: CartItemBackend[] = arr.map((it: any) => ({
+            product: {
+              _id: it.productId || it.id,
+              name: it.name,
+              price: Number(it.price),
+              avatar: it.avatar,
+            },
+            quantity: Number(it.quantity),
+            price_original: Number(it.price),
+            price_discount: Number(it.price),
+            Total_price: Number(it.price) * Number(it.quantity),
+            applied_discount: null,
+          }));
+          setItems(mapped);
+          const finalTotal = mapped.reduce((s, it) => s + it.Total_price, 0);
+          setCartSummary({
+            original: finalTotal,
+            discount: 0,
+            final: finalTotal,
+          });
         }
       }
     } catch (error) {
-      console.error("Lỗi tải giỏ hàng", error);
+      console.error("☠️ Lỗi nghiêm trọng trong fetchCart:", error);
     } finally {
       setLoading(false);
+      console.log("🏁 [END] Kết thúc fetchCart");
     }
   };
 
@@ -180,7 +214,9 @@ const CartPage: React.FC = () => {
           const raw = localStorage.getItem("cart");
           const arr = raw ? JSON.parse(raw) : [];
           const updated = (arr || []).map((it: any) =>
-            it.productId === productId ? { ...it, quantity: Number(newQty) } : it
+            it.productId === productId
+              ? { ...it, quantity: Number(newQty) }
+              : it
           );
           localStorage.setItem("cart", JSON.stringify(updated));
           toast.success("Cập nhật số lượng thành công");
@@ -212,7 +248,9 @@ const CartPage: React.FC = () => {
         try {
           const raw = localStorage.getItem("cart");
           const arr = raw ? JSON.parse(raw) : [];
-          const updated = (arr || []).filter((it: any) => it.productId !== productId);
+          const updated = (arr || []).filter(
+            (it: any) => it.productId !== productId
+          );
           localStorage.setItem("cart", JSON.stringify(updated));
           toast.success("Đã xóa sản phẩm");
           fetchCart();
@@ -234,7 +272,10 @@ const CartPage: React.FC = () => {
       if (token) {
         await Promise.all(
           selectedIds.map((id) =>
-            axios.delete(`${SERVER_BASE_URL}/api/cart/remove/${id}`, getConfig())
+            axios.delete(
+              `${SERVER_BASE_URL}/api/cart/remove/${id}`,
+              getConfig()
+            )
           )
         );
         toast.success("Đã xóa các sản phẩm đã chọn");
@@ -245,7 +286,9 @@ const CartPage: React.FC = () => {
         try {
           const raw = localStorage.getItem("cart");
           const arr = raw ? JSON.parse(raw) : [];
-          const updated = (arr || []).filter((it: any) => !selectedIds.includes(it.productId));
+          const updated = (arr || []).filter(
+            (it: any) => !selectedIds.includes(it.productId)
+          );
           localStorage.setItem("cart", JSON.stringify(updated));
           toast.success("Đã xóa các sản phẩm đã chọn");
           fetchCart();

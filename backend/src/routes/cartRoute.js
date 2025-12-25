@@ -5,6 +5,7 @@ import {
   updateCartItem,
   removeCartItem,
   proceedToCheckout,
+  getGuestCartPreview,
 } from "../controllers/cartController.js";
 import { protectedRoute } from "../middlewares/authMiddlewares.js";
 // Import middleware mới
@@ -13,6 +14,9 @@ import { identifyCart } from "../middlewares/cartMiddleware.js";
 import { protectedRoute as protect } from "../middlewares/authMiddlewares.js";
 
 const router = express.Router();
+
+// 1. Route tính toán cho Guest (KHÔNG dùng middleware identifyCart vì không cần tạo cart trong DB)
+router.post("/guest-preview", getGuestCartPreview);
 
 // === CÁC ROUTE CÔNG KHAI (Guest hoặc User) ===
 // Dùng middleware 'identifyCart' để tìm/tạo giỏ hàng

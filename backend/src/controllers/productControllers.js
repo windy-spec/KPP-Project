@@ -84,20 +84,31 @@ const applyDiscountToProduct = (product, activeDiscounts) => {
 export const getAllProduct = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 999;
+    const limit = parseInt(req.query.limit) || 999; // Lấy nhiều để search
     const sort = req.query.sort || "null";
     const priceFilter = req.query.price || null;
     const categoryFilter = req.query.categories || null;
 
-    // 🚨 FIX: Tạm thời lấy hết để tránh lỗi sai tên trường active
+    //  1. THÊM BIẾN NHẬN TỪ KHÓA TÌM KIẾM
+    const searchQuery = req.query.search || "";
+
     let query = {};
 
     if (categoryFilter) query.category = categoryFilter;
     if (priceFilter) query.price = { $lte: priceFilter };
 
+    //  2. THÊM LOGIC TÌM KIẾM NAME (Case-insensitive)
+    if (searchQuery) {
+      // Tìm tên chứa từ khóa, không phân biệt hoa thường ('i')
+      query.name = { $regex: searchQuery, $options: "i" };
+    }
+
     let sortOption = {};
     if (sort === "asc") sortOption.price = 1;
     if (sort === "desc") sortOption.price = -1;
+
+    // Nếu không sort giá thì sort theo ngày tạo mới nhất
+    if (sort === "null") sortOption = { createdAt: -1 };
 
     const totalProducts = await Product.countDocuments(query);
     const totalPages = Math.ceil(totalProducts / limit);
