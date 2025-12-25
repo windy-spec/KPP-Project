@@ -26,14 +26,12 @@ interface ProductSearch {
 
 const SERVER_BASE_URL = "http://localhost:5001";
 
-// Helper: Format tiền tệ
 const formatVND = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
   }).format(value);
 
-// Helper: Xử lý link ảnh
 const getFullImageUrl = (path?: string) =>
   path
     ? path.startsWith("http")
@@ -44,15 +42,13 @@ const getFullImageUrl = (path?: string) =>
 const Navbartop: React.FC = () => {
   const navigate = useNavigate();
 
-  // --- STATE USER & SYSTEM ---
+  // --- STATE ---
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  // --- STATE CART ---
   const [cartCount, setCartCount] = useState<number>(0);
 
-  // --- 🔥 STATE SEARCH (QUAN TRỌNG) ---
+  // --- SEARCH ---
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<ProductSearch[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -63,7 +59,7 @@ const Navbartop: React.FC = () => {
   const searchRef = useRef<HTMLFormElement>(null);
 
   // ==========================================
-  // 2. LOGIC CART (GIỮ NGUYÊN)
+  // 2. LOGIC CART
   // ==========================================
   const updateCartCount = async () => {
     const token = localStorage.getItem("accessToken");
@@ -108,20 +104,16 @@ const Navbartop: React.FC = () => {
   }, []);
 
   // ==========================================
-  // 3. LOGIC LIVE SEARCH (ĐÚNG YÊU CẦU CỦA BẠN)
+  // 3. LOGIC SEARCH
   // ==========================================
   useEffect(() => {
-    // Nếu chưa nhập đủ 2 ký tự thì chưa tìm (tránh spam)
     if (searchTerm.trim().length < 2) {
       setSearchResults([]);
       return;
     }
-
-    // Debounce: Đợi 500ms sau khi ngừng gõ mới gọi API
     const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
       try {
-        //  GỌI API VỚI LIMIT = 5 (Hiển thị 5 cái thôi)
         const res = await fetch(
           `${SERVER_BASE_URL}/api/product?search=${encodeURIComponent(
             searchTerm
@@ -130,16 +122,14 @@ const Navbartop: React.FC = () => {
         const data = await res.json();
         setSearchResults(data.products || []);
       } catch (error) {
-        console.error("Lỗi tìm kiếm:", error);
+        console.error(error);
       } finally {
         setIsSearching(false);
       }
     }, 500);
-
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
-  // Đóng Search khi click ra ngoài
   useEffect(() => {
     const handleClickOutsideSearch = (event: MouseEvent) => {
       if (
@@ -155,7 +145,7 @@ const Navbartop: React.FC = () => {
   }, []);
 
   // ==========================================
-  // 4. LOGIC USER (GIỮ NGUYÊN)
+  // 4. LOGIC USER
   // ==========================================
   useEffect(() => {
     const getUserInfo = async () => {
@@ -201,9 +191,7 @@ const Navbartop: React.FC = () => {
     } catch (error) {
       console.error(error);
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("cart");
+      localStorage.clear();
       setUser(null);
       setShowUserMenu(false);
       setCartCount(0);
@@ -233,7 +221,7 @@ const Navbartop: React.FC = () => {
     : "https://placehold.co/40x40/f7931e/ffffff?text=U";
 
   // ==========================================
-  // 5. RENDER GIAO DIỆN
+  // 5. RENDER
   // ==========================================
   return (
     <header className="bg-gray-50 z-50 relative">
@@ -246,19 +234,18 @@ const Navbartop: React.FC = () => {
           <div className="flex items-center justify-between h-14">
             {/* LOGO */}
             <div className="flex items-center gap-4">
-              <a href="/" className="flex items-center">
+              <Link to="/" className="flex items-center">
                 <img src="/logo22.svg" alt="logo" className="w-14 h-14" />
                 KPPaint
-              </a>
+              </Link>
             </div>
 
             <div className="flex items-center gap-3 text-gray-600">
-              {/* --- SEARCH BOX --- */}
+              {/* SEARCH */}
               <form
                 ref={searchRef}
                 onSubmit={(e) => {
                   e.preventDefault();
-                  // Nếu nhấn Enter -> Sang trang tìm kiếm tổng
                   if (searchTerm.trim()) {
                     navigate(
                       `/san-pham?search=${encodeURIComponent(searchTerm)}`
@@ -275,7 +262,6 @@ const Navbartop: React.FC = () => {
                   placeholder="Tìm kiếm sản phẩm..."
                   className="w-64 md:w-80 text-sm placeholder-gray-400 bg-white border border-gray-200 rounded-lg py-2 px-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-all"
                 />
-
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {isSearching ? (
                     <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -287,19 +273,16 @@ const Navbartop: React.FC = () => {
                     />
                   )}
                 </div>
-
-                {/* --- DROPDOWN KẾT QUẢ (HIỂN THỊ DANH SÁCH 5 MÓN) --- */}
                 {searchResults.length > 0 && (
                   <div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-lg shadow-xl overflow-hidden z-[60]">
                     <div className="max-h-96 overflow-y-auto">
                       {searchResults.map((prod) => (
                         <div
                           key={prod._id}
-                          // 🔥 SỰ KIỆN CLICK -> NHẢY TRANG CHI TIẾT
                           onClick={() => {
                             navigate(`/san-pham/${prod._id}`);
-                            setSearchResults([]); // Đóng search
-                            setSearchTerm(""); // Xóa chữ (tuỳ chọn)
+                            setSearchResults([]);
+                            setSearchTerm("");
                           }}
                           className="flex items-center gap-3 p-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition-colors"
                         >
@@ -337,7 +320,7 @@ const Navbartop: React.FC = () => {
                 )}
               </form>
 
-              {/* CART ICON */}
+              {/* CART */}
               <Link
                 to="/gio-hang"
                 className="relative p-1 rounded hover:bg-gray-100 transition-colors"
@@ -371,7 +354,7 @@ const Navbartop: React.FC = () => {
                     {showUserMenu && (
                       <div
                         ref={menuRef}
-                        className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
+                        className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
                       >
                         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-lg">
                           <p className="text-sm font-bold text-gray-900 truncate">
@@ -381,29 +364,32 @@ const Navbartop: React.FC = () => {
                             {user.email}
                           </p>
                         </div>
-                        <a
-                          href="/tai-khoan"
+
+                        {/* MENU CHUNG */}
+                        <Link
+                          to="/tai-khoan"
                           className="block px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                         >
                           Tài khoản
-                        </a>
-                        <a
-                          href="/order-history"
-                          className="block px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                        >
-                          Đơn hàng
-                        </a>
-                        {user.role === "admin" && (
-                          <>
-                            <div className="border-t border-gray-100 my-1"></div>
-                            <a
-                              href="/quan-ly"
-                              className="block px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                            >
-                              Trang quản lý
-                            </a>
-                          </>
+                        </Link>
+
+                        {/* MENU RIÊNG */}
+                        {user.role === "admin" ? (
+                          <Link
+                            to="/quan-ly"
+                            className="block px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          >
+                            Trang quản lý
+                          </Link>
+                        ) : (
+                          <Link
+                            to="/order-history"
+                            className="block px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          >
+                            Đơn hàng
+                          </Link>
                         )}
+
                         <div className="border-t border-gray-100 my-1"></div>
                         <button
                           onClick={handleLogout}
@@ -415,12 +401,12 @@ const Navbartop: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <a
-                    href="/signin"
+                  <Link
+                    to="/signin"
                     className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg shadow-md hover:bg-orange-600 transition-all"
                   >
                     Đăng nhập
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>

@@ -40,7 +40,7 @@ export const signUp = async (req, res) => {
     return res.status(200).json({ message: "ĐĂNG KÝ THÀNH CÔNG" });
   } catch (error) {
     console.error("Lỗi khi gọi signUp", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" }); // <-- Sửa 505 thành 500
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -64,6 +64,11 @@ export const signIn = async (req, res) => {
       return res.status(401).json({ message: "Sai username hoặc password." });
     }
 
+    // --- THÊM PHẦN NÀY: Cập nhật lastLogin khi đăng nhập thành công ---
+    user.lastLogin = new Date();
+    await user.save();
+    // ------------------------------------------------------------------
+
     // create accessToken
     const accessToken = JWT.sign(
       { userID: user._id },
@@ -73,8 +78,8 @@ export const signIn = async (req, res) => {
 
     // create refreshToken
     const refreshToken = JWT.sign(
-      { userID: user._id }, // <-- [FIX 2] Sửa 'UserID' thành 'userID' cho nhất quán
-      process.env.ACCESS_TOKEN_SECRET, // <-- [FIX 2] Sửa lỗi bảo mật (DÙNG TẠM ACCESS_TOKEN_SECRET)
+      { userID: user._id },
+      process.env.ACCESS_TOKEN_SECRET,
       {
         expiresIn: "14d",
       }
@@ -86,9 +91,7 @@ export const signIn = async (req, res) => {
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
     });
 
-    // =============================================
-    // [FIX 1] THÊM LẠI LOGIC GỘP GIỎ HÀNG
-    // =============================================
+    // LOGIC GỘP GIỎ HÀNG (Giữ nguyên)
     const guestCartId = req.cookies?.[GUEST_CART_COOKIE];
     if (guestCartId) {
       try {
@@ -97,7 +100,6 @@ export const signIn = async (req, res) => {
 
         if (guestCart) {
           if (userCart) {
-            // Case 1: User đã có giỏ hàng -> Gộp 2 giỏ hàng
             const map = new Map(
               userCart.items.map((i) => [i.product.toString(), i])
             );
@@ -109,17 +111,13 @@ export const signIn = async (req, res) => {
                 userCart.items.push(gItem);
               }
             }
-            // (Bạn có thể gọi hàm calculateCartTotals ở đây nếu muốn)
             await userCart.save();
             await Cart.deleteOne({ guestCartId });
           } else {
-            // Case 2: User chưa có giỏ hàng -> Gán giỏ hàng guest cho user
             guestCart.user = user._id;
-            guestCart.guestCartId = null; // Xóa guestId
-            // (Bạn có thể gọi hàm calculateCartTotals ở đây nếu muốn)
+            guestCart.guestCartId = null;
             await guestCart.save();
           }
-          // Xóa cookie của guest
           res.clearCookie(GUEST_CART_COOKIE, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -130,15 +128,12 @@ export const signIn = async (req, res) => {
         console.warn("signIn: Lỗi khi gộp giỏ hàng guest:", e.message);
       }
     }
-    // =============================================
-    // KẾT THÚC LOGIC GỘP GIỎ HÀNG
-    // =============================================
 
     // send refreshToken to cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Sửa lại: Dùng biến env
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Sửa lại: Dùng biến env
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_TTL,
     });
 

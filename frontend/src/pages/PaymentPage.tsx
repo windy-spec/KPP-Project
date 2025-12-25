@@ -543,7 +543,7 @@ const PaymentPage: React.FC = () => {
 
     try {
       if (payMethod === "momo") {
-        // 🔥 Đường dẫn API MoMo
+        //  Đường dẫn API MoMo
         const res = await apiFetch("/payments/momo", {
           method: "POST",
           body: JSON.stringify(payload),
@@ -556,7 +556,7 @@ const PaymentPage: React.FC = () => {
       } else {
         // COD
         if (directBuyData) {
-          await apiFetch("/invoices", {
+          await apiFetch("/invoice", {
             method: "POST",
             body: JSON.stringify(payload),
           });

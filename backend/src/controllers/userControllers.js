@@ -191,3 +191,46 @@ export const changePassword = async (req, res) => {
       .json({ message: "Lỗi hệ thống khi cập nhật mật khẩu." });
   }
 };
+export const getAllUsers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { displayName: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select("-password") // Không trả về mật khẩu
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({
+      users,
+      totalUsers: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// Xóa user
+export const deleteUser = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "Đã xóa người dùng" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi xóa người dùng" });
+  }
+};

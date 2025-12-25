@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true,
     },
+    // Giữ nguyên recovoryOTP theo ý bạn
     recovoryOTP: {
       type: String,
       default: null,
@@ -45,6 +46,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["admin", "user"],
       default: "user",
+    },
+    // --- THÊM PHẦN NÀY ---
+    lastLogin: {
+      type: Date,
+      default: null, // Mặc định là thời gian tạo tài khoản
     },
   },
   {

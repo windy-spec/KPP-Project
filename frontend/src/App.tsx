@@ -97,7 +97,6 @@ function App() {
           <Route path="/lien-he" element={<ContactPage />} />
           <Route path="/chiet-khau" element={<DiscountPage />} />
           <Route path="/thanh-toan" element={<PaymentPage />} />
-
           <Route path="/token-test" element={<TokenTest />} />
           <Route path="/invoice/:id" element={<InvoicePage />} />
           <Route path="/order-history" element={<OrderHistory />} />

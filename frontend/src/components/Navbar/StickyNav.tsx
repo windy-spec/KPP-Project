@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
 
-// 🚨 BASE URL
 const SERVER_BASE_URL = "http://localhost:5001";
 
 interface User {
@@ -22,7 +21,7 @@ interface ProductSearch {
   final_price?: number;
 }
 
-// Menu Config
+// Menu Items
 const navItems = [
   "Trang Chủ",
   "Giới Thiệu",
@@ -31,7 +30,6 @@ const navItems = [
   "Liên Hệ",
 ];
 
-// Helper Format
 const formatVND = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     value
@@ -44,7 +42,6 @@ const getFullImageUrl = (path?: string) =>
       : `${SERVER_BASE_URL}${path}`
     : "https://placehold.co/50x50/e2e8f0/808080?text=IMG";
 
-// Helper chuyển đổi label thành link
 const toPath = (label: string) => {
   const map: Record<string, string> = {
     "Trang Chủ": "/",
@@ -59,14 +56,14 @@ const toPath = (label: string) => {
 const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const navigate = useNavigate();
 
-  // --- STATE SYSTEM ---
+  // --- STATE ---
   const [visible, setVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  // --- STATE CART & SEARCH ---
   const [cartCount, setCartCount] = useState<number>(0);
+
+  // --- SEARCH ---
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<ProductSearch[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -76,20 +73,14 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLFormElement>(null);
 
-  // ==========================================
   // 1. SCROLL VISIBILITY
-  // ==========================================
   useEffect(() => {
-    const onScroll = () => {
-      setVisible(window.scrollY > threshold);
-    };
+    const onScroll = () => setVisible(window.scrollY > threshold);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [threshold]);
 
-  // ==========================================
-  // 2. LOGIC CART (Hybrid)
-  // ==========================================
+  // 2. CART
   const updateCartCount = async () => {
     const token = localStorage.getItem("accessToken");
     if (token) {
@@ -116,9 +107,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               )
             : 0;
           setCartCount(total);
-        } else {
-          setCartCount(0);
-        }
+        } else setCartCount(0);
       } catch (e) {
         setCartCount(0);
       }
@@ -131,9 +120,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     return () => window.removeEventListener("cartUpdated", updateCartCount);
   }, []);
 
-  // ==========================================
-  // 3. LOGIC SEARCH (Live Search)
-  // ==========================================
+  // 3. SEARCH
   useEffect(() => {
     if (searchTerm.trim().length < 2) {
       setSearchResults([]);
@@ -158,20 +145,16 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Close search on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node))
         setSearchResults([]);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ==========================================
-  // 4. LOGIC USER (Auth)
-  // ==========================================
+  // 4. USER
   useEffect(() => {
     const getUserInfo = async () => {
       const token = localStorage.getItem("accessToken");
@@ -208,13 +191,12 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
         });
     } catch (e) {
     } finally {
-      localStorage.clear(); // Xóa sạch token, cart...
+      localStorage.clear();
       window.dispatchEvent(new Event("cartUpdated"));
-      window.location.href = "/signin";
+      window.location.href = "/signIn";
     }
   };
 
-  // Close User Menu
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -235,20 +217,16 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       : `${SERVER_BASE_URL}${user.avatarUrl}`
     : "https://placehold.co/40x40/f7931e/ffffff?text=U";
 
-  // ==========================================
   // RENDER
-  // ==========================================
   return (
     <div
       className={`hidden md:block fixed left-0 right-0 top-0 z-50 transform transition-transform duration-300 ease-in-out pointer-events-none ${
         visible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      {/* Nền Navbar */}
       <div className="pointer-events-auto bg-white/95 backdrop-blur-sm shadow-md border-b border-gray-100">
         <div className="w-full lg:w-4/5 lg:max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between h-16">
-            {/* 1. LOGO */}
             <div className="flex items-center gap-2">
               <Link
                 to="/"
@@ -259,7 +237,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               </Link>
             </div>
 
-            {/* 2. CENTER NAV (Menu Cam) */}
             <div className="flex justify-center grow px-4">
               <div className="bg-orange-100/80 rounded-full px-6 py-2 shadow-sm border border-orange-200">
                 <nav className="flex gap-6 items-center text-gray-700 text-sm font-medium">
@@ -270,7 +247,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                       className="hover:text-orange-600 transition-colors relative group"
                     >
                       {label}
-                      {/* Underline effect */}
                       <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-orange-500 transition-all duration-300 group-hover:w-full"></span>
                     </Link>
                   ))}
@@ -278,9 +254,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               </div>
             </div>
 
-            {/* 3. RIGHT ACTIONS */}
             <div className="flex items-center gap-4 text-gray-600">
-              {/* SEARCH FORM */}
               <form
                 ref={searchRef}
                 onSubmit={(e) => {
@@ -306,8 +280,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                   alt="search"
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50"
                 />
-
-                {/* Search Dropdown */}
                 {searchResults.length > 0 && (
                   <div className="absolute top-full right-0 w-80 mt-3 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden z-[60]">
                     <div className="max-h-80 overflow-y-auto">
@@ -341,7 +313,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                 )}
               </form>
 
-              {/* CART */}
               <Link
                 to="/gio-hang"
                 className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -354,7 +325,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                 )}
               </Link>
 
-              {/* USER */}
               <div>
                 {isLoading ? (
                   <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
@@ -371,7 +341,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                         className="w-full h-full object-cover"
                       />
                     </button>
-
                     {showUserMenu && (
                       <div
                         ref={menuRef}
@@ -392,18 +361,19 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                           >
                             Tài khoản
                           </Link>
-                          <Link
-                            to="/order-history"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
-                          >
-                            Đơn hàng
-                          </Link>
-                          {user.role === "admin" && (
+                          {user.role === "admin" ? (
                             <Link
                               to="/quan-ly"
                               className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
                             >
-                              Quản lý
+                              Trang quản lý
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/order-history"
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
+                            >
+                              Đơn hàng
                             </Link>
                           )}
                         </div>
