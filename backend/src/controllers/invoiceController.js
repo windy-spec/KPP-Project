@@ -3,6 +3,8 @@ import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 
 // 1. TẠO HÓA ĐƠN
+// src/controllers/invoiceController.js
+
 export const createInvoice = async (req, res) => {
   try {
     const {
@@ -11,39 +13,54 @@ export const createInvoice = async (req, res) => {
       items,
       payment_method,
       shipping_fee,
-      total_amount,
       momoOrderId,
       isDirectBuy,
     } = req.body;
 
-    const finalRecipientInfo = {
-      ...recipient_info,
-      note: recipient_info?.note || note || "",
-    };
+    let calculatedTotal = 0;
+    const finalItems = [];
 
-    // Check tồn kho
+    // ✅ BƯỚC QUAN TRỌNG: Duyệt qua từng item để lấy giá gốc và tính total_price
     for (const item of items) {
       const product = await Product.findById(item.product_id);
       if (!product)
-        return res.status(404).json({ message: "SP không tồn tại" });
-      if (product.quantity < item.quantity)
-        return res.status(400).json({ message: `Hết hàng: ${product.name}` });
+        return res
+          .status(404)
+          .json({ message: `Sản phẩm ${item.product_id} không tồn tại` });
+
+      const itemPrice = product.price;
+      const itemTotal = itemPrice * item.quantity;
+
+      finalItems.push({
+        product_id: product._id,
+        product_name: product.name,
+        quantity: item.quantity,
+        unit_price: itemPrice, // Lưu giá tại thời điểm mua
+        total_price: itemTotal, // ✅ Dashboard sẽ sum trường này
+      });
+
+      calculatedTotal += itemTotal;
     }
+
+    const finalShippingFee = shipping_fee || 0;
 
     const invoice = await Invoice.create({
       user: req.user._id,
-      recipient_info: finalRecipientInfo,
-      items,
+      recipient_info: {
+        ...recipient_info,
+        note: recipient_info?.note || note || "",
+      },
+      items: finalItems, // Sử dụng mảng đã được Backend tính toán
       payment_method: payment_method || "COD",
-      shipping_fee: shipping_fee || 0,
-      total_amount,
-      momoOrderId: momoOrderId || undefined,
+      shipping_fee: finalShippingFee,
+      total_amount: calculatedTotal + finalShippingFee, // Tự tính tổng tiền cuối cùng
       order_status: "PLACED",
       payment_status: "UNPAID",
     });
 
+    // Phần trừ tồn kho (giữ nguyên logic cũ của bạn)
     if (invoice) {
-      const bulkOps = items.map((item) => ({
+      const bulkOps = finalItems.map((item) => ({
         updateOne: {
           filter: { _id: item.product_id },
           update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
@@ -51,16 +68,11 @@ export const createInvoice = async (req, res) => {
       }));
       await Product.bulkWrite(bulkOps);
     }
-    if (!isDirectBuy) {
-      await Cart.findOneAndDelete({ user: req.user._id });
-      console.log("🗑️ Đã xóa giỏ hàng (COD Cart Checkout).");
-    } else {
-      console.log("🛡️ Giữ nguyên giỏ hàng (COD Direct Buy).");
-    }
+
+    if (!isDirectBuy) await Cart.findOneAndDelete({ user: req.user._id });
 
     res.status(201).json(invoice);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Lỗi tạo đơn" });
   }
 };

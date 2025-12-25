@@ -55,22 +55,25 @@ export const getDashboardStats = async (req, res) => {
         $group: {
           _id: "$items.product_id",
           sales: { $sum: "$items.quantity" },
-          // Lấy doanh thu, nếu total_price bị null thì mặc định là 0 để sum không lỗi
+          // ✅ Fix: Nếu total_price bị rỗng (do đơn cũ) thì mặc định là 0
           revenue: { $sum: { $ifNull: ["$items.total_price", 0] } },
         },
       },
-      { $sort: { sales: -1 } },
+      { $sort: { revenue: -1 } },
       { $limit: 5 },
     ]);
 
     // ✅ FIX: Truy vấn thêm tên sản phẩm từ bảng Product
     const topProducts = await Promise.all(
       topProductsRaw.map(async (item) => {
-        const productInfo = await Product.findById(item._id).select("name");
+        const productInfo = await Product.findById(item._id).select(
+          "name quantity"
+        );
         return {
           ...item,
           // Nếu có tên trong DB thì lấy, không thì báo "Sản phẩm không tên"
           name: productInfo ? productInfo.name : "Sản phẩm không tên",
+          stock: productInfo ? productInfo.quantity : 0,
         };
       })
     );
@@ -82,6 +85,7 @@ export const getDashboardStats = async (req, res) => {
       chartData: chartDataRaw.map((item) => ({
         name: item._id,
         revenue: item.revenue,
+        stock: "$product_details",
       })),
       topProducts, // Trả về danh sách đã được bổ sung tên
     });
