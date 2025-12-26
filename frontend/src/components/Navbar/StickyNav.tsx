@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, NavLink } from "react-router-dom";
 import searchIcon from "@/assets/icon/search_icon.png";
 import cartIcon from "@/assets/icon/shopping-bag.png";
+import apiClient from "../../utils/api-user";
 
 const SERVER_BASE_URL = "http://localhost:5001";
 
@@ -72,6 +73,37 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLFormElement>(null);
+
+  // --- STATE DROPDOWN & CATEGORIES (MỚI TÍCH HỢP) ---
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<any>>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const closeTimer = useRef<number | null>(null);
+
+  // Hàm xóa bộ đếm thời gian đóng dropdown
+  const clearCloseTimer = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  // 0. Lấy danh mục sản phẩm từ Backend khi Component mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setCatLoading(true);
+      try {
+        const res = await apiClient.get("/category");
+        setCategories(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Lỗi khi lấy danh mục:", err);
+      } finally {
+        setCatLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
 
   // 1. SCROLL VISIBILITY
   useEffect(() => {
@@ -237,23 +269,78 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
               </Link>
             </div>
 
+            {/* Navigation chính với Dropdown */}
             <div className="flex justify-center grow px-4">
-              <div className="bg-orange-100/80 rounded-full px-6 py-2 shadow-sm border border-orange-200">
+              <div className="bg-orange-200 rounded-full px-6 py-2 shadow-sm border border-orange-200">
                 <nav className="flex gap-6 items-center text-gray-700 text-sm font-medium">
-                  {navItems.map((label) => (
-                    <Link
-                      key={label}
-                      to={toPath(label)}
-                      className="hover:text-orange-600 transition-colors relative group"
-                    >
-                      {label}
-                      <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-orange-500 transition-all duration-300 group-hover:w-full"></span>
-                    </Link>
-                  ))}
+                  {navItems.map((label) => {
+                    const isProduct = label === "Sản Phẩm";
+                    const to = toPath(label);
+
+                    return (
+                      <div
+                        key={label}
+                        className="relative"
+                        // Xử lý hover để mở dropdown
+                        onMouseEnter={() => {
+                          if (isProduct) {
+                            clearCloseTimer();
+                            setOpenDropdown(label);
+                          }
+                        }}
+                        // Xử lý rời chuột với độ trễ để tránh bị tắt menu đột ngột
+                        onMouseLeave={() => {
+                          if (isProduct) {
+                            clearCloseTimer();
+                            closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 200);
+                          }
+                        }}
+                      >
+                        <Link
+                          to={to}
+                          className="hover:text-orange-600 transition-colors relative group block py-1"
+                        >
+                          {label}
+                          <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-orange-500 transition-all duration-300 group-hover:w-full"></span>
+                        </Link>
+
+                        {/* Menu thả xuống (chỉ dành cho Sản Phẩm) */}
+                        {isProduct && (
+                          <div
+                            className={`absolute left-1/2 transform -translate-x-1/2 mt-3 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 origin-top transition-all duration-200 ${
+                              openDropdown === label
+                                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                                : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
+                            }`}
+                          >
+                            <div className="py-2">
+                              {catLoading ? (
+                                <div className="px-4 py-2 text-xs text-gray-400">Đang tải...</div>
+                              ) : categories.length > 0 ? (
+                                categories.map((cat) => (
+                                  <Link
+                                    key={cat._id}
+                                    to={`/san-pham?categories=${encodeURIComponent(cat._id)}`}
+                                    onClick={() => setOpenDropdown(null)}
+                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                                  >
+                                    {cat.name}
+                                  </Link>
+                                ))
+                              ) : (
+                                <div className="px-4 py-2 text-xs text-gray-400">Không có danh mục</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </nav>
               </div>
             </div>
-
+            
+            {/* Các icon Search, Cart, User*/}
             <div className="flex items-center gap-4 text-gray-600">
               <form
                 ref={searchRef}
