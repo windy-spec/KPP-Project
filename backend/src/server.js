@@ -16,7 +16,7 @@ import SaleProgram from "./routes/saleProgramRoute.js";
 import cron from "node-cron";
 import { autoUpdateOrderStatus } from "./controllers/CronController.js";
 import adminRoute from "./routes/adminRoute.js";
-
+import chatRoutes from "./routes/chatRoute.js";
 dotenv.config();
 // Set port
 const app = express();
@@ -45,7 +45,7 @@ app.use("/api/cart", cartRoute);
 app.use("/api/payments", momoRoute);
 app.use("/api/invoice", invoiceRoute);
 app.use("/api/admin", adminRoute);
-
+app.use("/api/chat", chatRoutes);
 //  2. Cấu hình Cron Job (Chạy mỗi 1 tiếng)
 // Cú pháp: 'phút giờ ngày tháng thứ'
 // '0 * * * *' nghĩa là chạy vào phút thứ 0 của mỗi giờ (1h00, 2h00...)

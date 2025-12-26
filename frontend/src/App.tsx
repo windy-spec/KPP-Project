@@ -9,7 +9,7 @@ import IntroducePage from "./pages/IntroducePage.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
 import TermsOfService from "./pages/TermsOfService.tsx";
 
-// 🆕 IMPORT 4 TRANG MỚI (Giả sử bạn lưu trong thư mục pages)
+// 🆕 IMPORT 4 TRANG MỚI
 import GeneralPolicy from "./pages/GeneralPolicy.tsx";
 import PaymentMethods from "./pages/PaymentMethods.tsx";
 import ShoppingGuide from "./pages/ShoppingGuide.tsx";
@@ -43,6 +43,9 @@ import InvoicePage from "./pages/InvoicePage.tsx";
 import OrderHistory from "./pages/OrderHistory.tsx";
 import DiscountPage from "./pages/DiscountPage.tsx";
 
+// 👇 1. IMPORT CHATBOT Ở ĐÂY 👇
+import ChatBot from "./components/ChatBot/ChatBot.tsx";
+
 const AuthActionInitializer = () => {
   useAuthActions();
   return null;
@@ -54,6 +57,7 @@ function App() {
       <Toaster richColors />
       <BrowserRouter>
         <AuthActionInitializer />
+
         <Routes>
           {/* 🏠 Trang chính */}
           <Route path="/" element={<HomePage />} />
@@ -110,7 +114,7 @@ function App() {
             }
           />
 
-          {/* 📄 CÁC TRANG CHÍNH SÁCH (Đã cập nhật đầy đủ) */}
+          {/* 📄 CÁC TRANG CHÍNH SÁCH */}
           <Route path="/gioi-thieu" element={<IntroducePage />} />
           <Route path="/chinh-sach-bao-mat" element={<PrivacyPolicy />} />
           <Route path="/dieu-khoan-dich-vu" element={<TermsOfService />} />
@@ -124,6 +128,9 @@ function App() {
           {/* ❌ 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+
+        {/* 👇 2. ĐẶT COMPONENT Ở ĐÂY ĐỂ HIỂN THỊ MỌI TRANG 👇 */}
+        <ChatBot />
       </BrowserRouter>
     </>
   );

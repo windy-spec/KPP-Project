@@ -1,5 +1,9 @@
 {
   "devDependencies": {
     "baseline-browser-mapping": "^2.9.11"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.3"
   }
 }
