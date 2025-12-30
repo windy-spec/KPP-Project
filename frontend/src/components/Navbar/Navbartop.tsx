@@ -141,7 +141,9 @@ const Navbartop: React.FC = () => {
         const arr = JSON.parse(raw);
         // Count distinct products (unique productId) so badge shows number of product types, not total quantity
         const total = Array.isArray(arr)
-          ? new Set(arr.map((it: any) => it.productId ?? it.id ?? JSON.stringify(it))).size
+          ? new Set(
+              arr.map((it: any) => it.productId ?? it.id ?? JSON.stringify(it))
+            ).size
           : 0;
         setCartCount(total);
       } catch (e) {
@@ -242,39 +244,47 @@ const Navbartop: React.FC = () => {
                     {showUserMenu && (
                       <div
                         ref={menuRef}
-                        className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-10 origin-top-right animate-fade-in"
-                        role="menu"
-                        aria-orientation="vertical"
+                        className="absolute right-0 mt-3 w-64 bg-white border border-gray-100 rounded-xl shadow-xl z-50 animate-fade-in origin-top-right overflow-hidden"
                       >
-                        <a
-                          href="/tai-khoan"
-                          className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
-                          role="menuitem"
-                        >
-                          Tài khoản (
-                          {user.displayName || user.email || "Người dùng"})
-                        </a>
-
-                        {/* ✅ Chỉ hiển thị nếu role là admin */}
-                        {user.role === "admin" && (
-                          <>
-                            <a
-                              href="/quan-ly"
-                              className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
-                              role="menuitem"
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                          <p className="text-sm font-bold text-gray-800 truncate">
+                            {user.displayName || "User"}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {user.email}
+                          </p>
+                        </div>
+                        <div className="py-1">
+                          <Link
+                            to="/tai-khoan"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
+                          >
+                            Tài khoản
+                          </Link>
+                          {user.role === "admin" ? (
+                            <Link
+                              to="/quan-ly"
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
                             >
                               Trang quản lý
-                            </a>
-                          </>
-                        )}
-
-                        <button
-                          onClick={handleLogout}
-                          className="w-full text-left px-4 py-3 text-red-600 bg-red-50 hover:bg-red-100 transition-colors border-t border-gray-200"
-                          role="menuitem"
-                        >
-                          Đăng xuất
-                        </button>
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/order-history"
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
+                            >
+                              Đơn hàng
+                            </Link>
+                          )}
+                        </div>
+                        <div className="border-t border-gray-100">
+                          <button
+                            onClick={handleLogout}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                          >
+                            Đăng xuất
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
