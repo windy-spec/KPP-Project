@@ -255,14 +255,6 @@ const Navbartop: React.FC = () => {
                           {user.displayName || user.email || "Người dùng"})
                         </a>
 
-                        <a
-                          href="/order-history"
-                          className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
-                          role="menuitem"
-                        >
-                          Đơn hàng
-                        </a>
-
                         {/* ✅ Chỉ hiển thị nếu role là admin */}
                         {user.role === "admin" && (
                           <>
@@ -272,22 +264,6 @@ const Navbartop: React.FC = () => {
                               role="menuitem"
                             >
                               Trang quản lý
-                            </a>
-
-                            <a
-                              href="/quan-ly/discount"
-                              className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
-                              role="menuitem"
-                            >
-                              Quản lý Discount
-                            </a>
-
-                            <a
-                              href="/quan-ly/sale"
-                              className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
-                              role="menuitem"
-                            >
-                              Quản lý Chương trình Sale
                             </a>
                           </>
                         )}
