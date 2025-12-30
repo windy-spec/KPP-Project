@@ -8,11 +8,7 @@ const dropdownItems = {
     { label: "Dụng cụ sơn", to: "/san-pham/dung-cu" },
     { label: "Sơn nước", to: "/san-pham/son-nuoc" },
     { label: "Sơn xịt", to: "/san-pham/son-xit" },
-  ],
-  "Chiết Khấu": [
-    { label: "Ưu đãi hôm nay", to: "/chiet-khau/uu-dai-hom-nay" },
-    { label: "Mã giảm giá", to: "/chiet-khau/ma-giam-gia" },
-  ],
+  ]
 };
 
 const rawItems = [
@@ -97,7 +93,7 @@ const Navbarbot: React.FC = () => {
 
                 if (hasDropdown) {
                   return (
-                    // Hiển thị dropdown khi hover và bỏ mũi tên
+                    // Hiển thị dropdown khi hover
                     <div
                       key={label}
                       className="relative"

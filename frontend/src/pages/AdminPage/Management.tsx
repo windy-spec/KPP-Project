@@ -596,7 +596,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
               </Button>
             )}
           </div>
-          <div className="border border-gray-100 rounded-lg bg-white overflow-hidden">
+          <div className="border border-gray-100 rounded-lg bg-white overflow-hidden shadow-lg">
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
                 <tr>
@@ -790,7 +790,7 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
   return (
     <div className="space-y-4">
       {(openFromParent || editingId) && (
-        <div className="p-6 border rounded-lg bg-gray-50 mb-6 animate-in fade-in zoom-in duration-200">
+        <div className="p-6 rounded-lg bg-gray-50 mb-6 animate-in fade-in zoom-in duration-200">
           <h4 className="font-bold mb-4 text-orange-600">
             {editingId ? "Sửa Danh Mục" : "Thêm Danh Mục"}
           </h4>
@@ -827,7 +827,7 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
         </div>
       )}
       {!openFromParent && !editingId && (
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-white rounded-lg overflow-hidden shadow-lg">
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 uppercase text-xs text-gray-700">
               <tr className="border-b">

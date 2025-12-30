@@ -74,7 +74,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLFormElement>(null);
 
-  // --- STATE DROPDOWN & CATEGORIES (MỚI TÍCH HỢP) ---
+  // --- STATE DROPDOWN & CATEGORIES ---
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [categories, setCategories] = useState<Array<any>>([]);
   const [catLoading, setCatLoading] = useState(false);

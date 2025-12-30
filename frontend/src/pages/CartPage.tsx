@@ -132,9 +132,9 @@ const CartPage: React.FC = () => {
           quantity: Number(item.quantity),
         }));
 
-        console.log("📤 Payload chuẩn bị gửi lên Server:", guestPayload);
+        console.log("Payload chuẩn bị gửi lên Server:", guestPayload);
         console.log(
-          `🌐 URL gọi API: ${SERVER_BASE_URL}/api/cart/guest-preview`
+          `URL gọi API: ${SERVER_BASE_URL}/api/cart/guest-preview`
         );
 
         try {
@@ -147,7 +147,7 @@ const CartPage: React.FC = () => {
             }
           );
 
-          console.log("✅ API phản hồi thành công:", res.data);
+          console.log("API phản hồi thành công:", res.data);
           const data: CartResponse = res.data;
 
           setItems(data.items || []);
@@ -157,8 +157,8 @@ const CartPage: React.FC = () => {
             final: data.final_total_price || 0,
           });
         } catch (apiErr: any) {
-          console.error("🔥 LỖI KHI GỌI API GUEST:", apiErr);
-          console.log("⚠️ Đang chuyển sang chế độ hiển thị Offline (Fallback)");
+          console.error("LỖI KHI GỌI API GUEST:", apiErr);
+          console.log("Đang chuyển sang chế độ hiển thị Offline (Fallback)");
 
           // FALLBACK: Nếu API lỗi thì hiển thị tạm dữ liệu local
           const mapped: CartItemBackend[] = arr.map((it: any) => ({
@@ -184,10 +184,10 @@ const CartPage: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error("☠️ Lỗi nghiêm trọng trong fetchCart:", error);
+      console.error("Lỗi nghiêm trọng trong fetchCart:", error);
     } finally {
       setLoading(false);
-      console.log("🏁 [END] Kết thúc fetchCart");
+      console.log("[END] Kết thúc fetchCart");
     }
   };
 
@@ -474,7 +474,7 @@ const CartPage: React.FC = () => {
                               -
                             </button>
                             <input
-                              readOnly
+                              type="number"
                               value={it.quantity}
                               className="w-10 text-center text-sm py-1 border-l border-r outline-none font-medium text-gray-800"
                             />
