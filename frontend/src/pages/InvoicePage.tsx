@@ -173,7 +173,7 @@ const InvoicePage: React.FC = () => {
             </div>
           </div>
 
-          {/* LIST ITEM - ĐÃ KHÔI PHỤC HIỂN THỊ THÀNH TIỀN */}
+          {/* LIST ITEM - HIỂN THỊ THÀNH TIỀN */}
           <div className="border-t border-b border-dashed border-gray-300 py-2 mb-4">
             <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-2 uppercase">
               <span>Sản phẩm</span>
@@ -234,7 +234,7 @@ const InvoicePage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* CỘT PHẢI: THÀNH TIỀN (Đây là cái bạn cần tìm lại) */}
+                    {/* CỘT PHẢI: THÀNH TIỀN */}
                     <div className="font-bold text-sm text-gray-900">
                       {formatVND(lineTotal)}
                     </div>
@@ -244,7 +244,7 @@ const InvoicePage: React.FC = () => {
             })}
           </div>
 
-          {/* SUMMARY - FORM ĐÚNG Ý BẠN */}
+          {/* SUMMARY */}
           <div className="flex flex-col gap-1 border-b-2 border-gray-200 pb-4 mb-4 text-xs">
             <div className="flex justify-between text-gray-600">
               <span>Tổng tiền hàng</span>

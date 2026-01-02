@@ -38,7 +38,7 @@ const MiniCart: React.FC = () => {
   // Hàm gọi API lấy giỏ hàng
   const fetchCart = async () => {
     const token = localStorage.getItem("accessToken");
-    // If no token (guest), try to read cart from localStorage fallback
+    // Nếu không có token (khách), thử đọc giỏ hàng từ localStorage dự phòng
     if (!token) {
       try {
         const raw = localStorage.getItem("cart");
@@ -49,7 +49,7 @@ const MiniCart: React.FC = () => {
         const arr = JSON.parse(raw);
         if (!Array.isArray(arr)) return setItems([]);
 
-        // Map localStorage shape to CartItem[] used by MiniCart
+        // Chuyển đổi cấu trúc dữ liệu từ localStorage sang mảng CartItem[]
         const mapped: CartItem[] = arr
           .slice()
           .reverse()
@@ -103,8 +103,8 @@ const MiniCart: React.FC = () => {
     };
 
     window.addEventListener("cartUpdated", handler);
-    // --- SỬA: Lắng nghe thêm event 'cartUpdatedShow' từ các component khác (như danh sách sản phẩm)
-    // Mục đích: đảm bảo MiniCart luôn mở sau khi nhấn "Thêm vào giỏ hàng" ở nhiều nơi
+    // Lắng nghe thêm event 'cartUpdatedShow' từ các component khác (như danh sách sản phẩm)
+    // đảm bảo MiniCart luôn mở sau khi nhấn "Thêm vào giỏ hàng" ở nhiều nơi
     window.addEventListener("cartUpdatedShow", handler);
 
     // Load lần đầu (ẩn) để có dữ liệu sẵn nếu cần
@@ -201,7 +201,7 @@ const MiniCart: React.FC = () => {
             Xem giỏ hàng
           </Link>
           <Link
-            to="/thanh-toan" 
+            to="/thanh-toan"
             onClick={() => setShow(false)}
             className="px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 text-center transition shadow-sm"
           >

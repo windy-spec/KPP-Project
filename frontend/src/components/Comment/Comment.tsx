@@ -17,8 +17,7 @@ const Comment: React.FC = () => {
       name: "Cự Lan Hương",
       avatar: "https://i.pravatar.cc/150?img=1",
       rating: 5,
-      comment:
-        "KPPaint giao hàng nhanh chóng, tận tình hỗ trợ khách hàng",
+      comment: "KPPaint giao hàng nhanh chóng, tận tình hỗ trợ khách hàng",
     },
     {
       id: 2,
@@ -59,7 +58,7 @@ const Comment: React.FC = () => {
 
   return (
     <div className="relative bg-gradient-to-br from-[#ea580c] via-[#f97316] to-[#ed6a1b] py-10 px-4 overflow-hidden mb-20">
-      {/* Background Decorations */}
+      {/* Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-400/5 rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl"></div>
@@ -71,13 +70,14 @@ const Comment: React.FC = () => {
           <p className="text-yellow-400 font-semibold text-sm mb-2">
             Hơn 1000+
           </p>
-          
+
           <h2 className="text-white text-3xl font-bold mb-3">
             KHÁCH HÀNG CỦA CHÚNG TÔI
           </h2>
-          
+
           <p className="text-white text-sm max-w-l">
-            Đây là một số cảm nhận của khách hàng chúng tôi để lại, các bạn xem qua những cảm nhận này nhé...
+            Đây là một số cảm nhận của khách hàng chúng tôi để lại, các bạn xem
+            qua những cảm nhận này nhé...
           </p>
         </div>
 

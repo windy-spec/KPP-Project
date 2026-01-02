@@ -45,7 +45,7 @@ const Banner: React.FC = () => {
   const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // autoplay every 4s
+    // autoplay mỗi 4s
     timeoutRef.current = window.setTimeout(() => {
       setIndex((i) => (i + 1) % slides.length);
     }, 4000);
@@ -64,19 +64,25 @@ const Banner: React.FC = () => {
   };
 
   return (
-      <div className="max-w-10xl mx-auto px-2 mt-2">
+    <div className="max-w-10xl mx-auto px-2 mt-2">
       <div className="relative w-full overflow-hidden h-[220px] sm:h-[300px] md:h-[420px] lg:h-[520px] rounded-lg">
         {slides.map((s, i) => (
           <div
             key={i}
             className={`absolute inset-0 transition-opacity duration-700 ${
-              i === index ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+              i === index
+                ? "opacity-100 z-10"
+                : "opacity-0 z-0 pointer-events-none"
             }`}
-            style={{ backgroundImage: `url(${s.image})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            style={{
+              backgroundImage: `url(${s.image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
           />
         ))}
 
-        {/* Arrows */}
+        {/* Mũi tên chuyển banner */}
         <button
           aria-label="Previous"
           onClick={goPrev}

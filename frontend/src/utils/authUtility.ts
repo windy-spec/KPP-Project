@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import Swal from "sweetalert2";
 import apiClient, { setGlobalLogoutAction } from "../utils/api-user";
 
-// 🚨 KHAI BÁO TYPE CHO WINDOW 🚨
+// KHAI BÁO TYPE CHO WINDOW 
 // Để SweetAlert và cờ chặn đa luồng hoạt động mà không bị lỗi TypeScript
 declare global {
   interface Window {
@@ -46,7 +46,7 @@ const useAuthActions = () => {
     setGlobalLogoutAction(logoutAndRedirect);
   }, [navigate]);
 
-  // 🚨 LOGIC HEARTBEAT ĐỂ KIỂM TRA TOKEN CHỦ ĐỘNG 🚨
+  // LOGIC HEARTBEAT ĐỂ KIỂM TRA TOKEN CHỦ ĐỘNG
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) return;
@@ -59,7 +59,7 @@ const useAuthActions = () => {
         await apiClient.get("/users/me");
         console.log(" Heartbeat: Token vẫn còn hiệu lực.");
       } catch (error) {
-        // Ta không cần clearInterval ở đây, để Interceptor tự động bắt 401.
+        // Không cần clearInterval ở đây, để Interceptor tự động bắt 401.
         console.warn(
           " Heartbeat thất bại. Interceptor sẽ quyết định hành động."
         );

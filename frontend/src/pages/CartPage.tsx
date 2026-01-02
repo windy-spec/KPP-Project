@@ -4,12 +4,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { TicketPercent } from "lucide-react"; // Import icon khuyến mãi
+import { TicketPercent } from "lucide-react";
 
-// --- SERVER CONFIG ---
 const SERVER_BASE_URL = "http://localhost:5001";
 
-// 🚨 CẬP NHẬT TYPE KHỚP VỚI LOGIC BACKEND CỦA BẠN
+// CẬP NHẬT TYPE KHỚP VỚI LOGIC BACKEND CỦA BẠN
 type CartItemBackend = {
   product: {
     _id: string;
@@ -76,7 +75,7 @@ const CartPage: React.FC = () => {
 
   // Copy đè hàm fetchCart cũ bằng hàm này
   const fetchCart = async () => {
-    console.log("🚀 [START] Bắt đầu hàm fetchCart");
+    console.log("[START] Bắt đầu hàm fetchCart");
     setLoading(true);
 
     try {
@@ -99,13 +98,13 @@ const CartPage: React.FC = () => {
         });
       }
 
-      // --- TRƯỜNG HỢP 2: KHÁCH VÃNG LAI (GUEST) ---
+      // --- TRƯỜNG HỢP 2: GUEST ---
       else {
-        console.log("👤 Đang xử lý logic Guest...");
+        console.log("Đang xử lý logic Guest...");
         const raw = localStorage.getItem("cart");
 
         if (!raw) {
-          console.log("⚠️ LocalStorage trống -> Set items rỗng");
+          console.log("LocalStorage trống -> Set items rỗng");
           setItems([]);
           setCartSummary({ original: 0, discount: 0, final: 0 });
           return;
@@ -114,14 +113,14 @@ const CartPage: React.FC = () => {
         let arr = [];
         try {
           arr = JSON.parse(raw);
-          console.log("📦 Dữ liệu gốc trong LocalStorage:", arr);
+          console.log("Dữ liệu gốc trong LocalStorage:", arr);
         } catch (e) {
-          console.error("❌ Lỗi parse JSON LocalStorage:", e);
+          console.error("Lỗi parse JSON LocalStorage:", e);
           return;
         }
 
         if (!Array.isArray(arr) || arr.length === 0) {
-          console.log("⚠️ Mảng giỏ hàng rỗng -> Return");
+          console.log("Mảng giỏ hàng rỗng -> Return");
           setItems([]);
           return;
         }
@@ -133,13 +132,11 @@ const CartPage: React.FC = () => {
         }));
 
         console.log("Payload chuẩn bị gửi lên Server:", guestPayload);
-        console.log(
-          `URL gọi API: ${SERVER_BASE_URL}/api/cart/guest-preview`
-        );
+        console.log(`URL gọi API: ${SERVER_BASE_URL}/api/cart/guest-preview`);
 
         try {
           // GỌI API
-          console.log("⏳ Đang gọi axios.post...");
+          console.log("Đang gọi axios.post...");
           const res = await axios.post(
             `${SERVER_BASE_URL}/api/cart/guest-preview`,
             {
@@ -195,7 +192,7 @@ const CartPage: React.FC = () => {
     fetchCart();
   }, []);
 
-  // Các hàm xử lý logic (giữ nguyên như cũ)
+  // Các hàm xử lý logic
   const updateQuantity = async (productId: string, newQty: number) => {
     if (newQty < 1) return;
     try {
@@ -303,7 +300,7 @@ const CartPage: React.FC = () => {
     }
   };
 
-  // Logic Select
+  // Logic Chọn item
   const allSelected = items.length > 0 && selectedIds.length === items.length;
   const toggleSelectAll = () => {
     if (allSelected) setSelectedIds([]);
@@ -375,7 +372,7 @@ const CartPage: React.FC = () => {
                   <div className="col-span-2 text-right">Thành tiền</div>
                 </div>
 
-                {/* Body Items */}
+                {/* Body */}
                 <div className="p-4 md:p-0 space-y-4 md:space-y-0">
                   {items.length === 0 ? (
                     <div className="p-10 text-center text-gray-500">
@@ -415,7 +412,7 @@ const CartPage: React.FC = () => {
                               {it.product.name}
                             </Link>
 
-                            {/* 🔥 HIỂN THỊ BADGE KHUYẾN MÃI NẾU CÓ */}
+                            {/* HIỂN THỊ BADGE KHUYẾN MÃI NẾU CÓ */}
                             {it.applied_discount && (
                               <div className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 border border-red-100 rounded text-xs text-red-600 w-fit mt-1">
                                 <TicketPercent size={12} />
@@ -498,7 +495,7 @@ const CartPage: React.FC = () => {
                             <div className="text-red-600 font-bold text-base md:text-lg">
                               {formatVND(it.Total_price)}
                             </div>
-                            {/* 🔥 HIỂN THỊ SỐ TIỀN TIẾT KIỆM ĐƯỢC */}
+                            {/* HIỂN THỊ SỐ TIỀN TIẾT KIỆM ĐƯỢC */}
                             {it.applied_discount &&
                               it.applied_discount.saved_amount > 0 && (
                                 <div className="text-xs text-green-600 font-medium mt-1">
@@ -534,7 +531,7 @@ const CartPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Footer Table (Bulk Actions) */}
+                {/* Footer Table */}
                 {items.length > 0 && (
                   <div className="bg-gray-50 px-6 py-3 flex justify-between items-center border-t">
                     <div className="text-sm text-gray-600">
@@ -554,7 +551,7 @@ const CartPage: React.FC = () => {
               </div>
             </div>
 
-            {/* --- SUMMARY SIDEBAR --- */}
+            {/* --- THANH TOÁN --- */}
             <aside className="lg:col-span-4">
               <div className="bg-white shadow-sm rounded-lg p-4 sticky top-24 border border-gray-100">
                 <h3 className="font-bold text-gray-800 mb-4 text-lg border-b pb-2">
@@ -567,7 +564,7 @@ const CartPage: React.FC = () => {
                     <span>{formatVND(selectedTotals.original)}</span>
                   </div>
 
-                  {/* 🔥 HIỂN THỊ TỔNG GIẢM GIÁ */}
+                  {/* HIỂN THỊ TỔNG GIẢM GIÁ */}
                   {selectedTotals.discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Giảm giá trực tiếp:</span>

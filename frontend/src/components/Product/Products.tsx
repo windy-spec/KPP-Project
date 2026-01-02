@@ -183,7 +183,10 @@ const Products: React.FC = () => {
         await axios.post(
           `${SERVER_BASE_URL}/api/cart/add`,
           { productId, quantity: qty },
-          { withCredentials: true, headers: { Authorization: `Bearer ${token}` } }
+          {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
         // Sau khi thêm thành công ở backend, lấy lại giỏ hàng từ server
         // và lưu về localStorage để Navbar/mini cart đọc được (đồng bộ)
@@ -194,22 +197,27 @@ const Products: React.FC = () => {
           });
           const serverItems = cartRes.data?.items || [];
           const local = serverItems.map((it: any) => ({
-            productId: it.product?._id || (it.product && it.product.id) || JSON.stringify(it.product),
+            productId:
+              it.product?._id ||
+              (it.product && it.product.id) ||
+              JSON.stringify(it.product),
             name: it.product?.name || "Sản phẩm",
-            price: it.price_discount || it.price_original || it.product?.price || 0,
+            price:
+              it.price_discount || it.price_original || it.product?.price || 0,
             avatar: it.product?.avatar || null,
             quantity: it.quantity || 1,
           }));
           localStorage.setItem("cart", JSON.stringify(local));
         } catch (e) {
-          // Nếu không lấy được cart từ server thì bỏ qua (không làm crash UI)
+          // Nếu không lấy được cart từ server thì bỏ qua
           console.error("Không thể đồng bộ cart từ server sau khi thêm", e);
         }
       } else {
         // Guest -> lưu vào localStorage dưới key `cart`
         try {
           const raw = localStorage.getItem("cart");
-          const arr = raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+          const arr =
+            raw && Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
           const idx = arr.findIndex((it: any) => it.productId === productId);
           if (idx >= 0) {
             arr[idx].quantity = (arr[idx].quantity || 0) + qty;
@@ -231,9 +239,6 @@ const Products: React.FC = () => {
       toast.success("Đã thêm vào giỏ hàng");
       // Thông báo cho Navbar / MiniCart cập nhật
       window.dispatchEvent(new Event("cartUpdated"));
-      // --- SỬA: Đảm bảo MiniCart luôn được mở sau khi thêm sản phẩm
-      // Phát thêm một event riêng để MiniCart lắng nghe và hiển thị popup.
-      // Không thay đổi logic lưu trữ hay sync, chỉ thêm event hiển thị.
       window.dispatchEvent(new Event("cartUpdatedShow"));
     } catch (err: any) {
       console.error("Lỗi thêm giỏ hàng", err);
@@ -371,9 +376,9 @@ const Products: React.FC = () => {
           </div>
         </aside>
 
-        {/* PRODUCT LIST */}
+        {/* Danh sách PRODUCT */}
         <section className="lg:col-span-3 space-y-8" ref={productRef}>
-          {/* Categories Topbar */}
+          {/* Category Topbar */}
           <div className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 shadow-sm">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-sm font-semibold text-gray-700 pr-2">
@@ -399,7 +404,7 @@ const Products: React.FC = () => {
             </div>
           </div>
 
-          {/* Active Filter Summary */}
+          {/* Filter */}
           {price !== null && (
             <div className="bg-gray-50 p-4 rounded-lg border">
               <div className="flex items-center justify-between">
@@ -446,7 +451,7 @@ const Products: React.FC = () => {
                   key={p._id || p.id || p.name}
                   className="bg-white rounded-lg shadow-sm overflow-hidden relative group border border-gray-100"
                 >
-                  {/* 🚨 BADGE KHUYẾN MÃI (Dùng discount_info từ BE) */}
+                  {/* BADGE KHUYẾN MÃI (Dùng discount_info từ BE) */}
                   {p.discount_info && (
                     <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded z-10 shadow-md animate-pulse">
                       -{p.discount_info.percent}%
@@ -471,7 +476,7 @@ const Products: React.FC = () => {
                       )}
                     </div>
                   </Link>
-                  {/* ADD TO CART SLIDE UP */}
+                  {/* Hiệu ứng 'Thêm vào giỏ hàng' trượt từ dưới lên */}
                   <div
                     className="
                       absolute bottom-0 left-0 right-0 
@@ -490,7 +495,9 @@ const Products: React.FC = () => {
                         shadow-md hover:bg-orange-600 transition disabled:opacity-60 disabled:cursor-wait
                       `}
                     >
-                      {addingId === (p._id || p.id || p.name) ? "Đang thêm..." : "Thêm vào giỏ hàng"}
+                      {addingId === (p._id || p.id || p.name)
+                        ? "Đang thêm..."
+                        : "Thêm vào giỏ hàng"}
                     </button>
                   </div>
 
@@ -501,7 +508,7 @@ const Products: React.FC = () => {
 
                     <div className="mt-2">
                       {p.discount_info ? (
-                        // 🚨 SỬA: Dùng justify-between để đẩy giá KM sang phải
+                        // Dùng justify-between để đẩy giá KM sang phải
                         <div className="flex items-end justify-between w-full">
                           {/* Bên trái: Giá khuyến mãi */}
                           <span className="text-lg font-extrabold text-red-600">
@@ -532,7 +539,7 @@ const Products: React.FC = () => {
             </div>
           )}
 
-          {/* PAGINATION */}
+          {/* Phân trang */}
           <div className="flex justify-center gap-2 mt-6">
             <Button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -552,7 +559,7 @@ const Products: React.FC = () => {
           </div>
         </section>
       </div>
-      <MiniCart/>
+      <MiniCart />
     </div>
   );
 };

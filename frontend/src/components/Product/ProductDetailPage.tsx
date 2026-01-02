@@ -30,7 +30,7 @@ const getFullImageUrl = (path?: string) =>
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate(); // Hook chuyển hướng
+  const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -252,7 +252,7 @@ const ProductDetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left: Images */}
+            {/* Left: Image */}
             <div className="lg:w-1/2">
               <div className="flex items-center justify-center p-4 bg-gray-50 rounded-xl border relative h-[450px]">
                 <img
@@ -292,7 +292,7 @@ const ProductDetailPage: React.FC = () => {
               )}
             </div>
 
-            {/* Right: Details */}
+            {/* Right: Chi tiết */}
             <div className="lg:w-1/2 space-y-6">
               <div>
                 <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
@@ -325,7 +325,7 @@ const ProductDetailPage: React.FC = () => {
 
               <p className="text-gray-700">{product.description}</p>
 
-              {/* Input Số Lượng (Đã cập nhật) */}
+              {/* Input Số Lượng */}
               <div className="space-y-3">
                 <label className="font-medium">Số lượng</label>
                 <div className="flex items-center gap-4">
@@ -375,7 +375,7 @@ const ProductDetailPage: React.FC = () => {
                   )}
                 </Button>
 
-                {/* Nút Mua ngay (Đã cập nhật) */}
+                {/* Nút Mua ngay */}
                 <Button
                   variant="outline"
                   onClick={handleBuyNow}

@@ -104,7 +104,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
     fetchCategories();
   }, []);
 
-
   // 1. SCROLL VISIBILITY
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > threshold);
@@ -249,7 +248,6 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
       : `${SERVER_BASE_URL}${user.avatarUrl}`
     : "https://placehold.co/40x40/f7931e/ffffff?text=U";
 
-  // RENDER
   return (
     <div
       className={`hidden md:block fixed left-0 right-0 top-0 z-50 transform transition-transform duration-300 ease-in-out pointer-events-none ${
@@ -292,7 +290,10 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                         onMouseLeave={() => {
                           if (isProduct) {
                             clearCloseTimer();
-                            closeTimer.current = window.setTimeout(() => setOpenDropdown(null), 200);
+                            closeTimer.current = window.setTimeout(
+                              () => setOpenDropdown(null),
+                              200
+                            );
                           }
                         }}
                       >
@@ -315,12 +316,16 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                           >
                             <div className="py-2">
                               {catLoading ? (
-                                <div className="px-4 py-2 text-xs text-gray-400">Đang tải...</div>
+                                <div className="px-4 py-2 text-xs text-gray-400">
+                                  Đang tải...
+                                </div>
                               ) : categories.length > 0 ? (
                                 categories.map((cat) => (
                                   <Link
                                     key={cat._id}
-                                    to={`/san-pham?categories=${encodeURIComponent(cat._id)}`}
+                                    to={`/san-pham?categories=${encodeURIComponent(
+                                      cat._id
+                                    )}`}
                                     onClick={() => setOpenDropdown(null)}
                                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                                   >
@@ -328,7 +333,9 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                                   </Link>
                                 ))
                               ) : (
-                                <div className="px-4 py-2 text-xs text-gray-400">Không có danh mục</div>
+                                <div className="px-4 py-2 text-xs text-gray-400">
+                                  Không có danh mục
+                                </div>
                               )}
                             </div>
                           </div>
@@ -339,7 +346,7 @@ const StickyNav: React.FC<{ threshold?: number }> = ({ threshold = 180 }) => {
                 </nav>
               </div>
             </div>
-            
+
             {/* Các icon Search, Cart, User*/}
             <div className="flex items-center gap-4 text-gray-600">
               <form

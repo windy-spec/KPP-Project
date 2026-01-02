@@ -27,7 +27,7 @@ const ProtectAdminRoute: React.FC<ProtectAdminRouteProps> = ({ children }) => {
           setIsAuthorized(false);
         } else {
           const data = await res.json();
-          // ✅ So sánh chính xác role admin
+          // So sánh chính xác role admin
           setIsAuthorized(data.user?.role === "admin");
         }
       } catch (error) {
@@ -44,10 +44,10 @@ const ProtectAdminRoute: React.FC<ProtectAdminRouteProps> = ({ children }) => {
   if (isLoading)
     return <div className="text-center mt-8">Đang kiểm tra quyền...</div>;
 
-  // ❌ Nếu không phải admin → redirect
+  // Nếu không phải admin → redirect
   if (!isAuthorized) return <Navigate to="/" replace />;
 
-  // ✅ Nếu là admin → cho vào trang
+  // Nếu là admin → cho vào trang
   return <>{children}</>;
 };
 

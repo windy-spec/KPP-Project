@@ -71,7 +71,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Cột 3: Quy định & Chính sách (Đã gắn Link) */}
+          {/* Cột 3: Quy định & Chính sách */}
           <div>
             <h3 className="font-bold mb-5">QUY ĐỊNH & CHÍNH SÁCH</h3>
             <ul className="mt-4 space-y-2 list-disc list-inside text-md text-gray-700">

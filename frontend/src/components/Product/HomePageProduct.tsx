@@ -15,8 +15,6 @@ type Product = {
   images?: string[];
   quantity?: number;
   is_Active?: boolean;
-
-  // Dữ liệu mới từ BE (có thể undefined)
   final_price?: number;
   discount_info?: { percent: number; code: string } | null;
 };
@@ -46,9 +44,6 @@ const HomePageProduct: React.FC = () => {
 
     if (!path.startsWith("/")) path = `/${path}`;
 
-    // Loại bỏ /uploads thừa nếu có (tùy cấu hình server)
-    // path = path.replace(/^\/uploads\/uploads/, "/uploads");
-
     return `${BASE_URL}${path}`;
   };
 
@@ -62,10 +57,10 @@ const HomePageProduct: React.FC = () => {
       const data = res.data;
       const list: Product[] = data?.products || [];
 
-      console.log("📦 Data received:", list); // Debug xem dữ liệu về chưa
+      console.log("Data received:", list); // Debug xem dữ liệu về chưa
 
       const normalized = list.map((p) => {
-        // Tìm ảnh đầu tiên có thể dùng được
+        // Tìm ảnh đầu tiên
         const rawImg =
           (Array.isArray(p.images) && p.images.length > 0
             ? p.images[0]
@@ -77,7 +72,7 @@ const HomePageProduct: React.FC = () => {
 
       setProducts(normalized);
     } catch (err: any) {
-      console.error("❌ Lỗi load sản phẩm:", err);
+      console.error("Lỗi load sản phẩm:", err);
       setError(err.message || "Không thể tải sản phẩm.");
     } finally {
       setLoading(false);
@@ -163,7 +158,7 @@ const HomePageProduct: React.FC = () => {
 
               <div className="mt-2">
                 {p.discount_info ? (
-                  // 🚨 SỬA: Giá bán bên trái --- Giá gốc/Badge bên phải
+                  //Giá bán bên trái --- Giá gốc/Badge bên phải
                   <div className="flex items-end justify-between w-full">
                     {/* 1. BÊN TRÁI: GIÁ ĐÃ GIẢM (Màu đỏ, to) */}
                     <span className="text-lg font-extrabold text-red-600">

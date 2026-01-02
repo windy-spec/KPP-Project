@@ -13,10 +13,10 @@ import {
   X,
   CheckCircle,
   Truck,
-} from "lucide-react"; // 🔥 Thêm icon Truck
+} from "lucide-react";
 import Swal from "sweetalert2";
 
-// --- HELPER FORMATS ---
+// --- HELPER FORMAT ---
 const formatVND = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -35,7 +35,6 @@ const formatDateSafe = (dateString: string | undefined) => {
       )} - ${date.toLocaleDateString("vi-VN")}`;
 };
 
-// --- INTERFACES ---
 interface UserProfile {
   _id: string;
   username: string;
@@ -97,7 +96,7 @@ const OrderHistory: React.FC = () => {
 
   const limit = 9;
 
-  // 1️⃣ FETCH USER
+  // FETCH USER
   useEffect(() => {
     const fetchUserProfile = async () => {
       setUserLoading(true);
@@ -116,7 +115,7 @@ const OrderHistory: React.FC = () => {
     fetchUserProfile();
   }, []);
 
-  // 2️⃣ FETCH INVOICES
+  // FETCH INVOICES
   const fetchInvoices = useCallback(async () => {
     if (userLoading || !user) return;
 
@@ -150,7 +149,7 @@ const OrderHistory: React.FC = () => {
     fetchInvoices();
   }, [fetchInvoices]);
 
-  // 3️⃣ CHECK MOMO STATUS
+  // CHECK MOMO STATUS
   useEffect(() => {
     const checkMomoCallback = async () => {
       const orderId = searchParams.get("orderId");
@@ -281,7 +280,7 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  // 🔥 ACTION 1: ADMIN GIAO HÀNG (Kích hoạt đếm giờ)
+  // ADMIN GIAO HÀNG (Kích hoạt đếm giờ)
   const handleAdminShipOrder = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -318,7 +317,7 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  // 🔥 ACTION 2: USER XÁC NHẬN ĐÃ NHẬN HÀNG
+  // USER XÁC NHẬN ĐÃ NHẬN HÀNG
   const handleUserConfirmReceived = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -500,7 +499,7 @@ const OrderHistory: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Badges Status */}
+                  {/* Trạng thái Badge */}
                   <div className="pl-2 mb-3 flex flex-wrap gap-2">
                     <span
                       className={`px-2 py-1 text-[10px] rounded border font-bold uppercase ${
@@ -548,7 +547,7 @@ const OrderHistory: React.FC = () => {
                   </div>
                 </div>
 
-                {/* --- KHU VỰC HÀNH ĐỘNG (ACTION BUTTONS) --- */}
+                {/* --- KHU VỰC BUTTON --- */}
                 <div className="pl-2 mb-3 space-y-2">
                   {/* 1. NÚT CHO ADMIN: GIAO SHIPPER */}
                   {user?.role === "admin" &&
@@ -587,7 +586,7 @@ const OrderHistory: React.FC = () => {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Phân trang */}
         {invoices.length > 0 && filterType === "all" && (
           <div className="flex justify-center gap-2 mt-10">
             <Button
@@ -628,7 +627,7 @@ const OrderHistory: React.FC = () => {
   );
 };
 
-// Tách Modal ra cho gọn code
+// Tách Modal ra cho gọn
 const InvoiceDetailModal = ({
   invoice,
   user,
@@ -715,7 +714,7 @@ const InvoiceDetailModal = ({
             ))}
           </div>
 
-          {/* Totals */}
+          {/* Tổng */}
           <div className="space-y-1 text-right mb-4">
             <div className="text-xs text-gray-500">
               Phí ship: {formatVND(invoice.shipping_fee || 0)}
@@ -725,7 +724,7 @@ const InvoiceDetailModal = ({
             </div>
           </div>
 
-          {/* Status in Modal */}
+          {/* Trạng thái Modal */}
           <div className="text-center text-xs mb-4 p-2 bg-gray-50 rounded border border-gray-100">
             Trạng thái: <b>{invoice.status}</b> <br />
             Thanh toán:{" "}
@@ -755,7 +754,7 @@ const InvoiceDetailModal = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Button */}
         <div className="p-4 bg-gray-50 flex gap-2 print:hidden">
           <Button
             onClick={() => window.print()}

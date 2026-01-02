@@ -6,16 +6,14 @@ import {
   IconGift,
   IconRefresh,
   IconLoader2,
-  IconTicket
-} from '@tabler/icons-react';
+  IconTicket,
+} from "@tabler/icons-react";
 
 type Benefit = {
   icon: React.ReactNode;
   title: string;
   desc: string;
-  // Nội dung chi tiết khi mở modal (có thể chứa nhiều đoạn)
   details?: string;
-  // Danh sách điểm nổi bật hoặc hướng dẫn ngắn
   bullets?: string[];
 };
 
@@ -25,7 +23,7 @@ type BackendDiscount = {
   name?: string;
   discount_percent?: number;
 };
-// Match DiscountPage SaleProgram type (uses `thumbnail` for image)
+// Khớp với kiểu dữ liệu SaleProgram của trang DiscountPage
 type SaleProgram = {
   _id: string;
   name: string;
@@ -65,7 +63,11 @@ const benefits: Benefit[] = [
     desc: "Nội thành TP.HCM & Hà Nội: nhận trong 2–6 giờ, ngoại tỉnh 1–3 ngày.",
     details:
       "Hệ thống logistic tối ưu giúp rút ngắn thời gian giao nhận: kho nội thành, đội giao hàng chuyên nghiệp và hợp tác với các đối tác vận chuyển uy tín. Với đơn hàng gấp, chúng tôi có dịch vụ giao nhanh trong ngày (có phụ phí tùy khu vực).\n\nBạn sẽ nhận mã theo dõi đơn hàng và thông báo trạng thái tự động qua SMS/Email.",
-    bullets: ["Giao trong ngày cho khu vực nội thành", "Theo dõi đơn hàng realtime", "Dịch vụ lắp/đóng gói bảo vệ sản phẩm"],
+    bullets: [
+      "Giao trong ngày cho khu vực nội thành",
+      "Theo dõi đơn hàng realtime",
+      "Dịch vụ lắp/đóng gói bảo vệ sản phẩm",
+    ],
   },
   {
     icon: <IconTicket className="w-8 h-8 text-red-600" />,
@@ -73,7 +75,11 @@ const benefits: Benefit[] = [
     desc: "Chiết khấu rõ ràng theo dung tích & dòng sản phẩm, không phí ẩn.",
     details:
       "Chính sách giá của chúng tôi được công khai theo từng dòng sản phẩm và dung tích. Khách hàng doanh nghiệp, thầu xây dựng sẽ có biểu giá riêng cùng mức chiết khấu theo khối lượng. Mọi khoản phí phát sinh (nếu có) sẽ được thông báo rõ trước khi xác nhận đơn hàng.\n\nChúng tôi cũng cung cấp bảng báo giá chi tiết theo yêu cầu để bạn dễ so sánh và lên ngân sách.",
-    bullets: ["Biểu giá dành cho khách lẻ và khách doanh nghiệp", "Ưu đãi theo khối lượng mua", "Không có phí ẩn trên hoá đơn"],
+    bullets: [
+      "Biểu giá dành cho khách lẻ và khách doanh nghiệp",
+      "Ưu đãi theo khối lượng mua",
+      "Không có phí ẩn trên hoá đơn",
+    ],
   },
   {
     icon: <IconHeadphones className="w-8 h-8 text-purple-600" />,
@@ -81,7 +87,11 @@ const benefits: Benefit[] = [
     desc: "Đội ngũ kỹ thuật hỗ trợ phối màu, chọn hệ sơn phù hợp từng bề mặt.",
     details:
       "Chúng tôi cung cấp dịch vụ tư vấn miễn phí qua điện thoại, chat và gặp trực tiếp tại cửa hàng. Kỹ thuật viên có kinh nghiệm sẽ giúp bạn chọn hệ sơn (lót, phủ, hoàn thiện), phối màu và ước lượng số lượng cần dùng.\n\nNgoài ra, dịch vụ phối màu theo mẫu (sample) cho phép bạn xem thử màu trên bề mặt thực tế trước khi thi công.",
-    bullets: ["Tư vấn miễn phí qua chat/điện thoại", "Phối màu theo mẫu thực tế", "Hướng dẫn kỹ thuật thi công và bảo dưỡng"],
+    bullets: [
+      "Tư vấn miễn phí qua chat/điện thoại",
+      "Phối màu theo mẫu thực tế",
+      "Hướng dẫn kỹ thuật thi công và bảo dưỡng",
+    ],
   },
   {
     icon: <IconGift className="w-8 h-8 text-pink-600" />,
@@ -89,7 +99,11 @@ const benefits: Benefit[] = [
     desc: "Tặng cọ, bạt phủ hoặc thẻ giảm giá cho đơn trên mức quy định.",
     details:
       "Chương trình quà tặng được cập nhật theo mùa và từng chiến dịch. Đơn hàng trên mốc giá sẽ được tặng bộ cọ hoặc phụ kiện thi công, ngoài ra có thể nhận các voucher giảm giá cho lần tiếp theo. Mọi chương trình áp dụng đến khi có thông báo mới.\n\nKiểm tra phần mô tả khuyến mãi tại trang thanh toán để biết quà tặng đi kèm từng đơn.",
-    bullets: ["Quà tặng theo mốc giá", "Voucher giảm giá cho lần mua tiếp theo", "Khuyến mãi thay đổi theo chiến dịch"],
+    bullets: [
+      "Quà tặng theo mốc giá",
+      "Voucher giảm giá cho lần mua tiếp theo",
+      "Khuyến mãi thay đổi theo chiến dịch",
+    ],
   },
   {
     icon: <IconRefresh className="w-8 h-8 text-orange-600" />,
@@ -97,13 +111,17 @@ const benefits: Benefit[] = [
     desc: "Hỗ trợ đổi trong 07 ngày nếu hàng lỗi do vận chuyển hoặc nhà sản xuất.",
     details:
       "Nếu sản phẩm bị lỗi kỹ thuật hoặc hư hỏng do vận chuyển, bạn có thể yêu cầu đổi trả trong vòng 7 ngày kể từ ngày nhận hàng. Quy trình đơn giản: gửi hình ảnh, mã lô, và mô tả lỗi; đội ngũ chăm sóc sẽ xác nhận và hướng dẫn đổi trả hoặc hoàn tiền.\n\nVới trường hợp lỗi về màu sắc do sai mẫu, chúng tôi sẽ phối lại hoặc hoàn tiền theo thỏa thuận.",
-    bullets: ["Đổi/trả trong 7 ngày cho lỗi nhà sản xuất", "Hoàn tiền nhanh khi không thể đổi", "Hỗ trợ xử lý khiếu nại tận tâm"],
+    bullets: [
+      "Đổi/trả trong 7 ngày cho lỗi nhà sản xuất",
+      "Hoàn tiền nhanh khi không thể đổi",
+      "Hỗ trợ xử lý khiếu nại tận tâm",
+    ],
   },
 ];
 
 const SERVER_BASE_URL = "http://localhost:5001";
 
-// Helper to normalize image path similar to DiscountPage.getFullImageUrl
+// Helper để chuẩn hóa đường dẫn hình ảnh
 const getFullImageUrl = (path?: string) => {
   const DEFAULT = `${SERVER_BASE_URL}/uploads/z7202827791249_3f9f56e84a986117c7fd0030d0bb593a.jpg`;
   if (!path) return DEFAULT;
@@ -118,8 +136,10 @@ const Promote: React.FC = () => {
   const [programs, setPrograms] = React.useState<SaleProgram[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
-  // Modal state for benefit details
-  const [selectedBenefit, setSelectedBenefit] = React.useState<Benefit | null>(null);
+  // Trạng thái của Modal hiển thị chi tiết quyền lợi
+  const [selectedBenefit, setSelectedBenefit] = React.useState<Benefit | null>(
+    null
+  );
   const [modalOpen, setModalOpen] = React.useState<boolean>(false);
 
   React.useEffect(() => {
@@ -131,8 +151,8 @@ const Promote: React.FC = () => {
         const res = await fetch(`${SERVER_BASE_URL}/api/saleprogram`);
         if (!res.ok) throw new Error("Không tải được khuyến mãi");
         const data: SaleProgram[] = await res.json();
-        // Debug: log response so we can inspect thumbnail fields in browser console
-        // (remove this log when verified)
+        // Debug: ghi lại phản hồi để có thể kiểm tra các trường hình ảnh thu nhỏ (thumbnail) trong bảng điều khiển trình duyệt (console)
+        // (xóa log này sau khi đã xác nhận xong)
         // eslint-disable-next-line no-console
         console.debug("/api/saleprogram ->", data);
         if (mounted) setPrograms(Array.isArray(data) ? data : []);
@@ -189,8 +209,8 @@ const Promote: React.FC = () => {
           ? "Đang áp dụng"
           : "Ngưng",
         expires: expiresLabel || (p.isActive ? "Đang diễn ra" : "Đã kết thúc"),
-        // Use `thumbnail` field (same as DiscountPage)
-        // Always call getFullImageUrl so we show the default image if thumbnail missing
+        // Sử dụng trường thumbnail (giống như trang DiscountPage)
+        // Luôn luôn gọi hàm getFullImageUrl để đảm bảo hiển thị ảnh mặc định nếu trường thumbnail bị thiếu hoặc trống
         imageUrl: getFullImageUrl(p.thumbnail),
         highlight,
       } as PromotionCard;
@@ -199,7 +219,7 @@ const Promote: React.FC = () => {
 
   return (
     <section className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-12">
-      {/* Promotions */}
+      {/* Khuyến mãi */}
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           Khuyến Mãi Gần Đây
@@ -266,7 +286,7 @@ const Promote: React.FC = () => {
           ))}
         </div>
       )}
-      
+
       {/* Heading */}
       <div className="text-center mb-10 mt-10">
         <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-800">
@@ -278,7 +298,7 @@ const Promote: React.FC = () => {
         </p>
       </div>
 
-      {/* Benefit Grid */}
+      {/* Lợi ích */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-14">
         {benefits.map((b, idx) => (
           <button
@@ -301,7 +321,7 @@ const Promote: React.FC = () => {
         ))}
       </div>
 
-      {/* Benefit detail modal */}
+      {/* modal chi tiết lợi ích */}
       {modalOpen && selectedBenefit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50" onClick={closeModal} />
@@ -311,13 +331,24 @@ const Promote: React.FC = () => {
                 {selectedBenefit.icon}
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-white">{selectedBenefit.title}</h3>
-                <p className="text-sm text-white/90 mt-1">Thông tin chi tiết lợi ích</p>
+                <h3 className="text-2xl font-bold text-white">
+                  {selectedBenefit.title}
+                </h3>
+                <p className="text-sm text-white/90 mt-1">
+                  Thông tin chi tiết lợi ích
+                </p>
               </div>
-              <button onClick={closeModal} className="absolute top-4 right-4 text-white bg-black/20 rounded-full w-8 h-8 flex items-center justify-center">×</button>
+              <button
+                onClick={closeModal}
+                className="absolute top-4 right-4 text-white bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"
+              >
+                ×
+              </button>
             </div>
             <div className="p-6 max-h-[60vh] overflow-auto">
-              <p className="text-gray-700 leading-relaxed mb-4">{selectedBenefit.desc}</p>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                {selectedBenefit.desc}
+              </p>
               {selectedBenefit.details &&
                 selectedBenefit.details.split("\n\n").map((para, i) => (
                   <p key={i} className="text-gray-700 leading-relaxed mb-3">
@@ -332,12 +363,23 @@ const Promote: React.FC = () => {
                 </ul>
               )}
               <div className="mt-4 text-sm text-gray-500">
-                <strong>Gợi ý:</strong> Nhấn "Mua Ngay" để xem sản phẩm áp dụng hoặc liên hệ tư vấn miễn phí.
+                <strong>Gợi ý:</strong> Nhấn "Mua Ngay" để xem sản phẩm áp dụng
+                hoặc liên hệ tư vấn miễn phí.
               </div>
             </div>
             <div className="px-6 pb-6 flex justify-end gap-3">
-              <button onClick={closeModal} className="px-4 py-2 bg-gray-100 rounded">Đóng</button>
-              <a href="/san-pham" className="px-4 py-2 bg-orange-600 text-white rounded">Mua Ngay</a>
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-100 rounded"
+              >
+                Đóng
+              </button>
+              <a
+                href="/san-pham"
+                className="px-4 py-2 bg-orange-600 text-white rounded"
+              >
+                Mua Ngay
+              </a>
             </div>
           </div>
         </div>

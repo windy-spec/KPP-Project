@@ -49,14 +49,14 @@ const SaleAdminPage: React.FC = () => {
     end_sale: "",
   });
 
-  // search & pagination
+  // search & phân trang
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
 
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 
-  // --- FETCH DATA ---
+  // --- LẤY DATA ---
   const fetchDiscounts = async () => {
     setLoading(true);
     try {
@@ -112,7 +112,6 @@ const SaleAdminPage: React.FC = () => {
     fetchSelectData();
   }, []);
 
-  // --- HANDLERS ---
   const openCreate = () => {
     setEditing(null);
     setForm({
@@ -284,7 +283,6 @@ const SaleAdminPage: React.FC = () => {
   return (
     <>
       <Navbar />
-      {/* 🔥 FIX 1: Tăng độ rộng container lên 95% */}
       <div className="max-w-[95%] mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">
@@ -314,12 +312,10 @@ const SaleAdminPage: React.FC = () => {
             <p className="text-gray-500">Đang tải dữ liệu...</p>
           </div>
         ) : (
-          /* 🔥 FIX 2: Style lại bảng, thêm shadow, bo góc */
           <div className="overflow-x-auto bg-white rounded-xl shadow-md border border-gray-100">
             <table className="w-full text-sm text-left text-gray-600">
               <thead className="bg-gray-50 text-gray-700 uppercase text-xs font-semibold">
                 <tr>
-                  {/* 🔥 FIX 3: Thêm whitespace-nowrap để không bị gãy dòng */}
                   <th className="px-6 py-4 whitespace-nowrap">Tên</th>
                   <th className="px-6 py-4 whitespace-nowrap">Loại</th>
                   <th className="px-6 py-4 whitespace-nowrap">Áp dụng cho</th>
@@ -452,7 +448,7 @@ const SaleAdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Phân trang */}
         <div className="flex items-center justify-between mt-6 px-2">
           <div className="text-sm text-gray-500">
             Hiển thị <span className="font-medium">{pageData.length}</span> trên

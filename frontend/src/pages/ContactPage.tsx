@@ -8,7 +8,6 @@ const ContactPage: React.FC = () => {
       <Navbar />
       <div className="bg-white min-h-screen py-8">
         <div className="w-4/5 max-w-7xl mx-auto px-4">
-          {/* Top hero with image + contact info */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6">
             <div className="lg:col-span-7">
               <div className="w-full h-64 md:h-72 lg:h-80 bg-gray-200 overflow-hidden">
@@ -54,7 +53,6 @@ const ContactPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Form + Map */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-7">
               <div className="bg-white border-0.9 shadow p-6">
@@ -87,9 +85,9 @@ const ContactPage: React.FC = () => {
                   />
                 </div>
 
-                  <button className="ml-auto bg-orange-500 hover:bg-orange-700 text-white px-5 py-2 rounded text-sm">
-                    GỬI THÔNG TIN CHO CHÚNG TÔI
-                  </button>
+                <button className="ml-auto bg-orange-500 hover:bg-orange-700 text-white px-5 py-2 rounded text-sm">
+                  GỬI THÔNG TIN CHO CHÚNG TÔI
+                </button>
               </div>
             </div>
 

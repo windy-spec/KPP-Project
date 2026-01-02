@@ -41,11 +41,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 2. Interceptor cho Response (GỘP CHUẨN)
+// 2. Interceptor cho Response 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // ✅ Khai báo token ở đầu để tất cả logic bên dưới đều dùng được
+    // Khai báo token ở đầu để tất cả logic bên dưới đều dùng được
     const token = localStorage.getItem("accessToken");
 
     if (axios.isAxiosError(error)) {

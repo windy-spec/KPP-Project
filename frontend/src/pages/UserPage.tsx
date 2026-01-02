@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 
-// 🚨 BASE URL SERVER
+// BASE URL SERVER
 const SERVER_BASE_URL = "http://localhost:5001";
 
 // --- HELPER FORMATS ---
@@ -117,7 +117,7 @@ const UserPage: React.FC = () => {
   const [strength, setStrength] = useState(0);
   const [confirmStrength, setConfirmStrength] = useState(0);
 
-  // === 4. ORDER HISTORY STATE (Mới thêm) ===
+  // === 4. ORDER HISTORY STATE ===
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -155,7 +155,7 @@ const UserPage: React.FC = () => {
     load();
   }, []);
 
-  // === LOGIC ORDERS (Mới thêm) ===
+  // === LOGIC ORDERS ===
   // Chỉ fetch orders khi tab là "orders" và user đã load xong
   useEffect(() => {
     if (activeTab === "orders" && user) {
@@ -372,7 +372,7 @@ const UserPage: React.FC = () => {
     <div>
       <Navbar />
 
-      {/* CSS cho In ấn */}
+      {/* CSS In ấn */}
       <style>{`
         @media print { 
           body * { visibility: hidden; } 
@@ -423,7 +423,7 @@ const UserPage: React.FC = () => {
             </nav>
           </aside>
 
-          {/* CONTENT AREA */}
+          {/* CONTENT */}
           <section className="bg-white p-4 sm:p-6 md:p-8">
             {/* --- TAB: INFO --- */}
             {activeTab === "info" && (
@@ -553,7 +553,7 @@ const UserPage: React.FC = () => {
               </div>
             )}
 
-            {/* --- TAB: ORDERS (Đã tích hợp Full Code) --- */}
+            {/* --- TAB: ORDERS --- */}
             {activeTab === "orders" && (
               <div className="animate-in fade-in duration-300">
                 {/* Header Filter */}
@@ -673,7 +673,7 @@ const UserPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Pagination */}
+                {/* Phân trang */}
                 {invoices.length > 0 && filterType === "all" && (
                   <div className="flex justify-center gap-2 mt-6">
                     <Button
@@ -700,7 +700,7 @@ const UserPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* --- MODAL CHI TIẾT (IN ĐƯỢC) --- */}
+                {/* --- MODAL CHI TIẾT --- */}
                 {selectedInvoice && (
                   <div
                     className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm modal-overlay"
@@ -785,7 +785,7 @@ const UserPage: React.FC = () => {
                           Cảm ơn quý khách!
                         </div>
                       </div>
-                      {/* Action Buttons */}
+                      {/* Button */}
                       <div className="p-4 pt-0 flex flex-col gap-2 print:hidden">
                         <Button
                           onClick={() => window.print()}

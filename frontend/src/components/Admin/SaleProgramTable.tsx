@@ -23,7 +23,7 @@ type DiscountStub = {
 const formatDate = (dateString: string) => {
   // Nếu không có dữ liệu, trả về dấu "-"
   if (!dateString) return "-";
-  
+
   const date = new Date(dateString);
   // Lấy ngày (thêm 0 nếu < 10)
   const day = String(date.getDate()).padStart(2, "0");
@@ -31,7 +31,7 @@ const formatDate = (dateString: string) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   // Lấy năm
   const year = date.getFullYear();
-  
+
   return `${day}/${month}/${year}`;
 };
 
@@ -45,7 +45,7 @@ const SaleProgramTable: React.FC = () => {
   const [editing, setEditing] = useState<any | null>(null);
   // Hiển thị trạng thái loading khi đang tải dữ liệu
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // ========== LẤY TOKEN VÀ CẤU HÌNH XÁC THỰC ==========
   // Lấy token từ localStorage để đính kèm vào header API request
   const token = localStorage.getItem("accessToken");
@@ -59,13 +59,13 @@ const SaleProgramTable: React.FC = () => {
     try {
       // Bật loading state
       setIsLoading(true);
-      
+
       // Gọi API để lấy danh sách chương trình khuyến mãi từ server
       const res = await axios.get(
         "http://localhost:5001/api/saleprogram",
         authHeaders
       );
-      
+
       // Xử lý dữ liệu một cách an toàn - kiểm tra định dạng response
       let programData = [];
       if (Array.isArray(res.data)) {
@@ -75,7 +75,7 @@ const SaleProgramTable: React.FC = () => {
         // Nếu response là object có thuộc tính 'data' là mảng
         programData = res.data.data;
       }
-      
+
       // Cập nhật state với dữ liệu lấy được
       setPrograms(programData);
     } catch (error) {
@@ -98,7 +98,7 @@ const SaleProgramTable: React.FC = () => {
     fetchPrograms();
   }, []);
 
-  // ========== HÀM ẨN CHƯƠNG TRÌNH (SOFT DELETE) ==========
+  // ========== HÀM ẨN CHƯƠNG TRÌNH ==========
   // Ẩn chương trình = vô hiệu hóa nhưng vẫn giữ dữ liệu
   const handleSoftDelete = async (id: string) => {
     // Hiển thị popup xác nhận trước khi ẩn
@@ -111,7 +111,7 @@ const SaleProgramTable: React.FC = () => {
       cancelButtonText: "Hủy",
       confirmButtonColor: "#f97316", // Màu cam
     });
-    
+
     // Nếu người dùng xác nhận
     if (confirm.isConfirmed) {
       try {
@@ -120,10 +120,10 @@ const SaleProgramTable: React.FC = () => {
           `http://localhost:5001/api/saleprogram/${id}`,
           authHeaders
         );
-        
+
         // Tải lại danh sách để cập nhật UI
         await fetchPrograms();
-        
+
         // Hiển thị thông báo thành công
         Swal.fire("Thành công!", "Chương trình đã được ẩn.", "success");
       } catch (error) {
@@ -133,7 +133,7 @@ const SaleProgramTable: React.FC = () => {
     }
   };
 
-  // ========== HÀM XÓA CỨNG CHƯƠNG TRÌNH (HARD DELETE) ==========
+  // ========== HÀM XÓA CỨNG CHƯƠNG TRÌNH ==========
   // Xóa chương trình vĩnh viễn khỏi database
   const handleHardDelete = async (id: string) => {
     // Hiển thị popup xác nhận (cảnh báo đỏ vì đây là thao tác nguy hiểm)
@@ -146,7 +146,7 @@ const SaleProgramTable: React.FC = () => {
       confirmButtonText: "Xóa vĩnh viễn",
       cancelButtonText: "Hủy",
     });
-    
+
     // Nếu người dùng xác nhận
     if (confirm.isConfirmed) {
       try {
@@ -155,12 +155,16 @@ const SaleProgramTable: React.FC = () => {
           `http://localhost:5001/api/saleprogram/hard-delete/${id}`,
           authHeaders
         );
-        
+
         // Tải lại danh sách để cập nhật UI
         await fetchPrograms();
-        
+
         // Hiển thị thông báo thành công
-        Swal.fire("Thành công!", "Chương trình đã được xóa vĩnh viễn.", "success");
+        Swal.fire(
+          "Thành công!",
+          "Chương trình đã được xóa vĩnh viễn.",
+          "success"
+        );
       } catch (error) {
         // Hiển thị thông báo lỗi nếu không thể xóa
         Swal.fire("Lỗi!", "Không thể xóa chương trình.", "error");
@@ -174,7 +178,9 @@ const SaleProgramTable: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           {/* Tiêu đề chính */}
-          <h2 className="text-2xl font-bold text-gray-900">Chương trình Sale</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Chương trình Sale
+          </h2>
           {/* Mô tả phụ */}
           <p className="text-sm text-gray-500 mt-1">
             Quản lý các chương trình khuyến mãi và chiết khấu
@@ -344,7 +350,7 @@ const SaleProgramTable: React.FC = () => {
                           <Edit2 className="w-4 h-4" />
                         </Button>
 
-                        {/* ===== NÚT ẨN (SOFT DELETE) ===== */}
+                        {/* ===== NÚT ẨN ===== */}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -366,7 +372,7 @@ const SaleProgramTable: React.FC = () => {
                           )}
                         </Button>
 
-                        {/* ===== NÚT XÓA CỨNG (HARD DELETE) ===== */}
+                        {/* ===== NÚT XÓA CỨNG ===== */}
                         <Button
                           variant="ghost"
                           size="sm"

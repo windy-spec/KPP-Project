@@ -12,7 +12,7 @@ interface User {
   role?: string;
 }
 
-// 🚨 BASE URL CỦA SERVER BACKEND
+// BASE URL CỦA SERVER BACKEND
 const SERVER_BASE_URL = "http://localhost:5001";
 
 const Navbartop: React.FC = () => {
@@ -22,14 +22,13 @@ const Navbartop: React.FC = () => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Toggle Menu
+  // Chuyển đổi trạng thái Menu
   const toggleUserMenu = () => {
     setShowUserMenu((prev) => !prev);
   };
 
   // Logout
   const handleLogout = async () => {
-    // ... (logic handleLogout giữ nguyên)
     try {
       const token = localStorage.getItem("accessToken");
       if (token) {
@@ -46,11 +45,11 @@ const Navbartop: React.FC = () => {
       localStorage.removeItem("resetEmail");
       setUser(null);
       setShowUserMenu(false);
-      // Also clear local cart and notify navbars so badge resets immediately on logout
+      // Xóa local cart và thông báo cho navbar để cart reset ngay lập tức khi đăng xuất
       try {
         localStorage.removeItem("cart");
       } catch (e) {
-        // ignore
+        // Bỏ qua
       }
       window.dispatchEvent(new Event("cartUpdated"));
       window.location.href = "/signIn";
@@ -66,7 +65,7 @@ const Navbartop: React.FC = () => {
     }
   };
 
-  // 🚨 SỬA LOGIC useEffect đóng menu (chỉ chạy khi mounted và khi showUserMenu thay đổi)
+  // useEffect đóng menu (chỉ chạy khi mounted và khi showUserMenu thay đổi)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Kiểm tra xem click có nằm ngoài button và menu không
@@ -88,7 +87,7 @@ const Navbartop: React.FC = () => {
     };
   }, [showUserMenu]);
 
-  // useEffect get info user
+  // useEffect lấy info user
   useEffect(() => {
     const getUserInfo = async () => {
       setIsLoading(true);
@@ -130,7 +129,7 @@ const Navbartop: React.FC = () => {
     getUserInfo();
   }, []);
 
-  // Cart count from localStorage (for guest or in-memory cart)
+  // Số lượng hàng trong giỏ lấy từ localStorage (dùng cho guest hoặc giỏ hàng tạm thời)
   const [cartCount, setCartCount] = useState<number>(0);
 
   useEffect(() => {
@@ -139,7 +138,7 @@ const Navbartop: React.FC = () => {
         const raw = localStorage.getItem("cart");
         if (!raw) return setCartCount(0);
         const arr = JSON.parse(raw);
-        // Count distinct products (unique productId) so badge shows number of product types, not total quantity
+        // Đếm các sản phẩm riêng biệt (productId) để icon cart hiển thị số loại sản phẩm thay vì tổng số lượng
         const total = Array.isArray(arr)
           ? new Set(
               arr.map((it: any) => it.productId ?? it.id ?? JSON.stringify(it))
@@ -157,23 +156,19 @@ const Navbartop: React.FC = () => {
     return () => window.removeEventListener("cartUpdated", onUpdate);
   }, []);
 
-  // --------------------------------------------------------------------------------
-  // JSX Render
-  // --------------------------------------------------------------------------------
-
   // Xác định URL Avatar đã được nối BASE URL
   const avatarSource = user?.avatarUrl
-    ? `${SERVER_BASE_URL}${user.avatarUrl}` // 🚨 GẮN BASE URL CHO ẢNH
+    ? `${SERVER_BASE_URL}${user.avatarUrl}`
     : "https://placehold.co/40x40/f7931e/ffffff?text=U";
 
   return (
     <header className="bg-gray-50">
-      {/* Mobile: compact header */}
+      {/* MobileHeader */}
       <div className="md:hidden">
         <MobileHeader />
       </div>
 
-      {/* Desktop: original topbar */}
+      {/* Desktop */}
       <div className="hidden md:block">
         <div className="w-4/5 max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-14">
@@ -185,7 +180,7 @@ const Navbartop: React.FC = () => {
               </a>
             </div>
 
-            {/* right: search input + cart + user */}
+            {/* right: search + cart + user */}
             <div className="flex items-center gap-3 text-gray-600">
               {/* Search form*/}
               <form
@@ -234,7 +229,7 @@ const Navbartop: React.FC = () => {
                       aria-haspopup="true"
                     >
                       <img
-                        src={avatarSource} // 🚨 ĐÃ SỬ DỤNG SOURCE ĐÚNG
+                        src={avatarSource}
                         alt="Avatar"
                         className="w-8 h-8 rounded-full object-cover"
                       />

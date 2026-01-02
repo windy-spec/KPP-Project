@@ -16,10 +16,7 @@ import {
   Tag,
 } from "lucide-react";
 
-// --- CONFIG SERVER ---
 const SERVER_BASE_URL = "http://localhost:5001";
-
-// --- TYPE DEFINITIONS ---
 
 // Item trong danh sách áp dụng (Có thể là Product hoặc Category)
 type TargetItem = {
@@ -63,7 +60,7 @@ const getFullImageUrl = (path?: string) => {
   if (!path) return DEFAULT;
   if (path.startsWith("http")) return path;
 
-  // Xử lý đường dẫn (Windows \ -> /) và bỏ /public thừa
+  // Xử lý đường dẫn
   let clean = path.replace(/\\/g, "/");
   if (!clean.startsWith("/")) clean = `/${clean}`;
   clean = clean.replace(/^\/public/, "");
@@ -131,9 +128,7 @@ const SaleDetailModal: React.FC<{
 
       {/* Container */}
       <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-        {/* ========================================================= */}
-        {/* VIEW 1: CHI TIẾT DISCOUNT (SUB-VIEW)                      */}
-        {/* ========================================================= */}
+        {/* CHI TIẾT DISCOUNT (SUB-VIEW) */}
         {selectedDiscountId ? (
           <div className="flex flex-col h-full bg-white">
             {/* Header */}
@@ -186,7 +181,7 @@ const SaleDetailModal: React.FC<{
                     </div>
                   </div>
 
-                  {/* Conditions */}
+                  {/* Điều kiện */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-800">
                       <div className="font-semibold flex items-center gap-2 mb-1">
@@ -208,7 +203,7 @@ const SaleDetailModal: React.FC<{
                     </div>
                   </div>
 
-                  {/* Target Items List */}
+                  {/* Danh sách các đối tượng chọn lựa */}
                   <div>
                     <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-lg">
                       <Box className="text-orange-500" size={20} /> Phạm vi áp
@@ -285,9 +280,7 @@ const SaleDetailModal: React.FC<{
             </div>
           </div>
         ) : (
-          /* ========================================================= */
-          /* VIEW 2: DANH SÁCH CHƯƠNG TRÌNH (MAIN VIEW)                */
-          /* ========================================================= */
+          /* DANH SÁCH CHƯƠNG TRÌNH (MAIN VIEW) */
           <>
             <button
               onClick={onClose}
@@ -481,7 +474,7 @@ const DiscountPage: React.FC = () => {
                       {getMaxPercent(p)}
                     </div>
 
-                    {/* Active Badge */}
+                    {/* Badge */}
                     <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse">
                       Đang diễn ra
                     </div>
@@ -499,7 +492,6 @@ const DiscountPage: React.FC = () => {
                       <span className="flex items-center gap-1">
                         <Clock size={14} /> {formatDate(p.end_date)}
                       </span>
-                      {/* Stop Propagation để nút Mua Ngay không mở Modal */}
                       <Link
                         to="/san-pham"
                         onClick={(e) => e.stopPropagation()}
@@ -517,7 +509,6 @@ const DiscountPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Render Modal */}
       {selectedProgram && (
         <SaleDetailModal
           program={selectedProgram}

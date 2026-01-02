@@ -289,7 +289,6 @@ const CartProvider = ({ children }: ChildrenProps) => {
   const createOrder = async (payload: CreateOrderPayload) => {
     setLoading(true);
     try {
-      // 🔥 SỬA: /invoice -> /invoices
       const res = await apiFetch("/invoice", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -396,9 +395,6 @@ const DISTRICTS: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
-// =========================================================
-// 🔥 COMPONENT PaymentPage (LOGIC MỚI)
-// =========================================================
 const PaymentPage: React.FC = () => {
   const { cart, loading: cartLoading, updateItem, createOrder } = useCart();
   const { user } = useAuth();
@@ -893,7 +889,7 @@ const PaymentPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 🔥 CỘT PHẢI: CHI TIẾT THANH TOÁN */}
+            {/* CỘT PHẢI: CHI TIẾT THANH TOÁN */}
             <aside className="lg:col-span-4 lg:sticky lg:top-4 h-fit">
               <div className={`${boxStyle} p-5 border-t-4 border-t-orange-500`}>
                 <h3 className="font-bold text-lg mb-4 pb-2 border-b">

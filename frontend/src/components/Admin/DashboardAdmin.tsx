@@ -16,11 +16,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import apiClient from "@/utils/api-user"; // Đảm bảo đường dẫn này đúng với dự án của bạn
+import apiClient from "@/utils/api-user";
 
-/* =========================================================================================
-   DASHBOARD ADMIN COMPONENT (REAL-TIME DATA)
-   ========================================================================================= */
 const DashboardAdmin: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
@@ -40,7 +37,13 @@ const DashboardAdmin: React.FC = () => {
       stock: number;
     }[];
   }>({
-    stats: { totalRevenue: 0, totalOrders: 0, totalProducts: 0, totalUsers: 0, totalInventory: 0 },
+    stats: {
+      totalRevenue: 0,
+      totalOrders: 0,
+      totalProducts: 0,
+      totalUsers: 0,
+      totalInventory: 0,
+    },
     chartData: [],
     topProducts: [],
   });
@@ -106,7 +109,9 @@ const DashboardAdmin: React.FC = () => {
         <p className="text-gray-500 text-[10px] font-medium uppercase mb-1 line-clamp-2">
           {title}
         </p>
-        <h4 className="text-lg font-bold text-gray-800 line-clamp-1">{value}</h4>
+        <h4 className="text-lg font-bold text-gray-800 line-clamp-1">
+          {value}
+        </h4>
         <p className={`text-[10px] mt-1 font-medium ${colorClass}`}>{sub}</p>
       </div>
     </div>
@@ -136,7 +141,8 @@ const DashboardAdmin: React.FC = () => {
 
         {/* Content */}
         <div className="p-6">
-          {data.stats.stockByCategory && data.stats.stockByCategory.length > 0 ? (
+          {data.stats.stockByCategory &&
+          data.stats.stockByCategory.length > 0 ? (
             <div className="space-y-3">
               {data.stats.stockByCategory.map((category: any, idx: number) => (
                 <div
@@ -149,7 +155,9 @@ const DashboardAdmin: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-800">
-                        {category.categoryName || category.name || "Danh mục không xác định"}
+                        {category.categoryName ||
+                          category.name ||
+                          "Danh mục không xác định"}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {category.productCount || 0} sản phẩm
@@ -345,7 +353,7 @@ const DashboardAdmin: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {/* ✅ Sửa hiển thị tiền: thêm VND và fix lỗi hiển thị compact */}
+
                   <div className="text-sm font-bold text-orange-600">
                     {new Intl.NumberFormat("vi-VN", {
                       style: "currency",

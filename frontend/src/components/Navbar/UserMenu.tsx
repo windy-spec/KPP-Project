@@ -64,16 +64,11 @@ const UserMenu: React.FC<UserMenuProps> = ({
       {/* Dropdown Menu */}
       {showUserMenu && (
         <div
-          // ⚠️ LƯU Ý: Ở DESKTOP NAVBAR CỐ ĐỊNH, KHỐI NÀY CẦN ref={menuRef}
-          // TUY NHIÊN VÌ BẠN ĐANG DÙNG CẢ HAI NƠI, KHỐI MENU CÓ THỂ KHÔNG CẦN ref ở đây
-          // mà chỉ cần ref ở Navbartop nếu bạn chỉ dùng một khối user/menu.
           ref={menuRef as React.RefObject<HTMLDivElement>}
-          /* Tăng chiều rộng dropdown: đổi `w-48` thành `w-64` để menu dài hơn */
           className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 origin-top-right animate-fade-in"
           role="menu"
           aria-orientation="vertical"
         >
-          {/* ... (Các mục menu như code gốc) ... */}
           <a
             href="/tai-khoan"
             className="block px-4 py-3 text-gray-700 hover:bg-orange-100 transition-colors"
