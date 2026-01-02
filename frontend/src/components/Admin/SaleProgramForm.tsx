@@ -1,4 +1,3 @@
-// frontend/src/components/Admin/SaleProgramForm.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 

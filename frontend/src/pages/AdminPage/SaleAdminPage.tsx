@@ -1,4 +1,3 @@
-// frontend/src/pages/AdminPage/SaleAdminPage.tsx
 import React, { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar/Navbar";
 import Footer from "@/components/Footer/Footer";
@@ -283,10 +282,6 @@ const SaleAdminPage: React.FC = () => {
   return (
     <>
       <Navbar />
-<<<<<<< HEAD
-=======
-      {/* - Tăng độ rộng container lên 95% */}
->>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
       <div className="max-w-[95%] mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">

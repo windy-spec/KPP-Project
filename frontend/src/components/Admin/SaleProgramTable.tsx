@@ -1,15 +1,8 @@
-// frontend/src/components/Admin/SaleProgramTable.tsx
-// Quản lý bảng hiển thị danh sách các chương trình khuyến mãi (Sale Programs)
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-// Import các icon từ thư viện lucide-react
 import { Edit2, Trash2, Eye, EyeOff, Plus, Loader2 } from "lucide-react";
-// Import Button component từ UI library
 import { Button } from "@/components/ui/button";
-// Import SweetAlert2 để hiển thị popup xác nhận
 import Swal from "sweetalert2";
-// Import form để tạo/chỉnh sửa chương trình khuyến mãi
 import SaleProgramForm from "./SaleProgramForm";
 
 // Kiểu dữ liệu cho Discount (chứa ID và tên)
