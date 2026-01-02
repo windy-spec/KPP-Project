@@ -36,6 +36,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+<<<<<<< HEAD
+=======
+// Hãy chắc chắn đường dẫn này đúng trong máy bạn
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
 import SaleProgramTable from "../../components/Admin/SaleProgramTable";
 import DashboardAdmin from "../../components/Admin/DashboardAdmin";
 /* ---------------------- Cấu hình & Helper ---------------------- */
@@ -52,7 +56,11 @@ const sections = [
 // Dùng chung base URL từ apiClient hoặc biến môi trường
 const SERVER_BASE_URL = "http://localhost:5001";
 
+<<<<<<< HEAD
 // Helper quan trọng: Làm sạch ID để tránh lỗi ":1"
+=======
+//  Helper quan trọng: Làm sạch ID để tránh lỗi ":1"
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
 const cleanId = (id: string | undefined | null) => {
   if (!id) return "";
   return String(id).split(":")[0];
@@ -294,7 +302,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
+<<<<<<< HEAD
         const res = await apiClient.get(`/category`); // Dùng apiClient
+=======
+        const res = await apiClient.get(`/category`); //  Dùng apiClient
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
         setCategories(res.data);
       } catch {
         toast.error("Lỗi tải danh mục");
@@ -308,7 +320,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     try {
       const res = await apiClient.get(`/product/partition`, {
         params: { page, limit: PAGE_SIZE },
+<<<<<<< HEAD
       }); // Dùng apiClient
+=======
+      }); //  Dùng apiClient
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
       const data = res.data;
       setAllItems(data.products || []);
       setTotalPages(data.totalPages || 1);
@@ -328,7 +344,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       toast.error("Thiếu thông tin");
       return;
     }
+<<<<<<< HEAD
     // cleanId cho editingId
+=======
+    //  cleanId cho editingId
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
     const safeId = cleanId(editingId);
     const endpoint = safeId ? `/product/${safeId}` : `/product`;
     const method = safeId ? "put" : "post";
@@ -344,7 +364,11 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       if (avatarFile) formData.append("avatar", avatarFile);
       imageFiles.forEach((file) => formData.append("images", file));
 
+<<<<<<< HEAD
       // Dùng apiClient với FormData
+=======
+      //  Dùng apiClient với FormData
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
       await apiClient({
         method,
         url: endpoint,
@@ -905,7 +929,11 @@ const OrdersAdmin: React.FC = () => {
         params: { page: currentPage, limit },
       });
 
+<<<<<<< HEAD
       // Kiểm tra cấu trúc data trả về từ invoiceController.getAllInvoices
+=======
+      //  Kiểm tra cấu trúc data trả về từ invoiceController.getAllInvoices
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
       const data =
         res.data?.invoices || (Array.isArray(res.data) ? res.data : []);
       const total = res.data?.totalPages || 1;
@@ -977,7 +1005,11 @@ const OrdersAdmin: React.FC = () => {
     );
   }, [invoices, filterType, productSearch]);
 
+<<<<<<< HEAD
   // Dùng cleanId
+=======
+  // : Dùng cleanId
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
   const handleSelectInvoice = async (invoiceId: string) => {
     try {
       const realId = cleanId(invoiceId);
@@ -988,7 +1020,11 @@ const OrdersAdmin: React.FC = () => {
     }
   };
 
+<<<<<<< HEAD
   // Dùng cleanId
+=======
+  //  Dùng cleanId
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
   const handleDeleteInvoice = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -1014,7 +1050,11 @@ const OrdersAdmin: React.FC = () => {
     }
   };
 
+<<<<<<< HEAD
   // Dùng cleanId
+=======
+  //  Dùng cleanId
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
   const handleAdminShipOrder = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -1261,7 +1301,11 @@ const DiscountsAdmin: React.FC = () => {
   const fetchDiscounts = async () => {
     setLoading(true);
     try {
+<<<<<<< HEAD
       // Dùng apiClient, không cần cấu hình header thủ công
+=======
+      //  Dùng apiClient, không cần cấu hình header thủ công
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
       const res = await apiClient.get(`/discount`);
       const data = res.data;
       if (Array.isArray(data)) setDiscounts(data);
@@ -1762,7 +1806,11 @@ const UsersAdmin: React.FC = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
+<<<<<<< HEAD
       // Dùng apiClient, params được axios tự xử lý
+=======
+      //  Dùng apiClient, params được axios tự xử lý
+>>>>>>> 550697346152cea3cd5a9d181a946289eed99dd5
       const res = await apiClient.get(`/users`, {
         params: { page, limit: PAGE_SIZE, search },
       });

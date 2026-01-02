@@ -7,10 +7,23 @@ const cartItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  quantity: { type: Number, required: true, min: 1 },
-  price_original: { type: Number, default: 0 },
-  price_discount: { type: Number, default: 0 },
-  Total_price: { type: Number, default: 0 },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
+  price_original: {
+    type: Number,
+    default: 0,
+  },
+  price_discount: {
+    type: Number,
+    default: 0,
+  },
+  Total_price: {
+    type: Number,
+    default: 0,
+  },
   manual_discount: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Discount",
@@ -22,9 +35,18 @@ const cartItemSchema = new mongoose.Schema({
       ref: "Discount",
       default: null,
     },
-    program_name: { type: String, default: null },
-    discount_percent: { type: Number, default: 0 },
-    saved_amount: { type: Number, default: 0 },
+    program_name: {
+      type: String,
+      default: null,
+    },
+    discount_percent: {
+      type: Number,
+      default: 0,
+    },
+    saved_amount: {
+      type: Number,
+      default: 0,
+    },
   },
 });
 
@@ -40,10 +62,22 @@ const cartSchema = new mongoose.Schema(
       default: null,
     },
     items: [cartItemSchema],
-    total_quantity: { type: Number, default: 0 },
-    total_original_price: { type: Number, default: 0 },
-    total_discount_amount: { type: Number, default: 0 },
-    final_total_price: { type: Number, default: 0 },
+    total_quantity: {
+      type: Number,
+      default: 0,
+    },
+    total_original_price: {
+      type: Number,
+      default: 0,
+    },
+    total_discount_amount: {
+      type: Number,
+      default: 0,
+    },
+    final_total_price: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

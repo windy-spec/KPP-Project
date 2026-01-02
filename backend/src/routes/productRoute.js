@@ -11,8 +11,6 @@ import {
 
 const router = express.Router();
 
-// multer storage (save to public/uploads)
-
 const productUploadMiddleware = upload.fields([
   { name: "avatar", maxCount: 1 },
   { name: "images", maxCount: 10 },

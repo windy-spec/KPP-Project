@@ -56,7 +56,7 @@ export const getDashboardStats = async (req, res) => {
         $group: {
           _id: "$items.product_id",
           sales: { $sum: "$items.quantity" },
-          // ✅ Fix: Nếu total_price bị rỗng (do đơn cũ) thì mặc định là 0
+          //  Nếu total_price bị rỗng (do đơn cũ) thì mặc định là 0
           revenue: { $sum: { $ifNull: ["$items.total_price", 0] } },
         },
       },
@@ -64,7 +64,7 @@ export const getDashboardStats = async (req, res) => {
       { $limit: 5 },
     ]);
 
-    // ✅ FIX: Truy vấn thêm tên sản phẩm từ bảng Product
+    //  Truy vấn thêm tên sản phẩm từ bảng Product
     const topProducts = await Promise.all(
       topProductsRaw.map(async (item) => {
         const productInfo = await Product.findById(item._id).select(

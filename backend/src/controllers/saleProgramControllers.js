@@ -1,6 +1,5 @@
-// backend/src/controllers/saleProgramControllers.js
 import SaleProgram from "../models/SaleProgram.js";
-import Discount from "../models/Discount.js"; // <-- 1. Import Discount
+import Discount from "../models/Discount.js";
 import mongoose from "mongoose";
 
 // === 1. SỬA HÀM CREATE ===

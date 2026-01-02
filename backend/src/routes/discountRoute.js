@@ -6,7 +6,7 @@ import {
   deleteDiscount,
   applyDiscount,
   updateDiscountWithTiers,
-  hardDeleteDiscount, // Quan trọng
+  hardDeleteDiscount, 
 } from "../controllers/discountControllers.js";
 import { protectedRoute, checkRole } from "../middlewares/authMiddlewares.js";
 

@@ -1,4 +1,3 @@
-// src/routes/invoiceRoute.js
 import express from "express";
 import { protectedRoute, verifyAdmin } from "../middlewares/authMiddlewares.js";
 import {
@@ -7,7 +6,7 @@ import {
   getMyInvoices,
   getInvoiceById,
   deleteInvoice,
-  updateInvoice, // 👈 Import hàm mới này
+  updateInvoice,
 } from "../controllers/invoiceController.js";
 
 const router = express.Router();
@@ -24,7 +23,7 @@ router.get("/", protectedRoute, verifyAdmin, getAllInvoices);
 // 4. XEM CHI TIẾT
 router.get("/:id", protectedRoute, getInvoiceById);
 
-// 5. 🔥 ROUTE CẬP NHẬT (DÙNG CHUNG CHO ADMIN VÀ USER)
+// 5. ROUTE CẬP NHẬT (DÙNG CHUNG CHO ADMIN VÀ USER)
 // Frontend gọi: PUT /api/invoice/:id
 // Controller sẽ tự phân biệt ai đang gọi
 router.put("/:id", protectedRoute, updateInvoice);

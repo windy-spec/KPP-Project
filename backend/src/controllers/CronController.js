@@ -54,11 +54,11 @@ export const autoUpdateOrderStatus = async () => {
         }
 
         await order.save();
-        console.log(`✅ [AUTO] Đơn hàng ${order._id} đã tự động hoàn thành.`);
+        console.log(` [AUTO] Đơn hàng ${order._id} đã tự động hoàn thành.`);
       }
     }
   } catch (error) {
-    console.error("❌ Lỗi Cron Job:", error);
+    console.error(" Lỗi Cron Job:", error);
   }
 };
 
@@ -77,7 +77,7 @@ export const autoUpdateOrderStatus = async () => {
 //     const now = new Date();
 
 //     for (const order of shippingOrders) {
-//       // 🔥 [CHẾ ĐỘ TEST] Tính chênh lệch theo PHÚT
+//       //  [CHẾ ĐỘ TEST] Tính chênh lệch theo PHÚT
 //       const timeDiff = now - new Date(order.shipped_at);
 //       const minutesPassed = timeDiff / (1000 * 60); // Chia cho 60.000 để ra phút
 
@@ -111,13 +111,13 @@ export const autoUpdateOrderStatus = async () => {
 
 //         await order.save();
 //         console.log(
-//           `✅ [TEST SUCCESS] Đơn ${order._id} đã tự hoàn thành sau ${Math.floor(
+//           ` [TEST SUCCESS] Đơn ${order._id} đã tự hoàn thành sau ${Math.floor(
 //             minutesPassed
 //           )} phút.`
 //         );
 //       }
 //     }
 //   } catch (error) {
-//     console.error("❌ Lỗi Cron Job:", error);
+//     console.error(" Lỗi Cron Job:", error);
 //   }
 // };

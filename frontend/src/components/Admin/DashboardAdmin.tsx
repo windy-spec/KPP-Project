@@ -278,7 +278,7 @@ const DashboardAdmin: React.FC = () => {
                     border: "none",
                     boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
                   }}
-                  formatter={(value: any) => formatVND(value)}
+                  formatter={(value: any) => [formatVND(value), "Tổng hoá đơn"]}
                 />
                 <Bar
                   dataKey="revenue"

@@ -1,7 +1,7 @@
 import express from "express";
 import {
   createSaleProgram,
-  getAllSaleProgram, // <--- Sửa tên hàm này cho khớp
+  getAllSaleProgram,
   getSaleProgramById,
   updateSaleProgram,
   deleteSaleProgram,

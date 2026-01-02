@@ -64,6 +64,6 @@ cron.schedule("0 * * * *", () => {
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server đã bắt đầu ở cổng ${PORT}`);
-    console.log("✅ Cron Job đã được kích hoạt.");
+    console.log(" Cron Job đã được kích hoạt.");
   });
 });

@@ -1,6 +1,5 @@
 import express from "express";
 import { getDashboardStats } from "../controllers/adminController.js";
-// Import các "trạm kiểm soát" (middleware) để bảo vệ dữ liệu
 import { protectedRoute, verifyAdmin } from "../middlewares/authMiddlewares.js";
 
 const router = express.Router();

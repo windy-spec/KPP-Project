@@ -1,13 +1,13 @@
 import Session from "../models/Session.js";
 import User from "../models/User.js";
-import Cart from "../models/Cart.js"; // <-- ĐÃ THÊM: Cần cho logic gộp giỏ hàng
+import Cart from "../models/Cart.js";
 import JWT from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
-const GUEST_CART_COOKIE = "guest_cart_id"; // <-- ĐÃ THÊM: Cần cho logic gộp giỏ hàng
+const GUEST_CART_COOKIE = "guest_cart_id"; 
 
 // FUNCTION SIGNUP
 export const signUp = async (req, res) => {
