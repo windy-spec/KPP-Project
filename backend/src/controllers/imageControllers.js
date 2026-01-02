@@ -44,24 +44,24 @@ export const createImages = async (req, res) => {
       images: imageDocs,
     });
   } catch (error) {
-    console.error("❌ Lỗi khi thêm ảnh:", error);
+    console.error(" Lỗi khi thêm ảnh:", error);
     return res.status(500).json({ message: "Lỗi hệ thống", error });
   }
 };
 
-// 🟢 [GET] /api/images/:productId
+//  [GET] /api/images/:productId
 export const getImagesByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
     const images = await ImageProduct.find({ product: productId });
     return res.status(200).json(images);
   } catch (error) {
-    console.error("❌ Lỗi khi lấy ảnh:", error);
+    console.error(" Lỗi khi lấy ảnh:", error);
     return res.status(500).json({ message: "Lỗi hệ thống", error });
   }
 };
 
-// 🟢 [PUT] /api/images/:id
+//  [PUT] /api/images/:id
 export const updateImage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -86,12 +86,12 @@ export const updateImage = async (req, res) => {
     await image.save();
     return res.status(200).json({ message: "Cập nhật ảnh thành công", image });
   } catch (error) {
-    console.error("❌ Lỗi khi cập nhật ảnh:", error);
+    console.error(" Lỗi khi cập nhật ảnh:", error);
     return res.status(500).json({ message: "Lỗi hệ thống", error });
   }
 };
 
-// 🟢 [DELETE] /api/images/:id
+//  [DELETE] /api/images/:id
 export const deleteImage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -107,7 +107,7 @@ export const deleteImage = async (req, res) => {
     await image.deleteOne();
     return res.status(200).json({ message: "Xóa ảnh thành công" });
   } catch (error) {
-    console.error("❌ Lỗi khi xóa ảnh:", error);
+    console.error(" Lỗi khi xóa ảnh:", error);
     return res.status(500).json({ message: "Lỗi hệ thống", error });
   }
 };

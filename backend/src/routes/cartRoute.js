@@ -8,11 +8,8 @@ import {
   getGuestCartPreview,
 } from "../controllers/cartController.js";
 import { protectedRoute } from "../middlewares/authMiddlewares.js";
-// Import middleware mới
 import { identifyCart } from "../middlewares/cartMiddleware.js";
-// Import middleware xác thực (giả sử đường dẫn này đúng)
 import { protectedRoute as protect } from "../middlewares/authMiddlewares.js";
-
 const router = express.Router();
 
 // 1. Route tính toán cho Guest (KHÔNG dùng middleware identifyCart vì không cần tạo cart trong DB)

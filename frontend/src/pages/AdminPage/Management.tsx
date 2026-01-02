@@ -18,12 +18,12 @@ import {
   LayoutDashboard,
   Pencil,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
-import apiClient from "@/utils/api-user"; // Đảm bảo đường dẫn này đúng với project của bạn
+import apiClient from "@/utils/api-user";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +36,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// 🚨 IMPORT COMPONENT SALE PROGRAM TABLE
 // Hãy chắc chắn đường dẫn này đúng trong máy bạn
 import SaleProgramTable from "../../components/Admin/SaleProgramTable";
 import DashboardAdmin from "../../components/Admin/DashboardAdmin";
@@ -54,7 +53,7 @@ const sections = [
 // Dùng chung base URL từ apiClient hoặc biến môi trường
 const SERVER_BASE_URL = "http://localhost:5001";
 
-// ✅ Helper quan trọng: Làm sạch ID để tránh lỗi ":1"
+//  Helper quan trọng: Làm sạch ID để tránh lỗi ":1"
 const cleanId = (id: string | undefined | null) => {
   if (!id) return "";
   return String(id).split(":")[0];
@@ -296,7 +295,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await apiClient.get(`/category`); // ✅ Dùng apiClient
+        const res = await apiClient.get(`/category`); //  Dùng apiClient
         setCategories(res.data);
       } catch {
         toast.error("Lỗi tải danh mục");
@@ -310,7 +309,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
     try {
       const res = await apiClient.get(`/product/partition`, {
         params: { page, limit: PAGE_SIZE },
-      }); // ✅ Dùng apiClient
+      }); //  Dùng apiClient
       const data = res.data;
       setAllItems(data.products || []);
       setTotalPages(data.totalPages || 1);
@@ -330,7 +329,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       toast.error("Thiếu thông tin");
       return;
     }
-    // ✅ cleanId cho editingId
+    //  cleanId cho editingId
     const safeId = cleanId(editingId);
     const endpoint = safeId ? `/product/${safeId}` : `/product`;
     const method = safeId ? "put" : "post";
@@ -346,7 +345,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
       if (avatarFile) formData.append("avatar", avatarFile);
       imageFiles.forEach((file) => formData.append("images", file));
 
-      // ✅ Dùng apiClient với FormData
+      //  Dùng apiClient với FormData
       await apiClient({
         method,
         url: endpoint,
@@ -365,7 +364,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   };
 
   const openEdit = (id: string) => {
-    const realId = cleanId(id); // ✅ FIX LỖI ID
+    const realId = cleanId(id);
     const it = allItems.find((i) => i._id === realId);
     if (!it) return;
     setEditingId(realId);
@@ -387,7 +386,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
   };
 
   const remove = async (id: string) => {
-    const realId = cleanId(id); // ✅ FIX LỖI ID
+    const realId = cleanId(id);
     try {
       await apiClient.delete(`/product/${realId}`);
       toast.success("Đã xóa");
@@ -399,7 +398,7 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
 
   const removeMany = async (ids: string[]) => {
     if (ids.length === 0) return;
-    const cleanIds = ids.map((id) => cleanId(id)); // ✅ FIX LỖI ID
+    const cleanIds = ids.map((id) => cleanId(id));
     setIsLoading(true);
     try {
       await Promise.all(
@@ -661,7 +660,10 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group"
                         title="Chỉnh sửa"
                       >
-                        <Pencil size={18} className="group-hover:scale-110 transition-transform" />
+                        <Pencil
+                          size={18}
+                          className="group-hover:scale-110 transition-transform"
+                        />
                       </button>
 
                       {/* Nút Xóa */}
@@ -670,7 +672,10 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
                         title="Xóa sản phẩm"
                       >
-                        <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+                        <Trash2
+                          size={18}
+                          className="group-hover:scale-110 transition-transform"
+                        />
                       </button>
                     </td>
                   </tr>
@@ -679,40 +684,40 @@ const ProductsAdmin: React.FC<AdminChildProps> = ({
             </table>
             {totalPages > 1 && (
               <div className="p-4 flex items-center justify-between border-t bg-gray-50/50">
-            {/* Hiển thị thông tin tổng quát */}
-            <span className="text-xs text-gray-500">
-              Trang {page} / {totalPages}
-            </span>
+                {/* Hiển thị thông tin tổng quát */}
+                <span className="text-xs text-gray-500">
+                  Trang {page} / {totalPages}
+                </span>
 
-            <div className="flex items-center gap-2">
-              {/* Nút Trước */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 w-8 p-0"
-                disabled={page === 1}
-                onClick={() => goToPage(page - 1)}
-              >
-                <ChevronLeft size={16} />
-              </Button>
+                <div className="flex items-center gap-2">
+                  {/* Nút Trước */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    disabled={page === 1}
+                    onClick={() => goToPage(page - 1)}
+                  >
+                    <ChevronLeft size={16} />
+                  </Button>
 
-              {/* Dãy số trang */}
-              <div className="flex items-center gap-1">
-                {renderPageNumbers()}
+                  {/* Dãy số trang */}
+                  <div className="flex items-center gap-1">
+                    {renderPageNumbers()}
+                  </div>
+
+                  {/* Nút Sau */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    disabled={page === totalPages}
+                    onClick={() => goToPage(page + 1)}
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
               </div>
-
-              {/* Nút Sau */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 w-8 p-0"
-                disabled={page === totalPages}
-                onClick={() => goToPage(page + 1)}
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          </div>
             )}
           </div>
         </>
@@ -852,7 +857,10 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all group"
                       title="Sửa danh mục"
                     >
-                      <Pencil size={18} className="group-hover:rotate-12 transition-transform" />
+                      <Pencil
+                        size={18}
+                        className="group-hover:rotate-12 transition-transform"
+                      />
                     </button>
                     {/* Nút Xóa danh mục */}
                     <button
@@ -860,7 +868,10 @@ const CategoriesAdmin: React.FC<AdminChildProps> = ({
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all group"
                       title="Xóa danh mục"
                     >
-                      <Trash2 size={18} className="group-hover:shake transition-transform" />
+                      <Trash2
+                        size={18}
+                        className="group-hover:shake transition-transform"
+                      />
                     </button>
                   </td>
                 </tr>
@@ -890,12 +901,12 @@ const OrdersAdmin: React.FC = () => {
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ SỬA: Gọi đúng route "/" dành cho Admin lấy toàn bộ hóa đơn
+      // Gọi đúng route "/" dành cho Admin lấy toàn bộ hóa đơn
       const res = await apiClient.get("/invoice", {
         params: { page: currentPage, limit },
       });
 
-      // ✅ Kiểm tra cấu trúc data trả về từ invoiceController.getAllInvoices
+      //  Kiểm tra cấu trúc data trả về từ invoiceController.getAllInvoices
       const data =
         res.data?.invoices || (Array.isArray(res.data) ? res.data : []);
       const total = res.data?.totalPages || 1;
@@ -967,7 +978,7 @@ const OrdersAdmin: React.FC = () => {
     );
   }, [invoices, filterType, productSearch]);
 
-  // ✅ SỬA 1: Dùng cleanId
+  // : Dùng cleanId
   const handleSelectInvoice = async (invoiceId: string) => {
     try {
       const realId = cleanId(invoiceId);
@@ -978,7 +989,7 @@ const OrdersAdmin: React.FC = () => {
     }
   };
 
-  // ✅ SỬA 2: Dùng cleanId
+  //  Dùng cleanId
   const handleDeleteInvoice = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -1004,7 +1015,7 @@ const OrdersAdmin: React.FC = () => {
     }
   };
 
-  // ✅ SỬA 3: Dùng cleanId
+  //  Dùng cleanId
   const handleAdminShipOrder = async (
     e: React.MouseEvent,
     invoiceId: string
@@ -1251,7 +1262,7 @@ const DiscountsAdmin: React.FC = () => {
   const fetchDiscounts = async () => {
     setLoading(true);
     try {
-      // ✅ Dùng apiClient, không cần cấu hình header thủ công
+      //  Dùng apiClient, không cần cấu hình header thủ công
       const res = await apiClient.get(`/discount`);
       const data = res.data;
       if (Array.isArray(data)) setDiscounts(data);
@@ -1485,7 +1496,10 @@ const DiscountsAdmin: React.FC = () => {
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group"
                       title="Chỉnh sửa"
                     >
-                      <Pencil size={18} className="group-hover:scale-110 transition-transform" />
+                      <Pencil
+                        size={18}
+                        className="group-hover:scale-110 transition-transform"
+                      />
                     </button>
 
                     {/* Nút Xóa */}
@@ -1494,7 +1508,10 @@ const DiscountsAdmin: React.FC = () => {
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
                       title="Xóa"
                     >
-                      <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+                      <Trash2
+                        size={18}
+                        className="group-hover:scale-110 transition-transform"
+                      />
                     </button>
                   </td>
                 </tr>
@@ -1746,7 +1763,7 @@ const UsersAdmin: React.FC = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // ✅ Dùng apiClient, params được axios tự xử lý
+      //  Dùng apiClient, params được axios tự xử lý
       const res = await apiClient.get(`/users`, {
         params: { page, limit: PAGE_SIZE, search },
       });

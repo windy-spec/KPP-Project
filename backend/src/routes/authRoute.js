@@ -8,11 +8,8 @@ import {
   getProfile,
 } from "../controllers/authControllers.js";
 import { protectedRoute as protect } from "../middlewares/authMiddlewares.js";
-
 const router = express.Router();
-
 // === CÁC ROUTE CÔNG KHAI (Public) ===
-
 // Đăng ký
 router.post("/signup", signUp);
 

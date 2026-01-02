@@ -1,8 +1,6 @@
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-import User from "../models/User.js"; // Đảm bảo đường dẫn đúng
-
-// Định nghĩa cookie key ở một nơi
+import User from "../models/User.js";
 const GUEST_CART_COOKIE = "guest_cart_id";
 
 /*
@@ -23,10 +21,8 @@ export const identifyCart = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-
       // Xác thực token
       const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
       // Tìm user (bạn có thể bỏ qua bước này nếu middleware 'protect' đã chạy trước)
       // Nhưng để an toàn cho các route không 'protect', chúng ta vẫn nên kiểm tra
       const user = await User.findById(decoded.userID).select("-password");

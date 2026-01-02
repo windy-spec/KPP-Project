@@ -1,6 +1,6 @@
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
-import SaleProgram from "../models/SaleProgram.js"; // 🚨 Import SaleProgram
+import SaleProgram from "../models/SaleProgram.js";
 import fs from "fs";
 import path from "path";
 
@@ -249,14 +249,14 @@ export const createProduct = async (req, res) => {
       images: allImagePaths,
     });
 
-    console.log("✅ Đã tạo sản phẩm:", newProduct.name);
+    console.log(" Đã tạo sản phẩm:", newProduct.name);
     return res.status(201).json({
       success: true,
       message: "Tạo sản phẩm thành công",
       product: newProduct,
     });
   } catch (error) {
-    console.error("❌ Lỗi khi tạo sản phẩm:", error);
+    console.error(" Lỗi khi tạo sản phẩm:", error);
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
@@ -294,7 +294,7 @@ export const updateProduct = async (req, res) => {
           const oldPath = path.join(process.cwd(), product.avatar);
           if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
         } catch (err) {
-          console.warn("⚠️ Không thể xóa Avatar cũ:", err.message);
+          console.warn(" Không thể xóa Avatar cũ:", err.message);
         }
       }
       product.avatar = newAvatarPath;
@@ -311,7 +311,7 @@ export const updateProduct = async (req, res) => {
           const oldPath = path.join(process.cwd(), oldImg);
           if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
         } catch (err) {
-          console.warn("⚠️ Không thể xóa Ảnh chi tiết cũ:", err.message);
+          console.warn(" Không thể xóa Ảnh chi tiết cũ:", err.message);
         }
       }
       imagesToKeep = newDetailImagePaths;
@@ -334,7 +334,7 @@ export const updateProduct = async (req, res) => {
       product: product,
     });
   } catch (err) {
-    console.error("❌ Lỗi khi cập nhật sản phẩm:", err);
+    console.error(" Lỗi khi cập nhật sản phẩm:", err);
     return res
       .status(500)
       .json({ success: false, message: "Lỗi server", error: err.message });

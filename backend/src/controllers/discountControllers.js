@@ -3,7 +3,7 @@ import Discount from "../models/Discount.js";
 import DiscountTier from "../models/DiscountTier.js";
 import SaleProgram from "../models/SaleProgram.js";
 import Product from "../models/Product.js";
-import Category from "../models/Category.js"; // 🚨 QUAN TRỌNG: Thêm import này
+import Category from "../models/Category.js"; //
 
 // @desc    Tạo mã giảm giá mới
 // @route   POST /api/v1/discounts
@@ -84,7 +84,6 @@ export const getDiscounts = async (req, res) => {
 };
 
 // ============================================================
-// 🚨 HÀM ĐÃ SỬA ĐỂ KHẮC PHỤC LỖI 500
 // @desc    Lấy chi tiết 1 discount (Kèm thông tin SP/Category)
 // @route   GET /api/v1/discounts/:id
 // @access  Public

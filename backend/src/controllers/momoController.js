@@ -31,13 +31,13 @@ export const createMomoPayment = async (req, res) => {
     let checkoutItems = [];
     let totalProductPrice = 0;
 
-    // 🔥 QUAN TRỌNG: Chỉ coi là Mua Ngay nếu có cờ isDirectBuy = true
+    //  QUAN TRỌNG: Chỉ coi là Mua Ngay nếu có cờ isDirectBuy = true
     let finalIsDirectBuy = isDirectBuy === true;
 
     // --- PHÂN LOẠI XỬ LÝ ---
     if (finalIsDirectBuy && items && items.length > 0) {
       // A. MUA NGAY (Direct Buy) -> Dùng items từ Frontend
-      console.log("⚡ [MOMO] MUA NGAY (Direct Buy)");
+      console.log(" [MOMO] MUA NGAY (Direct Buy)");
 
       for (const item of items) {
         const product = await Product.findById(
@@ -61,7 +61,7 @@ export const createMomoPayment = async (req, res) => {
     } else {
       // B. THANH TOÁN GIỎ HÀNG (Cart Checkout) -> Lấy từ DB Cart cho an toàn
       // Dù Frontend có gửi items lên thì ta vẫn ưu tiên lấy từ DB để đảm bảo tính nhất quán
-      console.log("🛒 [MOMO] THANH TOÁN GIỎ HÀNG");
+      console.log(" [MOMO] THANH TOÁN GIỎ HÀNG");
       finalIsDirectBuy = false; // Chắc chắn cờ là false để tí nữa xóa giỏ
 
       const cart = await Cart.findOne({ user: userId }).populate(
@@ -322,12 +322,12 @@ const processSuccessfulMomoPayment = async (orderId, extraData, amount) => {
       }));
       await Product.bulkWrite(bulkOps);
 
-      // 🔥 CHỈ XÓA GIỎ HÀNG KHI KHÔNG PHẢI MUA NGAY 🔥
+      //  CHỈ XÓA GIỎ HÀNG KHI KHÔNG PHẢI MUA NGAY 
       if (!isDirectBuy) {
         await Cart.findOneAndDelete({ user: userId });
-        console.log("🗑️ Đã xóa giỏ hàng (Cart Checkout).");
+        console.log(" Đã xóa giỏ hàng (Cart Checkout).");
       } else {
-        console.log("🛡️ Giữ nguyên giỏ hàng (Direct Buy).");
+        console.log(" Giữ nguyên giỏ hàng (Direct Buy).");
       }
 
       return newInvoice;
@@ -341,7 +341,7 @@ const processSuccessfulMomoPayment = async (orderId, extraData, amount) => {
       }
       return racewin;
     }
-    console.error("🔥 Lỗi tạo hóa đơn MoMo:", error);
+    console.error(" Lỗi tạo hóa đơn MoMo:", error);
   }
   return null;
 };

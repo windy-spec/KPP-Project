@@ -17,12 +17,9 @@ const DiscountSchema = new mongoose.Schema(
       enum: ["PRODUCT", "CATEGORY", "ORDER_TOTAL", "ALL"],
       required: true,
     },
-
-    // 🚨 ĐÃ SỬA: Chuyển thành Mảng để lưu nhiều ID
     target_ids: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        // Không cần ref cố định vì ta sẽ query thủ công trong controller
       },
     ],
 

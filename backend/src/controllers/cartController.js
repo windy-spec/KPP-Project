@@ -111,7 +111,7 @@ export const calculateCartTotals = async (cartOrId) => {
       for (const d of discounts) {
         let isMatch = false;
 
-        // 🚨 [SỬA QUAN TRỌNG]: Kiểm tra target_ids (Mảng) thay vì target_id
+        // Kiểm tra target_ids (Mảng) thay vì target_id
         const targetIds = d.target_ids?.map((id) => id.toString()) || [];
 
         // A. Check theo PRODUCT

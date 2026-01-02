@@ -205,12 +205,12 @@ Bạn là Chuyên viên tư vấn tại KPPaint. Hãy trả về phản hồi d�
 }
 
 DANH SÁCH LINK CHUẨN:
-- Sơn nước: 💧 [Ghé thăm kho Sơn nước](/san-pham?page=1&categories=6903093203a32d9127756f46)
-- Sơn xịt: 💨 [Thế giới Sơn xịt đa năng](/san-pham?page=1&categories=6903073f03a32d9127756f38)
-- Bột trét: 🧱 [Bột trét Matic cực mịn](/san-pham?page=1&categories=692ade4b357e6c84295146ce)
-- Sơn dầu: 🛢️ [Sơn dầu bền bỉ](/san-pham?page=1&categories=692ae7f7357e6c8429514e15)
-- Silicon: 🧪 [Silicon & Keo dán chuyên dụng](/san-pham?page=1&categories=692ae80f357e6c8429514e19)
-- Dụng cụ: 🛠️ [Đồ nghề sơn chuyên nghiệp](/san-pham?page=1&categories=6903075803a32d9127756f3b)
+- Sơn nước:  [Ghé thăm kho Sơn nước](/san-pham?page=1&categories=6903093203a32d9127756f46)
+- Sơn xịt:  [Thế giới Sơn xịt đa năng](/san-pham?page=1&categories=6903073f03a32d9127756f38)
+- Bột trét:  [Bột trét Matic cực mịn](/san-pham?page=1&categories=692ade4b357e6c84295146ce)
+- Sơn dầu:  [Sơn dầu bền bỉ](/san-pham?page=1&categories=692ae7f7357e6c8429514e15)
+- Silicon:  [Silicon & Keo dán chuyên dụng](/san-pham?page=1&categories=692ae80f357e6c8429514e19)
+- Dụng cụ:  [Đồ nghề sơn chuyên nghiệp](/san-pham?page=1&categories=6903075803a32d9127756f3b)
 `;
 
 export const chatWithBot = async (req, res) => {
@@ -326,6 +326,6 @@ export const chatWithBot = async (req, res) => {
     console.error(err);
     res
       .status(500)
-      .json({ reply: "KPPaint Advisor đang bận pha màu, đợi tí nha! 🎨" });
+      .json({ reply: "KPPaint Advisor đang bận pha màu, đợi tí nha! " });
   }
 };

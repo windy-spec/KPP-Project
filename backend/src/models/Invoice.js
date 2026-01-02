@@ -23,7 +23,7 @@ const invoiceSchema = new mongoose.Schema(
     recipient_info: {
       name: String,
       phone: String,
-      address: String, // Lưu địa chỉ đầy đủ (VD: 123 Lê Lợi, Quận 1, Hồ Chí Minh)
+      address: String,
       note: String,
     },
     items: [invoiceItemSchema],

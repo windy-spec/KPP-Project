@@ -20,7 +20,7 @@ export const createInvoice = async (req, res) => {
     let calculatedTotal = 0;
     const finalItems = [];
 
-    // ✅ BƯỚC QUAN TRỌNG: Duyệt qua từng item để lấy giá gốc và tính total_price
+    //  BƯỚC QUAN TRỌNG: Duyệt qua từng item để lấy giá gốc và tính total_price
     for (const item of items) {
       const product = await Product.findById(item.product_id);
       if (!product)
@@ -36,7 +36,7 @@ export const createInvoice = async (req, res) => {
         product_name: product.name,
         quantity: item.quantity,
         unit_price: itemPrice, // Lưu giá tại thời điểm mua
-        total_price: itemTotal, // ✅ Dashboard sẽ sum trường này
+        total_price: itemTotal, //  Dashboard sẽ sum trường này
       });
 
       calculatedTotal += itemTotal;
@@ -114,7 +114,7 @@ export const getAllInvoices = async (req, res) => {
     const [invoices, total] = await Promise.all([
       Invoice.find()
         .populate("user", "name email")
-        // ✅ Bắt buộc phải populate product_id để lấy tên hiển thị ở phần bán chạy/chi tiết
+        //  Bắt buộc phải populate product_id để lấy tên hiển thị ở phần bán chạy/chi tiết
         .populate("items.product_id", "name price avatar")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -155,7 +155,7 @@ export const getInvoiceById = async (req, res) => {
   }
 };
 
-// 5. 🔥 UPDATE INVOICE (XỬ LÝ THANH TOÁN KHI HOÀN THÀNH)
+// 5.  UPDATE INVOICE (XỬ LÝ THANH TOÁN KHI HOÀN THÀNH)
 export const updateInvoice = async (req, res) => {
   try {
     const { id } = req.params;
@@ -198,7 +198,7 @@ export const updateInvoice = async (req, res) => {
             .json({ message: "Đơn hàng chưa được giao đi" });
         }
         invoice.order_status = "COMPLETED";
-        // 🔥 LOGIC BẠN YÊU CẦU: Giao xong -> Auto update thành ĐÃ THANH TOÁN
+        //  LOGIC BẠN YÊU CẦU: Giao xong -> Auto update thành ĐÃ THANH TOÁN
         if (invoice.payment_status !== "PAID") {
           invoice.payment_status = "PAID";
         }
